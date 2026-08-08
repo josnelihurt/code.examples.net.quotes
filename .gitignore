@@ -1,0 +1,58 @@
+# Build
+bin/
+obj/
+out/
+[Dd]ebug/
+[Rr]elease/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.log
+
+# .NET / NuGet
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+project.lock.json
+project.fragment.lock.json
+artifacts/
+packages/
+*.nupkg
+*.snupkg
+.nuget/
+
+# Aspire / publish
+**/aspire-output/
+.aspire/
+
+# Node / frontend
+node_modules/
+dist/
+*.local
+.vite/
+coverage/
+
+# IDE / OS
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+secrets.json
+
+# Test / misc
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
