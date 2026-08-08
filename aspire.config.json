@@ -1,0 +1,6 @@
+{
+  "appHost": {
+    "path": "src/AppHost/AspireQuotesPoc.AppHost.csproj"
+  },
+  "channel": "stable"
+}
