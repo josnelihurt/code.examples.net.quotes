@@ -5,6 +5,9 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Quotes.Infrastructure.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\ServiceDefaults\AspireQuotesPoc.ServiceDefaults.csproj" />
     <ProjectReference Include="..\Quotes.Application\Quotes.Application.csproj" />
     <ProjectReference Include="..\Quotes.Domain\Quotes.Domain.csproj" />

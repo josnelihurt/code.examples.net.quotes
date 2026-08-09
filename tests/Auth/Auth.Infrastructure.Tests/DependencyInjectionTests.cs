@@ -1,0 +1,31 @@
+using Auth.Application;
+using Auth.Domain;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Auth.Infrastructure.Tests;
+
+public class DependencyInjectionTests
+{
+    [Fact]
+    public void AddAuthInfrastructure_resolves_the_whole_auth_chain()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:SigningKey"] = "unit-test-signing-key-that-is-long-enough-1234567890"
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddLogging();
+        services.AddAuthInfrastructure();
+
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<ICredentialStore>().ShouldBeOfType<HardcodedCredentialStore>();
+        provider.GetRequiredService<ITokenService>().ShouldBeOfType<JwtTokenService>();
+        provider.GetRequiredService<IAuthService>().ShouldBeOfType<AuthService>();
+    }
+}
