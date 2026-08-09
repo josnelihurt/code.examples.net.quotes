@@ -1,0 +1,55 @@
+openapi: 3.0.3
+info:
+  title: Quotes API
+  version: 1.0.0
+  description: Random quotes service for Aspire Quotes POC
+servers:
+  - url: /
+paths:
+  /api/quotes/random:
+    get:
+      operationId: GetRandomQuote
+      tags: [Quotes]
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Bearer access token
+        - name: X-Correlation-Id
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Random quote
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    QuoteResponse:
+      type: object
+      required: [id, text, author]
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        author:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

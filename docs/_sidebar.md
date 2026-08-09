@@ -1,0 +1,6 @@
+* [Home](/)
+* [Architecture](architecture.md)
+* [API](api.md)
+* [Scalar (combined)](scalar/)
+* [Local development](local-dev.md)
+* [Observability](observability.md)
