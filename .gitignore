@@ -56,3 +56,7 @@ TestResults/
 *.trx
 *.coverage
 *.coveragexml
+
+# Generated MSBuild / Aspire frontend props (any path shape)
+**/package.g.props
+**/obj*/
