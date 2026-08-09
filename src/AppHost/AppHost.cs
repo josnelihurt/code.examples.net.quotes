@@ -1,5 +1,9 @@
 using Microsoft.Extensions.Logging;
 
+const string ScalarDisplayText = "Scalar";
+const string ScalarPath = "/scalar";
+const string ScalarDocsPath = "/scalar/";
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddDockerComposeEnvironment("compose");
@@ -7,16 +11,16 @@ builder.AddDockerComposeEnvironment("compose");
 var auth = builder.AddProject<Projects.Auth_Api>("auth-api")
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
-    .WithUrlForEndpoint("https", ep => new() { Url = "/scalar", DisplayText = "Scalar" })
-    .WithUrlForEndpoint("http", ep => new() { Url = "/scalar", DisplayText = "Scalar" });
+    .WithUrlForEndpoint("https", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText })
+    .WithUrlForEndpoint("http", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText });
 
 var quotes = builder.AddProject<Projects.Quotes_Api>("quotes-api")
     .WithReference(auth)
     .WaitFor(auth)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
-    .WithUrlForEndpoint("https", ep => new() { Url = "/scalar", DisplayText = "Scalar" })
-    .WithUrlForEndpoint("http", ep => new() { Url = "/scalar", DisplayText = "Scalar" });
+    .WithUrlForEndpoint("https", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText })
+    .WithUrlForEndpoint("http", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText });
 
 var web = builder.AddViteApp("web", "../../frontend")
     .WithReference(auth)
@@ -40,8 +44,8 @@ builder.AddExecutable("docs", "npx", "../..", "--yes", "docsify-cli", "serve", "
 
         context.Urls.Add(new()
         {
-            Url = "/scalar/",
-            DisplayText = "Scalar",
+            Url = ScalarDocsPath,
+            DisplayText = ScalarDisplayText,
             Endpoint = http
         });
     });
@@ -56,4 +60,4 @@ builder.AddYarp("gateway")
     .WithExternalHttpEndpoints()
     .PublishWithStaticFiles(web);
 
-builder.Build().Run();
+await builder.Build().RunAsync();
