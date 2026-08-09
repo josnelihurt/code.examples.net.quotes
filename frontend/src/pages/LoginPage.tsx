@@ -1,0 +1,58 @@
+import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { login } from '../api/client';
+
+export function LoginPage() {
+  const navigate = useNavigate();
+  const [username, setUsername] = useState('jrb');
+  const [password, setPassword] = useState('supersecret');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const onSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await login(username, password);
+      navigate('/quote');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+      console.error('Login failed', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="panel">
+      <h1>Sign in</h1>
+      <p className="muted">POC credentials: jrb / supersecret</p>
+      <form onSubmit={onSubmit} className="form">
+        <label>
+          Username
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+            required
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
+        </label>
+        {error && <p className="error" role="alert">{error}</p>}
+        <button type="submit" disabled={loading}>
+          {loading ? 'Signing in...' : 'Sign in'}
+        </button>
+      </form>
+    </section>
+  );
+}
