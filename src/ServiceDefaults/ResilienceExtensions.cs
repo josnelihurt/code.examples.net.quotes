@@ -1,3 +1,4 @@
+using AspireQuotesPoc.Resilience;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
@@ -11,27 +12,31 @@ public static class ResilienceExtensions
     /// Service defaults intentionally omit the global standard resilience handler
     /// so this client is not double-wrapped.
     /// </summary>
-    public static IHttpClientBuilder AddAuthHttpClientResilience(this IHttpClientBuilder builder)
+    public static IHttpClientBuilder AddAuthHttpClientResilience(
+        this IHttpClientBuilder builder,
+        AuthResilienceOptions? options = null)
     {
+        var settings = options ?? new AuthResilienceOptions();
+
         builder.AddResilienceHandler("auth-validate", pipeline =>
         {
             pipeline.AddRetry(new HttpRetryStrategyOptions
             {
-                MaxRetryAttempts = 3,
-                Delay = TimeSpan.FromMilliseconds(200),
+                MaxRetryAttempts = settings.MaxRetryAttempts,
+                Delay = settings.RetryDelay,
                 BackoffType = DelayBackoffType.Exponential,
                 UseJitter = true
             });
 
             pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
             {
-                SamplingDuration = TimeSpan.FromSeconds(30),
-                FailureRatio = 0.5,
-                MinimumThroughput = 5,
-                BreakDuration = TimeSpan.FromSeconds(15)
+                SamplingDuration = settings.CircuitBreakerSamplingDuration,
+                FailureRatio = settings.CircuitBreakerFailureRatio,
+                MinimumThroughput = settings.CircuitBreakerMinimumThroughput,
+                BreakDuration = settings.CircuitBreakerBreakDuration
             });
 
-            pipeline.AddTimeout(TimeSpan.FromSeconds(10));
+            pipeline.AddTimeout(settings.Timeout);
         });
 
         return builder;
