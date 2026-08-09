@@ -1,7 +1,4 @@
-using AspireQuotesPoc.Telemetry;
-using Microsoft.Extensions.Hosting;
-using Quotes.Api.Contracts;
-using Quotes.Application;
+using Quotes.Api.Endpoints;
 using Quotes.Infrastructure;
 using Serilog;
 
@@ -15,7 +12,7 @@ try
 
     builder.AddServiceDefaults();
     builder.AddStandardApiServices();
-    builder.Services.AddQuotesInfrastructure();
+    builder.Services.AddQuotesInfrastructure(builder.Configuration);
 
     var app = builder.Build();
 
@@ -25,53 +22,19 @@ try
     app.MapDefaultEndpoints();
     app.MapStandardApiDocumentation();
 
-    app.MapGet("/api/quotes/random", async (
-            HttpContext http,
-            IGetRandomQuoteUseCase useCase,
-            ILogger<Program> logger,
-            CancellationToken cancellationToken) =>
-        {
-            var authHeader = http.Request.Headers.Authorization.FirstOrDefault();
-            if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            {
-                AppMetrics.Record(AppMetrics.QuotesRandomCount, "failure");
-                logger.LogWarning("Missing bearer token on random quote request");
-                return Results.Json(new ErrorResponseDto { Error = "Unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
-            }
+    QuoteEndpoints.Map(app);
 
-            var token = authHeader["Bearer ".Length..].Trim();
-            var correlationId = http.GetCorrelationId();
-            logger.LogInformation("Fetching random quote");
-
-            var quote = await useCase.ExecuteAsync(token, correlationId, cancellationToken);
-            if (quote is null)
-            {
-                AppMetrics.Record(AppMetrics.QuotesRandomCount, "failure");
-                logger.LogWarning("Auth validation failed for random quote request");
-                return Results.Json(new ErrorResponseDto { Error = "Unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
-            }
-
-            AppMetrics.Record(AppMetrics.QuotesRandomCount, "success");
-            logger.LogInformation("Returning quote {QuoteId}", quote.Id);
-            return Results.Ok(new QuoteResponseDto
-            {
-                Id = quote.Id,
-                Text = quote.Text,
-                Author = quote.Author
-            });
-        })
-        .WithName("GetRandomQuote")
-        .WithTags("Quotes")
-        .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
-        .Produces<ErrorResponseDto>(StatusCodes.Status401Unauthorized);
-
-    app.Run();
+    await app.RunAsync();
 }
+// S2139: the log-and-rethrow is deliberate. Serilog is flushed in the finally block, so the
+// fatal entry has to be written before the exception leaves the host.
+#pragma warning disable S2139
 catch (Exception ex)
 {
     Log.Fatal(ex, "Quotes.Api terminated unexpectedly");
     throw;
 }
+#pragma warning restore S2139
 finally
 {
     await Log.CloseAndFlushAsync();

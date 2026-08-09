@@ -16,5 +16,24 @@ public sealed class InMemoryQuoteRepository : IQuoteRepository
         new() { Id = "8", Text = "Talk is cheap. Show me the code.", Author = "Linus Torvalds" }
     ];
 
-    public Quote GetRandom() => Quotes[Random.Shared.Next(Quotes.Length)];
+    private readonly IQuoteSelector _selector;
+
+    public InMemoryQuoteRepository(IQuoteSelector selector)
+    {
+        _selector = selector;
+    }
+
+    public static int Count => Quotes.Length;
+
+    public Quote GetRandom()
+    {
+        var index = _selector.NextIndex(Quotes.Length);
+        if (index < 0 || index >= Quotes.Length)
+        {
+            throw new InvalidOperationException(
+                $"Quote selector returned index {index}, outside 0..{Quotes.Length - 1}.");
+        }
+
+        return Quotes[index];
+    }
 }

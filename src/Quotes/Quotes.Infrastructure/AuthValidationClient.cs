@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using AspireQuotesPoc.Http;
 using Microsoft.Extensions.Logging;
 using Quotes.Application;
 
@@ -8,8 +9,6 @@ namespace Quotes.Infrastructure;
 
 public sealed class AuthValidationClient : IAuthValidationClient
 {
-    public const string CorrelationIdHeaderName = "X-Correlation-Id";
-
     private readonly HttpClient _httpClient;
     private readonly ILogger<AuthValidationClient> _logger;
 
@@ -23,7 +22,7 @@ public sealed class AuthValidationClient : IAuthValidationClient
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/validate");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.TryAddWithoutValidation(CorrelationIdHeaderName, correlationId);
+        request.Headers.TryAddWithoutValidation(HttpHeaderNames.CorrelationId, correlationId);
         request.Content = JsonContent.Create(new { accessToken });
 
         try

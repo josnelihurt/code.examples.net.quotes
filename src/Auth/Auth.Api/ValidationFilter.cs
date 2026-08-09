@@ -4,7 +4,10 @@ namespace Auth.Api;
 
 public static class ValidationFilter
 {
-    public static async ValueTask<object?> ValidateAsync<T>(T? body, HttpContext http) where T : class
+    /// <summary>
+    /// Returns a problem result when <paramref name="body"/> is missing or invalid, otherwise null.
+    /// </summary>
+    public static async ValueTask<IResult?> ValidateAsync<T>(T? body, HttpContext http) where T : class
     {
         if (body is null)
         {
@@ -17,10 +20,15 @@ public static class ValidationFilter
         var validator = http.RequestServices.GetService<IValidator<T>>();
         if (validator is null)
         {
+            // Reaching this means the validator was never registered, which silently disables
+            // validation for the endpoint. Surface it rather than passing the request through mute.
+            http.RequestServices.GetRequiredService<ILoggerFactory>()
+                .CreateLogger(typeof(ValidationFilter).FullName!)
+                .LogWarning("No validator registered for {RequestType}; skipping validation", typeof(T).Name);
             return null;
         }
 
-        var result = await validator.ValidateAsync(body);
+        var result = await validator.ValidateAsync(body, http.RequestAborted);
         if (result.IsValid)
         {
             return null;
