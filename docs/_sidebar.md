@@ -3,4 +3,6 @@
 * [API](api.md)
 * [Scalar (combined)](scalar/)
 * [Local development](local-dev.md)
+* [Testing](testing.md)
+* [SonarQube](sonar.md)
 * [Observability](observability.md)

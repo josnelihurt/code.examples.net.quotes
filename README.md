@@ -26,7 +26,8 @@ OTEL metrics/logs/traces -> Aspire dashboard
 | `frontend/` | React + TS Vite SPA |
 | `docs/` | Docsify + combined Scalar reference |
 | `contracts/` | Frozen OpenAPI YAML + contract notes |
-| `scripts/` | Env + start / docs / publish / test-api / open-scalar |
+| `tests/` | xUnit unit/API tests (OpenCover for Sonar) |
+| `scripts/` | Env, start, docs, publish, test, Sonar, bundle |
 
 ## How to run
 
@@ -60,6 +61,32 @@ Publish Docker Compose artifacts (Podman-compatible):
 ./scripts/publish.sh
 ```
 
+Unit tests (.NET + Coverlet OpenCover):
+
+```bash
+./scripts/test.sh
+```
+
+Frontend tests (Vitest):
+
+```bash
+cd frontend && npm test
+```
+
+Local SonarQube (Podman) + scan:
+
+```bash
+./scripts/sonar-up.sh
+./scripts/sonar-scan.sh
+```
+
+Export a full git bundle to `~/repo.bundle`:
+
+```bash
+./scripts/export-bundle.sh
+```
+
+More detail in Docsify: [Testing](docs/testing.md), [SonarQube](docs/sonar.md).
 ## OpenAPI / Scalar
 
 [Scalar](https://github.com/scalar/scalar) is the interactive API client (manual testing). It is **not** required for automated checks.

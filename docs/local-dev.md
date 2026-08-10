@@ -44,3 +44,35 @@ Does not require Scalar. Optional: `AUTH_URL` / `QUOTES_URL` overrides.
 ```
 
 Output: `src/AppHost/aspire-output/`
+
+## Unit tests
+
+```bash
+./scripts/test.sh
+```
+
+Frontend:
+
+```bash
+cd frontend && npm test
+# or: npm run test:coverage
+```
+
+Details: [Testing](testing.md).
+
+## SonarQube (Podman)
+
+```bash
+./scripts/sonar-up.sh
+./scripts/sonar-scan.sh
+```
+
+Details: [SonarQube](sonar.md).
+
+## Export a git bundle
+
+Creates (or replaces) `~/repo.bundle` for taking the repo offline:
+
+```bash
+./scripts/export-bundle.sh
+```

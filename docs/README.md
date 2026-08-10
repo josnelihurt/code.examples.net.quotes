@@ -7,6 +7,8 @@
 - [Architecture](architecture.md)
 - [API reference](api.md)
 - [Local development](local-dev.md)
+- [Testing](testing.md)
+- [SonarQube](sonar.md)
 - [Observability in Aspire](observability.md)
 
 ## Credentials (POC)
