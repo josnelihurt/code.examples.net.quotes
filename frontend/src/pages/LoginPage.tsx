@@ -30,7 +30,7 @@ export function LoginPage() {
       <p className="muted">POC credentials: jrb / supersecret</p>
       <form onSubmit={onSubmit} className="form">
         <label>
-          Username
+          <span>Username</span>
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -39,7 +39,7 @@ export function LoginPage() {
           />
         </label>
         <label>
-          Password
+          <span>Password</span>
           <input
             type="password"
             value={password}

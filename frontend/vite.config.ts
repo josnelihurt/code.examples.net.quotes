@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 // Aspire WithReference injects AUTH_API_HTTP/HTTPS and QUOTES_API_HTTP/HTTPS for resources auth-api / quotes-api.
@@ -19,6 +19,23 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+    },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ['src/test/setup.ts'],
+    clearMocks: true,
+    restoreMocks: true,
+    unstubGlobals: true,
+    coverage: {
+      provider: 'v8',
+      // Sonar reads lcov; text keeps the terminal run readable.
+      reporter: ['text', 'lcov'],
+      reportsDirectory: 'coverage',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx', 'src/vite-env.d.ts'],
     },
   },
 });

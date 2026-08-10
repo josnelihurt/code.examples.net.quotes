@@ -16,10 +16,14 @@ export interface QuoteResponse {
 }
 
 function createCorrelationId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+  // randomUUID is only exposed in secure contexts, so fall back to raw random bytes.
+  if (typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID().replace(/-/g, '');
   }
-  return `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
+
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 export function getSession() {

@@ -5,7 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { QuotePage } from './pages/QuotePage';
 import './App.css';
 
-function RequireAuth({ children }: { children: ReactNode }) {
+function RequireAuth({ children }: Readonly<{ children: ReactNode }>) {
   const { accessToken } = getSession();
   if (!accessToken) {
     return <Navigate to="/" replace />;
