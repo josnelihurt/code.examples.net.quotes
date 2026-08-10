@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Quotes.Api.Contracts;
@@ -14,7 +15,7 @@ namespace Quotes.Api.Tests;
 
 public class QuoteEndpointsTests
 {
-    private static readonly NullLogger<QuoteEndpoints> Logger = NullLogger<QuoteEndpoints>.Instance;
+    private static readonly ILoggerFactory LoggerFactory = NullLoggerFactory.Instance;
     private static readonly QuoteDto SampleQuote = new("7", "Programs must be written for people to read.", "Harold Abelson");
 
     private readonly IGetRandomQuoteUseCase _useCase = Substitute.For<IGetRandomQuoteUseCase>();
@@ -28,7 +29,7 @@ public class QuoteEndpointsTests
         using var host = TestHost.Create();
         host.Context.Request.Headers.Authorization = "Bearer token";
 
-        var result = await QuoteEndpoints.GetRandomAsync(host.Context, _useCase, Logger, TestContext.Current.CancellationToken);
+        var result = await QuoteEndpoints.GetRandomAsync(host.Context, _useCase, LoggerFactory, TestContext.Current.CancellationToken);
 
         var ok = result.ShouldBeOfType<Ok<QuoteResponseDto>>();
         ok.Value.ShouldNotBeNull();
@@ -47,7 +48,7 @@ public class QuoteEndpointsTests
         host.Context.Request.Headers.Authorization = "Bearer token";
         host.Context.Items[HttpHeaderNames.CorrelationId] = "corr-99";
 
-        await QuoteEndpoints.GetRandomAsync(host.Context, _useCase, Logger, TestContext.Current.CancellationToken);
+        await QuoteEndpoints.GetRandomAsync(host.Context, _useCase, LoggerFactory, TestContext.Current.CancellationToken);
 
         await _useCase.Received(1).ExecuteAsync("token", "corr-99", Arg.Any<CancellationToken>());
     }
@@ -67,7 +68,7 @@ public class QuoteEndpointsTests
             host.Context.Request.Headers.Authorization = header;
         }
 
-        var result = await QuoteEndpoints.GetRandomAsync(host.Context, _useCase, Logger, TestContext.Current.CancellationToken);
+        var result = await QuoteEndpoints.GetRandomAsync(host.Context, _useCase, LoggerFactory, TestContext.Current.CancellationToken);
 
         var json = result.ShouldBeOfType<JsonHttpResult<ErrorResponseDto>>();
         json.StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
@@ -85,7 +86,7 @@ public class QuoteEndpointsTests
         using var host = TestHost.Create();
         host.Context.Request.Headers.Authorization = "bearer token";
 
-        var result = await QuoteEndpoints.GetRandomAsync(host.Context, _useCase, Logger, TestContext.Current.CancellationToken);
+        var result = await QuoteEndpoints.GetRandomAsync(host.Context, _useCase, LoggerFactory, TestContext.Current.CancellationToken);
 
         result.ShouldBeOfType<Ok<QuoteResponseDto>>();
     }
@@ -99,7 +100,7 @@ public class QuoteEndpointsTests
         using var host = TestHost.Create();
         host.Context.Request.Headers.Authorization = "Bearer stale";
 
-        var result = await QuoteEndpoints.GetRandomAsync(host.Context, _useCase, Logger, TestContext.Current.CancellationToken);
+        var result = await QuoteEndpoints.GetRandomAsync(host.Context, _useCase, LoggerFactory, TestContext.Current.CancellationToken);
 
         result.ShouldBeOfType<JsonHttpResult<ErrorResponseDto>>()
             .StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);

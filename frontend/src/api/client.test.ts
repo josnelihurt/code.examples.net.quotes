@@ -84,6 +84,22 @@ describe('login', () => {
     expect(headers['X-Correlation-Id']).toMatch(/^[0-9a-f]{32}$/);
   });
 
+  it('falls back to getRandomValues when randomUUID is unavailable', async () => {
+    const original = crypto.randomUUID;
+    // @ts-expect-error intentional: exercise the getRandomValues branch
+    crypto.randomUUID = undefined;
+
+    try {
+      const fetchMock = mockFetch(jsonResponse(loginResponse));
+      await login('jrb', 'supersecret');
+
+      const headers = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
+      expect(headers['X-Correlation-Id']).toMatch(/^[0-9a-f]{32}$/);
+    } finally {
+      crypto.randomUUID = original;
+    }
+  });
+
   it('surfaces the server error message', async () => {
     mockFetch(jsonResponse({ error: 'Invalid credentials' }, 401));
 

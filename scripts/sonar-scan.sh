@@ -42,9 +42,9 @@ else
   echo "frontend/node_modules is missing; run 'npm install' there for TypeScript coverage." >&2
 fi
 
-SONAR_EXCLUSIONS="**/bin/**,**/obj/**,frontend/dist/**,frontend/node_modules/**,frontend/coverage/**,docs/**,src/AppHost/aspire-output/**,**/*.g.cs"
+SONAR_EXCLUSIONS="**/bin/**,**/obj/**,frontend/dist/**,frontend/node_modules/**,frontend/coverage/**,frontend/public/**,docs/**,src/AppHost/aspire-output/**,**/*.g.cs"
 SONAR_TEST_INCLUSIONS="tests/**/*.cs,frontend/src/**/*.test.ts,frontend/src/**/*.test.tsx"
-SONAR_COVERAGE_EXCLUSIONS="tests/**/*,src/AppHost/**/*,**/Program.cs,frontend/src/main.tsx,frontend/src/test/**,frontend/*.config.ts,frontend/*.config.js"
+SONAR_COVERAGE_EXCLUSIONS="tests/**/*,src/AppHost/**/*,**/Program.cs,**/Contracts/**,frontend/src/main.tsx,frontend/src/test/**,frontend/*.config.ts,frontend/*.config.js"
 
 begin_args=(
   "/k:${SONAR_PROJECT_KEY}"

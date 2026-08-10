@@ -5,16 +5,8 @@ using Quotes.Application;
 
 namespace Quotes.Api.Endpoints;
 
-/// <summary>
-/// Route registration and handlers for <c>/api/quotes</c>. Not static so the handlers can take an
-/// <see cref="ILogger{TCategoryName}"/> under this category.
-/// </summary>
-public sealed class QuoteEndpoints
+public static class QuoteEndpoints
 {
-    private QuoteEndpoints()
-    {
-    }
-
     public static IEndpointRouteBuilder Map(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/api/quotes/random", GetRandomAsync)
@@ -29,9 +21,10 @@ public sealed class QuoteEndpoints
     internal static async Task<IResult> GetRandomAsync(
         HttpContext http,
         IGetRandomQuoteUseCase useCase,
-        ILogger<QuoteEndpoints> logger,
+        ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
+        var logger = loggerFactory.CreateLogger(nameof(QuoteEndpoints));
         if (!BearerToken.TryParse(http.Request.Headers.Authorization.FirstOrDefault(), out var token))
         {
             AppMetrics.Record(AppMetrics.QuotesRandomCount, "failure");

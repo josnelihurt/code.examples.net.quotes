@@ -6,6 +6,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -13,7 +14,7 @@ namespace Auth.Api.Tests;
 
 public class AuthEndpointsTests
 {
-    private static readonly NullLogger<AuthEndpoints> Logger = NullLogger<AuthEndpoints>.Instance;
+    private static readonly ILoggerFactory LoggerFactory = NullLoggerFactory.Instance;
 
     private readonly IAuthService _authService = Substitute.For<IAuthService>();
 
@@ -33,7 +34,7 @@ public class AuthEndpointsTests
             new LoginRequestDto { Username = "jrb", Password = "supersecret" },
             _authService,
             host.Context,
-            Logger);
+            LoggerFactory);
 
         var ok = result.ShouldBeOfType<Ok<LoginResponseDto>>();
         ok.Value.ShouldNotBeNull();
@@ -54,7 +55,7 @@ public class AuthEndpointsTests
             new LoginRequestDto { Username = "jrb", Password = "wrong" },
             _authService,
             host.Context,
-            Logger);
+            LoggerFactory);
 
         var json = result.ShouldBeOfType<JsonHttpResult<ErrorResponseDto>>();
         json.StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
@@ -71,7 +72,7 @@ public class AuthEndpointsTests
             new LoginRequestDto { Username = "", Password = "" },
             _authService,
             host.Context,
-            Logger);
+            LoggerFactory);
 
         result.ShouldBeOfType<ProblemHttpResult>()
             .ProblemDetails.ShouldBeOfType<HttpValidationProblemDetails>();
@@ -89,7 +90,7 @@ public class AuthEndpointsTests
             new ValidateRequestDto { AccessToken = "body-token" },
             _authService,
             host.Context,
-            Logger);
+            LoggerFactory);
 
         var ok = result.ShouldBeOfType<Ok<ValidateResponseDto>>();
         ok.Value.ShouldNotBeNull();
@@ -105,7 +106,7 @@ public class AuthEndpointsTests
         using var host = TestHost.Create();
         host.Context.Request.Headers.Authorization = "Bearer header-token";
 
-        var result = AuthEndpoints.Validate(body: null, _authService, host.Context, Logger);
+        var result = AuthEndpoints.Validate(body: null, _authService, host.Context, LoggerFactory);
 
         result.ShouldBeOfType<Ok<ValidateResponseDto>>();
         _authService.Received(1).Validate("header-token");
@@ -123,7 +124,7 @@ public class AuthEndpointsTests
             new ValidateRequestDto { AccessToken = "body-token" },
             _authService,
             host.Context,
-            Logger);
+            LoggerFactory);
 
         _authService.Received(1).Validate("body-token");
     }
@@ -133,7 +134,7 @@ public class AuthEndpointsTests
     {
         using var host = TestHost.Create();
 
-        var result = AuthEndpoints.Validate(body: null, _authService, host.Context, Logger);
+        var result = AuthEndpoints.Validate(body: null, _authService, host.Context, LoggerFactory);
 
         var json = result.ShouldBeOfType<JsonHttpResult<ValidateResponseDto>>();
         json.StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
@@ -153,7 +154,7 @@ public class AuthEndpointsTests
             new ValidateRequestDto { AccessToken = "stale" },
             _authService,
             host.Context,
-            Logger);
+            LoggerFactory);
 
         var json = result.ShouldBeOfType<JsonHttpResult<ValidateResponseDto>>();
         json.StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);

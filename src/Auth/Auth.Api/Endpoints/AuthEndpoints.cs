@@ -5,16 +5,8 @@ using Auth.Application;
 
 namespace Auth.Api.Endpoints;
 
-/// <summary>
-/// Route registration and handlers for <c>/api/auth</c>. Not static so the handlers can take an
-/// <see cref="ILogger{TCategoryName}"/> under this category.
-/// </summary>
-public sealed class AuthEndpoints
+public static class AuthEndpoints
 {
-    private AuthEndpoints()
-    {
-    }
-
     public static IEndpointRouteBuilder Map(IEndpointRouteBuilder endpoints)
     {
         var auth = endpoints.MapGroup("/api/auth").WithTags("Auth");
@@ -37,8 +29,9 @@ public sealed class AuthEndpoints
         LoginRequestDto body,
         IAuthService authService,
         HttpContext http,
-        ILogger<AuthEndpoints> logger)
+        ILoggerFactory loggerFactory)
     {
+        var logger = loggerFactory.CreateLogger(nameof(AuthEndpoints));
         var validation = await ValidationFilter.ValidateAsync(body, http);
         if (validation is not null)
         {
@@ -73,8 +66,9 @@ public sealed class AuthEndpoints
         ValidateRequestDto? body,
         IAuthService authService,
         HttpContext http,
-        ILogger<AuthEndpoints> logger)
+        ILoggerFactory loggerFactory)
     {
+        var logger = loggerFactory.CreateLogger(nameof(AuthEndpoints));
         var token = body?.AccessToken;
         if (string.IsNullOrWhiteSpace(token)
             && BearerToken.TryParse(http.Request.Headers.Authorization.FirstOrDefault(), out var headerToken))
