@@ -57,6 +57,11 @@ TestResults/
 *.coverage
 *.coveragexml
 
+# Sonar
+.sonar/
+.sonarqube/
+.scannerwork/
+
 # Generated MSBuild / Aspire frontend props (any path shape)
 **/package.g.props
 **/obj*/
