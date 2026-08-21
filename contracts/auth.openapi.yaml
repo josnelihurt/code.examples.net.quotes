@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Auth API
   version: 1.0.0
-  description: Authentication service for Aspire Quotes POC
+  description: Authentication microservice in the Aspire Quotes foundation
 servers:
   - url: /
 paths:
@@ -75,42 +75,57 @@ components:
   schemas:
     LoginRequest:
       type: object
+      description: Credentials submitted to obtain an access token.
       required: [username, password]
       properties:
         username:
           type: string
+          description: Account username.
         password:
           type: string
+          description: Account password.
     LoginResponse:
       type: object
+      description: Successful login result including the issued access token.
       required: [accessToken, correlationId, expiresIn, username]
       properties:
         accessToken:
           type: string
+          description: JWT access token for authenticated API calls.
         correlationId:
           type: string
+          description: Correlation id for this login; clients should send it as X-Correlation-Id on later calls.
         expiresIn:
           type: integer
+          description: Access token lifetime in seconds.
         username:
           type: string
+          description: Authenticated username.
     ErrorResponse:
       type: object
+      description: Error payload returned when authentication fails.
       required: [error]
       properties:
         error:
           type: string
+          description: Human-readable reason authentication failed.
     ValidateRequest:
       type: object
+      description: Optional body for token validation; Authorization Bearer may be used instead.
       properties:
         accessToken:
           type: string
           nullable: true
+          description: Access token to validate when not supplied via Authorization header.
     ValidateResponse:
       type: object
+      description: Result of validating an access token; returned for both success and failure.
       required: [valid]
       properties:
         valid:
           type: boolean
+          description: True when the token is valid; false on unauthorized responses.
         username:
           type: string
           nullable: true
+          description: Username from a valid token; omitted or null when invalid.

@@ -1,6 +1,8 @@
-# Aspire Quotes POC
+# Aspire Quotes
 
-.NET 10 + Aspire sample that wires a React UI to two Minimal API services (**Auth** and **Quotes**), with OpenTelemetry, Serilog, Polly, OpenAPI/Scalar, and Docsify docs.
+.NET 10 + Aspire foundation for production-oriented microservices: Clean Architecture services (**Auth** and **Quotes**), shared `ServiceDefaults` platform kit, React UI, OpenTelemetry, Serilog, Polly, OpenAPI/Scalar, and Docsify docs.
+
+See the [repository README](../README.md) for purpose, layering rules, and foundation direction of travel.
 
 ## Quick links
 
@@ -11,7 +13,7 @@
 - [SonarQube](sonar.md)
 - [Observability in Aspire](observability.md)
 
-## Credentials (POC)
+## Credentials (local scaffolding)
 
 - Username: `jrb`
 - Password: `supersecret`

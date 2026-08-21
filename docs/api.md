@@ -1,5 +1,7 @@
 # API
 
+Transport DTOs are documented with `[Description]` on types and properties; runtime OpenAPI picks those up, and the frozen YAML below must stay aligned (see [Contract documentation](../contracts/api-contracts.md#contract-documentation)).
+
 Frozen OpenAPI documents:
 
 - [auth.openapi.yaml](openapi/auth.openapi.yaml)

@@ -1,5 +1,13 @@
 # Frozen API contracts
 
+## Contract documentation
+
+Api DTOs under each service's `*.Api/Contracts` folder are the **public HTTP surface**. Document them with `[System.ComponentModel.Description]` on types and properties so `Microsoft.AspNetCore.OpenApi` emits schema descriptions into runtime `/openapi/v1.json` (Scalar).
+
+- Runtime OpenAPI is generated from those attributes.
+- `contracts/*.openapi.yaml` (mirrored under `docs/openapi/`) is the reviewed freeze and must stay aligned with the DTO descriptions.
+- Do **not** document Application or Domain models for OpenAPI; only transport contracts.
+
 ## Aspire resource names
 
 - `auth-api`

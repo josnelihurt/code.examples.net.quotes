@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Quotes API
   version: 1.0.0
-  description: Random quotes service for Aspire Quotes POC
+  description: Quotes microservice in the Aspire Quotes foundation
 servers:
   - url: /
 paths:
@@ -39,17 +39,23 @@ components:
   schemas:
     QuoteResponse:
       type: object
+      description: Random quote returned to an authenticated client.
       required: [id, text, author]
       properties:
         id:
           type: string
+          description: Stable quote identifier.
         text:
           type: string
+          description: Quote body text.
         author:
           type: string
+          description: Attributed author of the quote.
     ErrorResponse:
       type: object
+      description: Error payload returned when the request is not authorized.
       required: [error]
       properties:
         error:
           type: string
+          description: Human-readable reason the request was rejected.
