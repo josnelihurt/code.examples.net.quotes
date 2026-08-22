@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Hermetic OpenAPI freeze: build Auth/Quotes APIs, export /openapi/v1.json to YAML.
+# Hermetic OpenAPI freeze: build Auth/Quotes APIs, export each /openapi/{document}.json to YAML.
 # Extract with: ./scripts/update-contracts.sh  (podman|docker build + cp from scratch stage)
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
@@ -55,11 +55,13 @@ wait_for() {
   return 1
 }
 
+# Auth serves one document; Quotes serves one per API version (v0 controllers, v1 minimal APIs).
 wait_for http://127.0.0.1:18081/openapi/v1.json
 wait_for http://127.0.0.1:18082/openapi/v1.json
 
 curl -fsS http://127.0.0.1:18081/openapi/v1.json -o /tmp/auth.json
-curl -fsS http://127.0.0.1:18082/openapi/v1.json -o /tmp/quotes.json
+curl -fsS http://127.0.0.1:18082/openapi/v0.json -o /tmp/quotes-v0.json
+curl -fsS http://127.0.0.1:18082/openapi/v1.json -o /tmp/quotes-v1.json
 
 python3 <<'PY'
 import json
@@ -67,7 +69,7 @@ from pathlib import Path
 
 import yaml
 
-for name in ("auth", "quotes"):
+for name in ("auth", "quotes-v0", "quotes-v1"):
     doc = json.loads(Path(f"/tmp/{name}.json").read_text())
     doc["servers"] = [{"url": "/"}]
     Path(f"/out/{name}.openapi.yaml").write_text(
@@ -81,4 +83,5 @@ EOF
 
 FROM scratch AS contracts
 COPY --from=export /out/auth.openapi.yaml /auth.openapi.yaml
-COPY --from=export /out/quotes.openapi.yaml /quotes.openapi.yaml
+COPY --from=export /out/quotes-v0.openapi.yaml /quotes-v0.openapi.yaml
+COPY --from=export /out/quotes-v1.openapi.yaml /quotes-v1.openapi.yaml

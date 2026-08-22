@@ -1,4 +1,5 @@
 using Quotes.Api.Telemetry;
+using Quotes.Api.V0.Controllers;
 using Quotes.Api.V1.Endpoints;
 using Quotes.Application;
 using Quotes.Infrastructure;
@@ -13,7 +14,8 @@ try
     var builder = WebApplication.CreateBuilder(args);
 
     builder.AddServiceDefaults();
-    builder.AddStandardApiServices();
+    // Two transports, two OpenAPI documents: v0 is controller-based, v1 is minimal APIs.
+    builder.AddStandardApiServices(QuotesController.DocumentName, QuoteEndpoints.DocumentName);
     builder.AddStandardJwtAuthentication();
 
     // The API host is the composition root: each layer contributes its own registrations.
@@ -21,6 +23,7 @@ try
     builder.Services.AddQuotesInfrastructure();
     builder.Services.AddQuotesUseCaseTelemetry();
     builder.Services.AddValidation();
+    builder.Services.AddStandardControllers();
 
     var app = builder.Build();
 
@@ -31,7 +34,9 @@ try
     app.MapDefaultEndpoints();
     app.MapStandardApiDocumentation();
 
+    // Both transports resolve the same decorated use cases from the same container.
     QuoteEndpoints.Map(app);
+    app.MapControllers();
 
     await app.RunAsync();
 }

@@ -70,7 +70,7 @@ Transport vs domain validation: DTOs keep shallow guards (`[Required]`, `[MaxLen
 ## What it does today
 
 1. **Auth API** issues a JWT for hardcoded local users — `jrb` / `supersecret` holds `quotes:read` + `quotes:write`, `reader` / `readsecret` holds `quotes:read` only — and can validate tokens via `/api/auth/validate` (optional introspection). Login and validate are rate-limited (fixed window per client IP, 429 as ProblemDetails), and the scaffolding credential store refuses to register in Production.
-2. **Quotes API** serves an in-memory catalog after JwtBearer validates the bearer token: `GET /api/v1/quotes/random`, `GET /api/v1/quotes/{id}`, `GET /api/v1/quotes?page=&pageSize=` (the ratified offset-pagination pattern), and `POST /api/v1/quotes` (requires `quotes:write`; rejects invalid and near-duplicate quotes).
+2. **Quotes API** serves an in-memory catalog after JwtBearer validates the bearer token: `GET /api/v1/quotes/random`, `GET /api/v1/quotes/{id}`, `GET /api/v1/quotes?page=&pageSize=` (the ratified offset-pagination pattern), and `POST /api/v1/quotes` (requires `quotes:write`; rejects invalid and near-duplicate quotes). The same four operations are also served at `/api/v0/quotes/...` by MVC controllers — one core, two transport styles, held to byte-level response parity by tests. See [docs/architecture.md](docs/architecture.md#api-versions-and-transport-styles).
 3. **React SPA** logs in, stores token + `X-Correlation-Id`, then fetches quotes through the Vite proxy.
 4. **Aspire AppHost** starts everything, wires service discovery, exports OpenTelemetry to the dashboard, and publishes a **YARP** gateway (no Traefik).
 
@@ -166,12 +166,12 @@ More detail in Docsify: [Testing](docs/testing.md), [SonarQube](docs/sonar.md), 
 
 With services running:
 
-- `/openapi/v1.json` — OpenAPI document
+- `/openapi/v1.json`, `/openapi/v0.json` — OpenAPI document per API version (Quotes; Auth serves `v1` only)
 - `/scalar` — Scalar UI per API
 - Docs combined: `http://localhost:3001/scalar/`
 - Aspire dashboard (run mode): **Scalar** links on `auth-api` / `quotes-api` (per-service UI) and on `docs` (combined Auth+Quotes reference at `/scalar/`)
 
-Static YAML: `docs/openapi/auth.openapi.yaml`, `docs/openapi/quotes.openapi.yaml`. Refresh with `./scripts/update-contracts.sh` (Podman/Docker via [`Dockerfile.build`](Dockerfile.build)) after Api/DTO changes — see [docs/api.md](docs/api.md) (stub: [contracts/api-contracts.md](contracts/api-contracts.md)).
+Static YAML: `docs/openapi/auth.openapi.yaml`, `docs/openapi/quotes-v0.openapi.yaml`, `docs/openapi/quotes-v1.openapi.yaml`. Refresh with `./scripts/update-contracts.sh` (Podman/Docker via [`Dockerfile.build`](Dockerfile.build)) after Api/DTO changes — see [docs/api.md](docs/api.md) (stub: [contracts/api-contracts.md](contracts/api-contracts.md)).
 
 ## Observability
 

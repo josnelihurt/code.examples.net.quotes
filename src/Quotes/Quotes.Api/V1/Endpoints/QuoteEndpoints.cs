@@ -6,12 +6,16 @@ namespace Quotes.Api.V1.Endpoints;
 
 public static class QuoteEndpoints
 {
+    /// <summary>OpenAPI document this version publishes into. See <c>AddStandardApiServices</c>.</summary>
+    internal const string DocumentName = "v1";
+
     internal const string GetByIdRouteName = "GetQuoteById";
 
     public static IEndpointRouteBuilder Map(IEndpointRouteBuilder endpoints)
     {
         var quotes = endpoints.MapGroup("/api/v1/quotes")
             .RequireAuthorization()
+            .WithGroupName(DocumentName)
             .WithTags("Quotes v1")
             .ProducesProblem(StatusCodes.Status401Unauthorized);
 
@@ -27,7 +31,6 @@ public static class QuoteEndpoints
             .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
             .Produces<QuotePageResponseDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
         quotes.MapGet("/{id}", GetByIdAsync)
@@ -42,7 +45,6 @@ public static class QuoteEndpoints
             .RequireAuthorization(JwtAuthExtensions.WriteQuotesPolicy)
             .Produces<QuoteResponseDto>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 

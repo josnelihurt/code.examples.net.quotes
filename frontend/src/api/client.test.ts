@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  DEFAULT_API_VERSION,
   clearSession,
+  getApiVersion,
   getRandomQuote,
   getSession,
   login,
   saveSession,
+  setApiVersion,
   type LoginResponse,
 } from './client';
 
@@ -143,5 +146,56 @@ describe('getRandomQuote', () => {
     mockFetch(new Response('', { status: 503 }));
 
     await expect(getRandomQuote()).rejects.toThrow('Quote request failed (503)');
+  });
+});
+
+describe('api version selection', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
+  it('defaults to the minimal api version', () => {
+    expect(getApiVersion()).toBe(DEFAULT_API_VERSION);
+    expect(DEFAULT_API_VERSION).toBe('v1');
+  });
+
+  it('round-trips the chosen version', () => {
+    setApiVersion('v0');
+
+    expect(getApiVersion()).toBe('v0');
+  });
+
+  it('falls back to the default when the stored value is not a known version', () => {
+    sessionStorage.setItem('apiVersion', 'v99');
+
+    expect(getApiVersion()).toBe(DEFAULT_API_VERSION);
+  });
+
+  it('keeps the chosen version across sign out', () => {
+    saveSession(loginResponse);
+    setApiVersion('v0');
+
+    clearSession();
+
+    expect(getApiVersion()).toBe('v0');
+  });
+
+  it.each(['v0', 'v1'] as const)('requests %s when asked for it explicitly', async (version) => {
+    saveSession(loginResponse);
+    const fetchMock = mockFetch(jsonResponse({ id: '1', text: 'hello', author: 'someone' }));
+
+    await getRandomQuote(version);
+
+    expect(fetchMock.mock.calls[0][0]).toBe(`/api/${version}/quotes/random`);
+  });
+
+  it('uses the stored version when none is passed', async () => {
+    saveSession(loginResponse);
+    setApiVersion('v0');
+    const fetchMock = mockFetch(jsonResponse({ id: '1', text: 'hello', author: 'someone' }));
+
+    await getRandomQuote();
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v0/quotes/random');
   });
 });

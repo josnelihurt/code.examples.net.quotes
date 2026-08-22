@@ -9,6 +9,7 @@ using Quotes.Application.Abstractions;
 
 namespace Quotes.Api.Tests;
 
+[Collection(WebHostCollection.Name)]
 public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
 {
     private readonly QuoteApiFactory _factory;

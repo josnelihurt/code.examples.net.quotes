@@ -21,9 +21,11 @@ trap cleanup EXIT
 
 echo "==> Copying frozen YAML to docs/openapi"
 "${DOCKER}" cp "${cid}:/auth.openapi.yaml" "${OUT_DIR}/auth.openapi.yaml"
-"${DOCKER}" cp "${cid}:/quotes.openapi.yaml" "${OUT_DIR}/quotes.openapi.yaml"
+"${DOCKER}" cp "${cid}:/quotes-v0.openapi.yaml" "${OUT_DIR}/quotes-v0.openapi.yaml"
+"${DOCKER}" cp "${cid}:/quotes-v1.openapi.yaml" "${OUT_DIR}/quotes-v1.openapi.yaml"
 
 echo "Updated:"
 echo "  ${OUT_DIR}/auth.openapi.yaml"
-echo "  ${OUT_DIR}/quotes.openapi.yaml"
+echo "  ${OUT_DIR}/quotes-v0.openapi.yaml"
+echo "  ${OUT_DIR}/quotes-v1.openapi.yaml"
 echo "Done. Review the diff before committing."

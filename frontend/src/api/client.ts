@@ -1,6 +1,30 @@
 const TOKEN_KEY = 'accessToken';
 const CORRELATION_KEY = 'correlationId';
 const USERNAME_KEY = 'username';
+const API_VERSION_KEY = 'apiVersion';
+
+/**
+ * The quote API is served twice over the same use cases: v0 by MVC controllers, v1 by minimal
+ * APIs. Both answer identically, so the choice is only about which transport to exercise.
+ */
+export type ApiVersion = 'v0' | 'v1';
+
+export const API_VERSIONS: readonly ApiVersion[] = ['v0', 'v1'];
+
+export const DEFAULT_API_VERSION: ApiVersion = 'v1';
+
+function isApiVersion(value: string | null): value is ApiVersion {
+  return value === 'v0' || value === 'v1';
+}
+
+export function getApiVersion(): ApiVersion {
+  const stored = sessionStorage.getItem(API_VERSION_KEY);
+  return isApiVersion(stored) ? stored : DEFAULT_API_VERSION;
+}
+
+export function setApiVersion(version: ApiVersion) {
+  sessionStorage.setItem(API_VERSION_KEY, version);
+}
 
 export interface LoginResponse {
   accessToken: string;
@@ -38,6 +62,7 @@ export function clearSession() {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(CORRELATION_KEY);
   sessionStorage.removeItem(USERNAME_KEY);
+  // The chosen version is a debugging preference, not credentials; it survives sign-out.
 }
 
 export function saveSession(login: LoginResponse) {
@@ -69,13 +94,13 @@ export async function login(username: string, password: string): Promise<LoginRe
   return data;
 }
 
-export async function getRandomQuote(): Promise<QuoteResponse> {
+export async function getRandomQuote(version: ApiVersion = getApiVersion()): Promise<QuoteResponse> {
   const { accessToken, correlationId } = getSession();
   if (!accessToken || !correlationId) {
     throw new Error('Not authenticated');
   }
 
-  const response = await fetch('/api/v1/quotes/random', {
+  const response = await fetch(`/api/${version}/quotes/random`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'X-Correlation-Id': correlationId,

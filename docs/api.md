@@ -9,7 +9,8 @@ Do not document Application or Domain types for OpenAPI.
 Canonical YAML (do not edit by hand):
 
 - [auth.openapi.yaml](openapi/auth.openapi.yaml)
-- [quotes.openapi.yaml](openapi/quotes.openapi.yaml)
+- [quotes-v0.openapi.yaml](openapi/quotes-v0.openapi.yaml) — controller transport
+- [quotes-v1.openapi.yaml](openapi/quotes-v1.openapi.yaml) — minimal-API transport
 
 ### How to refresh
 

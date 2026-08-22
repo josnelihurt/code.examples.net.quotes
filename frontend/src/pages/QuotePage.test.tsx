@@ -21,11 +21,14 @@ function renderPage() {
   return {
     fetchButton: screen.getByRole('button', { name: 'Get random quote' }),
     signOutButton: screen.getByRole('button', { name: 'Sign out' }),
+    v0Radio: screen.getByRole('radio', { name: 'v0 (controllers)' }),
+    v1Radio: screen.getByRole('radio', { name: 'v1 (minimal APIs)' }),
   };
 }
 
 describe('QuotePage', () => {
   beforeEach(() => {
+    sessionStorage.clear();
     client.saveSession({
       accessToken: 'issued-token',
       correlationId: 'corr-1',
@@ -88,5 +91,45 @@ describe('QuotePage', () => {
 
     expect(client.getSession().accessToken).toBeNull();
     expect(navigate).toHaveBeenCalledWith('/');
+  });
+
+  it('defaults to the minimal api version', () => {
+    const { v1Radio } = renderPage();
+
+    expect((v1Radio as HTMLInputElement).checked).toBe(true);
+  });
+
+  it.each(['v0', 'v1'] as const)('requests the quote from %s when selected', async (version) => {
+    const spy = vi.spyOn(client, 'getRandomQuote').mockResolvedValue({
+      id: '8',
+      text: 'Talk is cheap. Show me the code.',
+      author: 'Linus Torvalds',
+    });
+
+    const page = renderPage();
+    fireEvent.click(version === 'v0' ? page.v0Radio : page.v1Radio);
+    fireEvent.click(page.fetchButton);
+
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(version));
+    expect(await screen.findByText(`Served by: ${version}`)).toBeDefined();
+  });
+
+  it('remembers the selected version for the next visit', () => {
+    const { v0Radio } = renderPage();
+
+    fireEvent.click(v0Radio);
+
+    expect(client.getApiVersion()).toBe('v0');
+  });
+
+  it('does not claim a server when the request fails', async () => {
+    vi.spyOn(client, 'getRandomQuote').mockRejectedValue(new Error('Quote request failed (503)'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { fetchButton } = renderPage();
+    fireEvent.click(fetchButton);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeDefined());
+    expect(screen.queryByText(/^Served by:/)).toBeNull();
   });
 });
