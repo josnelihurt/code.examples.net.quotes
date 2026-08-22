@@ -17,7 +17,7 @@ namespace Quotes.Api.Tests;
 
 public class QuoteEndpointsTests
 {
-    private static readonly ILoggerFactory _loggerFactory = NullLoggerFactory.Instance;
+    private static readonly ILogger<QuoteEndpointsLog> _logger = NullLogger<QuoteEndpointsLog>.Instance;
     private static readonly QuoteDto _sampleQuote = new("7", "Programs must be written for people to read.", "Harold Abelson");
 
     private readonly ICreateQuoteUseCase _createUseCase = Substitute.For<ICreateQuoteUseCase>();
@@ -31,7 +31,7 @@ public class QuoteEndpointsTests
         _useCase.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(result);
 
         var response = await QuoteEndpoints.GetRandomAsync(
-            _useCase, _loggerFactory, new DefaultHttpContext(), TestContext.Current.CancellationToken);
+            _useCase, _logger, new DefaultHttpContext(), TestContext.Current.CancellationToken);
 
         var ok = response.ShouldBeOfType<Ok<QuoteResponseDto>>();
         ok.Value.ShouldNotBeNull();
@@ -47,7 +47,7 @@ public class QuoteEndpointsTests
         _useCase.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(result);
 
         var response = await QuoteEndpoints.GetRandomAsync(
-            _useCase, _loggerFactory, new DefaultHttpContext(), TestContext.Current.CancellationToken);
+            _useCase, _logger, new DefaultHttpContext(), TestContext.Current.CancellationToken);
 
         var problem = response.ShouldBeOfType<ProblemHttpResult>();
         problem.ProblemDetails.Status.ShouldBe(StatusCodes.Status404NotFound);
@@ -60,7 +60,7 @@ public class QuoteEndpointsTests
         ErrorOr<QuoteDto> result = _sampleQuote;
         _useCase.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(result);
 
-        await QuoteEndpoints.GetRandomAsync(_useCase, _loggerFactory, new DefaultHttpContext(), cts.Token);
+        await QuoteEndpoints.GetRandomAsync(_useCase, _logger, new DefaultHttpContext(), cts.Token);
 
         await _useCase.Received(1).ExecuteAsync(cts.Token);
     }
@@ -72,7 +72,7 @@ public class QuoteEndpointsTests
         _getByIdUseCase.ExecuteAsync(_sampleQuote.Id, Arg.Any<CancellationToken>()).Returns(result);
 
         var response = await QuoteEndpoints.GetByIdAsync(
-            _sampleQuote.Id, _getByIdUseCase, _loggerFactory, new DefaultHttpContext(), TestContext.Current.CancellationToken);
+            _sampleQuote.Id, _getByIdUseCase, _logger, new DefaultHttpContext(), TestContext.Current.CancellationToken);
 
         var ok = response.ShouldBeOfType<Ok<QuoteResponseDto>>();
         ok.Value.ShouldNotBeNull();
@@ -86,7 +86,7 @@ public class QuoteEndpointsTests
         _getByIdUseCase.ExecuteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(result);
 
         var response = await QuoteEndpoints.GetByIdAsync(
-            "missing", _getByIdUseCase, _loggerFactory, new DefaultHttpContext(), TestContext.Current.CancellationToken);
+            "missing", _getByIdUseCase, _logger, new DefaultHttpContext(), TestContext.Current.CancellationToken);
 
         var problem = response.ShouldBeOfType<ProblemHttpResult>();
         problem.ProblemDetails.Status.ShouldBe(StatusCodes.Status404NotFound);
@@ -107,11 +107,13 @@ public class QuoteEndpointsTests
             },
             _createUseCase,
             new DefaultHttpContext(),
-            _loggerFactory,
+            _logger,
             TestContext.Current.CancellationToken);
 
-        var created = response.ShouldBeOfType<Created<QuoteResponseDto>>();
-        created.Location.ShouldBe($"/api/v1/quotes/{_sampleQuote.Id}");
+        var created = response.ShouldBeOfType<CreatedAtRoute<QuoteResponseDto>>();
+        created.RouteName.ShouldBe("GetQuoteById");
+        created.RouteValues.ShouldNotBeNull();
+        created.RouteValues["id"].ShouldBe(_sampleQuote.Id);
         created.Value.ShouldNotBeNull();
         created.Value.Id.ShouldBe(_sampleQuote.Id);
     }
@@ -127,7 +129,7 @@ public class QuoteEndpointsTests
             new CreateQuoteRequestDto { Text = "Nope.", Author = "Ada" },
             _createUseCase,
             new DefaultHttpContext(),
-            _loggerFactory,
+            _logger,
             TestContext.Current.CancellationToken);
 
         var problem = response.ShouldBeOfType<ProblemHttpResult>();
@@ -151,7 +153,7 @@ public class QuoteEndpointsTests
             },
             _createUseCase,
             new DefaultHttpContext(),
-            _loggerFactory,
+            _logger,
             TestContext.Current.CancellationToken);
 
         var problem = response.ShouldBeOfType<ProblemHttpResult>();

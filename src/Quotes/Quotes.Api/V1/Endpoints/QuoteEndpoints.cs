@@ -6,25 +6,27 @@ using Quotes.Application.Abstractions;
 
 namespace Quotes.Api.V1.Endpoints;
 
+/// <summary>Logger category for quote endpoint handlers (static types cannot be used as ILogger&lt;T&gt; arguments).</summary>
+internal sealed class QuoteEndpointsLog;
+
 public static class QuoteEndpoints
 {
     public static IEndpointRouteBuilder Map(IEndpointRouteBuilder endpoints)
     {
         var quotes = endpoints.MapGroup("/api/v1/quotes")
             .RequireAuthorization()
-            .WithTags("Quotes v1");
+            .WithTags("Quotes v1")
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         quotes.MapGet("/random", GetRandomAsync)
             .WithName("GetRandomQuote")
             .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status401Unauthorized);
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         quotes.MapGet("/{id}", GetByIdAsync)
             .WithName("GetQuoteById")
             .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status401Unauthorized);
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         quotes.MapPost("", CreateAsync)
             .WithName("CreateQuote")
@@ -33,7 +35,6 @@ public static class QuoteEndpoints
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
         return endpoints;
@@ -41,11 +42,10 @@ public static class QuoteEndpoints
 
     internal static async Task<IResult> GetRandomAsync(
         IGetRandomQuoteUseCase useCase,
-        ILoggerFactory loggerFactory,
+        ILogger<QuoteEndpointsLog> logger,
         HttpContext http,
         CancellationToken cancellationToken)
     {
-        var logger = loggerFactory.CreateLogger(nameof(QuoteEndpoints));
         logger.LogInformation("Fetching random quote");
 
         var result = await useCase.ExecuteAsync(cancellationToken);
@@ -63,12 +63,10 @@ public static class QuoteEndpoints
     internal static async Task<IResult> GetByIdAsync(
         string id,
         IGetQuoteByIdUseCase useCase,
-        ILoggerFactory loggerFactory,
+        ILogger<QuoteEndpointsLog> logger,
         HttpContext http,
         CancellationToken cancellationToken)
     {
-        var logger = loggerFactory.CreateLogger(nameof(QuoteEndpoints));
-
         var result = await useCase.ExecuteAsync(id, cancellationToken);
         if (result.IsError)
         {
@@ -84,16 +82,13 @@ public static class QuoteEndpoints
         CreateQuoteRequestDto body,
         ICreateQuoteUseCase useCase,
         HttpContext http,
-        ILoggerFactory loggerFactory,
+        ILogger<QuoteEndpointsLog> logger,
         CancellationToken cancellationToken)
     {
-        var logger = loggerFactory.CreateLogger(nameof(QuoteEndpoints));
         // Author is user input: log its length, never the value itself.
         logger.LogInformation("Creating quote attributed to an author of length {AuthorLength}", body.Author.Length);
 
-        var result = await useCase.ExecuteAsync(
-            new CreateQuoteCommand(body.Text, body.Author),
-            cancellationToken);
+        var result = await useCase.ExecuteAsync(body.ToCommand(), cancellationToken);
         if (result.IsError)
         {
             var outcome = result.FirstError.Type switch
@@ -109,6 +104,9 @@ public static class QuoteEndpoints
 
         AppMetrics.Record(AppMetrics.QuotesCreateCount, "success");
         logger.LogInformation("Created quote {QuoteId}", result.Value.Id);
-        return Results.Created($"/api/v1/quotes/{result.Value.Id}", result.Value.ToResponse());
+        return Results.CreatedAtRoute(
+            "GetQuoteById",
+            new { id = result.Value.Id },
+            result.Value.ToResponse());
     }
 }

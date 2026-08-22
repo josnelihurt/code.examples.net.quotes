@@ -82,7 +82,7 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
 
         created.StatusCode.ShouldBe(HttpStatusCode.Created);
         var location = created.Headers.Location.ShouldNotBeNull();
-        location.ToString().ShouldStartWith("/api/v1/quotes/");
+        location.AbsolutePath.ShouldStartWith("/api/v1/quotes/");
 
         using var fetched = await client.GetAsync(location, TestContext.Current.CancellationToken);
         fetched.StatusCode.ShouldBe(HttpStatusCode.OK);

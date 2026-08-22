@@ -5,6 +5,9 @@ namespace Quotes.Api.V1.Mapping;
 
 public static class QuoteMappingExtensions
 {
+    public static CreateQuoteCommand ToCommand(this CreateQuoteRequestDto body) =>
+        new(body.Text, body.Author);
+
     public static QuoteResponseDto ToResponse(this QuoteDto quote) => new()
     {
         Id = quote.Id,
