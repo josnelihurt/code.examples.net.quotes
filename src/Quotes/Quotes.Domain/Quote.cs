@@ -6,8 +6,3 @@ public sealed class Quote
     public required string Text { get; init; }
     public required string Author { get; init; }
 }
-
-public interface IQuoteRepository
-{
-    Quote GetRandom();
-}

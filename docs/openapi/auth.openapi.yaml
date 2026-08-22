@@ -1,12 +1,11 @@
----
 openapi: 3.1.1
 info:
   title: Auth.Api | v1
   version: 1.0.0
 servers:
-- url: "/"
+- url: /
 paths:
-  "/api/auth/login":
+  /api/auth/login:
     post:
       tags:
       - Auth
@@ -15,7 +14,7 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/LoginRequestDto"
+              $ref: '#/components/schemas/LoginRequestDto'
         required: true
       responses:
         '200':
@@ -23,20 +22,20 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/LoginResponseDto"
+                $ref: '#/components/schemas/LoginResponseDto'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ErrorResponseDto"
+                $ref: '#/components/schemas/ErrorResponseDto'
         '400':
           description: Bad Request
           content:
             application/problem+json:
               schema:
-                "$ref": "#/components/schemas/HttpValidationProblemDetails"
-  "/api/auth/validate":
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+  /api/auth/validate:
     post:
       tags:
       - Auth
@@ -47,20 +46,20 @@ paths:
             schema:
               oneOf:
               - type: 'null'
-              - "$ref": "#/components/schemas/ValidateRequestDto"
+              - $ref: '#/components/schemas/ValidateRequestDto'
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ValidateResponseDto"
+                $ref: '#/components/schemas/ValidateResponseDto'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ValidateResponseDto"
+                $ref: '#/components/schemas/ValidateResponseDto'
 components:
   schemas:
     ErrorResponseDto:
@@ -84,7 +83,7 @@ components:
           - 'null'
           - string
         status:
-          pattern: "^-?(?:0|[1-9]\\d*)$"
+          pattern: ^-?(?:0|[1-9]\d*)$
           type:
           - 'null'
           - integer
@@ -130,7 +129,7 @@ components:
           description: Correlation id for this login; clients should send it as X-Correlation-Id
             on later calls.
         expiresIn:
-          pattern: "^-?(?:0|[1-9]\\d*)$"
+          pattern: ^-?(?:0|[1-9]\d*)$
           type:
           - integer
           - string

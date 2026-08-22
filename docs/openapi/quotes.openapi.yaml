@@ -1,12 +1,11 @@
----
 openapi: 3.1.1
 info:
   title: Quotes.Api | v1
   version: 1.0.0
 servers:
-- url: "/"
+- url: /
 paths:
-  "/api/quotes/random":
+  /api/quotes/random:
     get:
       tags:
       - Quotes
@@ -17,13 +16,13 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/QuoteResponseDto"
+                $ref: '#/components/schemas/QuoteResponseDto'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ErrorResponseDto"
+                $ref: '#/components/schemas/ErrorResponseDto'
 components:
   schemas:
     ErrorResponseDto:

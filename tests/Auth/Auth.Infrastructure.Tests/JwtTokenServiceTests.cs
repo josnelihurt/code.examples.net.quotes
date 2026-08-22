@@ -5,13 +5,13 @@ namespace Auth.Infrastructure.Tests;
 
 public class JwtTokenServiceTests
 {
-    private const string SigningKey = "unit-test-signing-key-that-is-long-enough-1234567890";
+    private const string _signingKey = "unit-test-signing-key-that-is-long-enough-1234567890";
 
     private static JwtTokenService CreateService(params (string Key, string Value)[] overrides)
     {
         var settings = new Dictionary<string, string?>
         {
-            ["Jwt:SigningKey"] = SigningKey,
+            ["Jwt:SigningKey"] = _signingKey,
             ["Jwt:Issuer"] = "auth-api",
             ["Jwt:Audience"] = "aspire-quotes-poc",
             ["Jwt:ExpiresInSeconds"] = "3600"

@@ -1,17 +1,12 @@
-using Auth.Domain;
+using Auth.Application.Abstractions;
+using Auth.Domain.Abstractions;
 
 namespace Auth.Application;
 
-public sealed class AuthService : IAuthService
+public sealed class AuthService(ICredentialStore credentials, ITokenService tokens) : IAuthService
 {
-    private readonly ICredentialStore _credentials;
-    private readonly ITokenService _tokens;
-
-    public AuthService(ICredentialStore credentials, ITokenService tokens)
-    {
-        _credentials = credentials;
-        _tokens = tokens;
-    }
+    private readonly ICredentialStore _credentials = credentials;
+    private readonly ITokenService _tokens = tokens;
 
     public LoginResult? Login(LoginRequest request)
     {

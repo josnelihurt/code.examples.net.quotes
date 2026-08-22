@@ -1,14 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Quotes.Infrastructure.Tests" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\ServiceDefaults\AspireQuotesPoc.ServiceDefaults.csproj" />
     <ProjectReference Include="..\Quotes.Application\Quotes.Application.csproj" />
     <ProjectReference Include="..\Quotes.Domain\Quotes.Domain.csproj" />
   </ItemGroup>

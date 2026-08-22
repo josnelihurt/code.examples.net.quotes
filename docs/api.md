@@ -1,13 +1,39 @@
 # API
 
-Transport DTOs are documented with `[Description]` on types and properties; runtime OpenAPI picks those up, and the frozen YAML below must stay aligned (see [Contract documentation](../contracts/api-contracts.md#contract-documentation)).
+Transport DTOs live under each service's `*.Api/Contracts` folder. Document them with `[Description]` on types and properties so `Microsoft.AspNetCore.OpenApi` emits schema text into runtime `/openapi/v1.json`.
 
-Frozen OpenAPI documents:
+Do not document Application or Domain types for OpenAPI.
+
+## Frozen OpenAPI (Docsify)
+
+Canonical YAML (do not edit by hand):
 
 - [auth.openapi.yaml](openapi/auth.openapi.yaml)
 - [quotes.openapi.yaml](openapi/quotes.openapi.yaml)
 
-Also available under `contracts/` at the repo root.
+### How to refresh
+
+Prerequisite: Podman (default) or Docker. Override with `DOCKER=docker ./scripts/update-contracts.sh`.
+
+After changing endpoints or Api DTOs:
+
+```bash
+./scripts/update-contracts.sh
+```
+
+This runs a multi-stage [`Dockerfile.build`](../Dockerfile.build) that:
+
+1. Restores and builds `Auth.Api` and `Quotes.Api` inside the .NET SDK image
+2. Starts each API on fixed local ports (`--no-launch-profile`)
+3. GETs `/openapi/v1.json`
+4. Normalizes `servers` to `/` and writes YAML
+5. Copies the YAML from a short-lived container into `docs/openapi/`
+
+Review the git diff, then commit the YAML with the code change.
+
+OpenAPI version and schema names follow what ASP.NET emits (today OpenAPI 3.1, DTO type names). Prefer fixing docs via code/`[Description]` over patching YAML. Security schemes and extra parameters appear only if the running document includes them (configure via OpenAPI transformers in `ServiceDefaults` if needed).
+
+Runtime Scalar on each API still uses live `/openapi/v1.json`; the freeze under `docs/openapi/` is for offline Docsify/Scalar and reviewed PRs.
 
 ## Testing: Scalar vs curl
 
@@ -47,4 +73,4 @@ With docs serving (`./scripts/serve-docs.sh` or Aspire `docs` resource):
 
 ### Quotes
 
-- `GET /api/quotes/random` — requires Bearer token + optional `X-Correlation-Id`
+- `GET /api/quotes/random` — requires Bearer JWT (JwtBearer) + optional `X-Correlation-Id`

@@ -1,7 +1,7 @@
 using AspireQuotesPoc.Http;
 using AspireQuotesPoc.Telemetry;
 using Auth.Api.Contracts;
-using Auth.Application;
+using Auth.Application.Abstractions;
 
 namespace Auth.Api.Endpoints;
 

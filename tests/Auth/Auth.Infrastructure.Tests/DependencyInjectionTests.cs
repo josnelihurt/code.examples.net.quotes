@@ -1,5 +1,6 @@
 using Auth.Application;
-using Auth.Domain;
+using Auth.Application.Abstractions;
+using Auth.Domain.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

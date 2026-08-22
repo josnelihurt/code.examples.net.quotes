@@ -15,8 +15,6 @@ var auth = builder.AddProject<Projects.Auth_Api>("auth-api")
     .WithUrlForEndpoint("http", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText });
 
 var quotes = builder.AddProject<Projects.Quotes_Api>("quotes-api")
-    .WithReference(auth)
-    .WaitFor(auth)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
     .WithUrlForEndpoint("https", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText })

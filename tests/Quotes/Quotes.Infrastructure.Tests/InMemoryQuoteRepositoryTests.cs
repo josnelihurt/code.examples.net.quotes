@@ -1,4 +1,5 @@
 using NSubstitute;
+using Quotes.Infrastructure.Abstractions;
 
 namespace Quotes.Infrastructure.Tests;
 

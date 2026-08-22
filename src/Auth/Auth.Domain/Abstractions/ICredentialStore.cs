@@ -1,4 +1,4 @@
-namespace Auth.Domain;
+namespace Auth.Domain.Abstractions;
 
 public interface ICredentialStore
 {

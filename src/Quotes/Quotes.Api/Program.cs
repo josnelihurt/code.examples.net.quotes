@@ -12,13 +12,15 @@ try
 
     builder.AddServiceDefaults();
     builder.AddStandardApiServices();
-    builder.Services.AddQuotesInfrastructure(builder.Configuration);
+    builder.AddStandardJwtAuthentication();
+    builder.Services.AddQuotesInfrastructure();
 
     var app = builder.Build();
 
     app.UseExceptionHandler();
     app.UseSerilogDefaults();
     app.UseCorrelationId();
+    app.UseStandardAuthentication();
     app.MapDefaultEndpoints();
     app.MapStandardApiDocumentation();
 

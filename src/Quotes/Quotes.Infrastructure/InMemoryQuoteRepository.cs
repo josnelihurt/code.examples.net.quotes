@@ -1,10 +1,12 @@
 using Quotes.Domain;
+using Quotes.Domain.Abstractions;
+using Quotes.Infrastructure.Abstractions;
 
 namespace Quotes.Infrastructure;
 
-public sealed class InMemoryQuoteRepository : IQuoteRepository
+public sealed class InMemoryQuoteRepository(IQuoteSelector selector) : IQuoteRepository
 {
-    private static readonly Quote[] Quotes =
+    private static readonly Quote[] _quotes =
     [
         new() { Id = "1", Text = "Simplicity is the ultimate sophistication.", Author = "Leonardo da Vinci" },
         new() { Id = "2", Text = "Code is like humor. When you have to explain it, it's bad.", Author = "Cory House" },
@@ -16,24 +18,19 @@ public sealed class InMemoryQuoteRepository : IQuoteRepository
         new() { Id = "8", Text = "Talk is cheap. Show me the code.", Author = "Linus Torvalds" }
     ];
 
-    private readonly IQuoteSelector _selector;
+    private readonly IQuoteSelector _selector = selector;
 
-    public InMemoryQuoteRepository(IQuoteSelector selector)
-    {
-        _selector = selector;
-    }
-
-    public static int Count => Quotes.Length;
+    public static int Count => _quotes.Length;
 
     public Quote GetRandom()
     {
-        var index = _selector.NextIndex(Quotes.Length);
-        if (index < 0 || index >= Quotes.Length)
+        var index = _selector.NextIndex(_quotes.Length);
+        if (index < 0 || index >= _quotes.Length)
         {
             throw new InvalidOperationException(
-                $"Quote selector returned index {index}, outside 0..{Quotes.Length - 1}.");
+                $"Quote selector returned index {index}, outside 0..{_quotes.Length - 1}.");
         }
 
-        return Quotes[index];
+        return _quotes[index];
     }
 }

@@ -1,4 +1,5 @@
-using Auth.Domain;
+using Auth.Application.Abstractions;
+using Auth.Domain.Abstractions;
 using NSubstitute;
 
 namespace Auth.Application.Tests;

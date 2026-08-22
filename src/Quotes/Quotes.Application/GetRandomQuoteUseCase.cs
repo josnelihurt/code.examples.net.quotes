@@ -1,41 +1,16 @@
-using Quotes.Domain;
+using Quotes.Application.Abstractions;
+using Quotes.Domain.Abstractions;
 
 namespace Quotes.Application;
 
-public sealed record QuoteDto(string Id, string Text, string Author);
-
-public interface IAuthValidationClient
+public sealed class GetRandomQuoteUseCase(IQuoteRepository quotes) : IGetRandomQuoteUseCase
 {
-    Task<AuthValidationResult> ValidateAsync(string accessToken, string correlationId, CancellationToken cancellationToken);
-}
+    private readonly IQuoteRepository _quotes = quotes;
 
-public sealed record AuthValidationResult(bool Valid, string? Username);
-
-public interface IGetRandomQuoteUseCase
-{
-    Task<QuoteDto?> ExecuteAsync(string accessToken, string correlationId, CancellationToken cancellationToken);
-}
-
-public sealed class GetRandomQuoteUseCase : IGetRandomQuoteUseCase
-{
-    private readonly IAuthValidationClient _auth;
-    private readonly IQuoteRepository _quotes;
-
-    public GetRandomQuoteUseCase(IAuthValidationClient auth, IQuoteRepository quotes)
+    public Task<QuoteDto> ExecuteAsync(CancellationToken cancellationToken)
     {
-        _auth = auth;
-        _quotes = quotes;
-    }
-
-    public async Task<QuoteDto?> ExecuteAsync(string accessToken, string correlationId, CancellationToken cancellationToken)
-    {
-        var validation = await _auth.ValidateAsync(accessToken, correlationId, cancellationToken);
-        if (!validation.Valid)
-        {
-            return null;
-        }
-
+        cancellationToken.ThrowIfCancellationRequested();
         var quote = _quotes.GetRandom();
-        return new QuoteDto(quote.Id, quote.Text, quote.Author);
+        return Task.FromResult(new QuoteDto(quote.Id, quote.Text, quote.Author));
     }
 }

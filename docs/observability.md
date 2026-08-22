@@ -6,13 +6,13 @@ After `./scripts/start.sh`, open the Aspire dashboard URL printed in the console
 
 1. Sign in and request a quote from the UI (or curl).
 2. Open **Traces**.
-3. Find a span chain: `quotes-api` → `auth-api` (validate).
+3. Find ASP.NET request spans for `auth-api` (login) and `quotes-api` (random quote). JwtBearer validates locally on Quotes (no Quotes→Auth hop).
 
 ## Structured logs (Serilog)
 
 1. Open **Structured logs**.
 2. Filter by `CorrelationId` (same value returned from login / shown on the quote page).
-3. Auth login and Quotes random + Auth validate lines should share that id.
+3. Auth login and Quotes random lines should share that id when the UI reuses it.
 
 ## Metrics
 

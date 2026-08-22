@@ -1,4 +1,4 @@
-namespace Quotes.Infrastructure;
+namespace Quotes.Infrastructure.Abstractions;
 
 /// <summary>
 /// Picks which quote to serve. Extracted so tests can make the choice deterministic.
@@ -6,9 +6,4 @@ namespace Quotes.Infrastructure;
 public interface IQuoteSelector
 {
     int NextIndex(int exclusiveUpperBound);
-}
-
-public sealed class RandomQuoteSelector : IQuoteSelector
-{
-    public int NextIndex(int exclusiveUpperBound) => Random.Shared.Next(exclusiveUpperBound);
 }

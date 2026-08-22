@@ -53,10 +53,10 @@ npm run test:coverage    # + LCOV under frontend/coverage/
 - **Auth.Application** — login success/failure, blank input, validate delegation
 - **Auth.Infrastructure** — JWT round-trip, expiry, issuer/audience/key mismatch, hardcoded credentials
 - **Auth.Api** — FluentValidation, `ValidationFilter`, extracted login/validate handlers
-- **Quotes.Application** — valid/invalid token paths through `GetRandomQuoteUseCase`
-- **Quotes.Infrastructure** — `AuthValidationClient` via stub `HttpMessageHandler`, deterministic `IQuoteSelector`
-- **Quotes.Api** — bearer parsing and use-case outcomes on `/api/quotes/random`
-- **ServiceDefaults** — correlation middleware, metrics, Polly retries, host wiring (health/OpenAPI/Scalar)
+- **Quotes.Application** — `GetRandomQuoteUseCase` returns a quote from the repository
+- **Quotes.Infrastructure** — in-memory repository, deterministic `IQuoteSelector`, DI wiring
+- **Quotes.Api** — thin handler mapping; JwtBearer integration tests for `/api/quotes/random`
+- **ServiceDefaults** — correlation middleware, metrics, Polly retries, JwtBearer registration, host wiring (health/OpenAPI/Scalar)
 - **Frontend** — `api/client`, `LoginPage`, `QuotePage`, routing/`RequireAuth`
 
 ## Smoke (running stack)

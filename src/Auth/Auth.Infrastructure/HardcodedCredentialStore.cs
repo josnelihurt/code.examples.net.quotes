@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Auth.Domain;
+using Auth.Domain.Abstractions;
 
 namespace Auth.Infrastructure;
 
@@ -9,15 +9,15 @@ namespace Auth.Infrastructure;
 /// </summary>
 public sealed class HardcodedCredentialStore : ICredentialStore
 {
-    private const string ExpectedUsername = "jrb";
+    private const string _expectedUsername = "jrb";
 
     [SuppressMessage(
         "Security",
         "S2068:Hard-coded credentials are security-sensitive",
         Justification = "POC demo credential; there is no credential backing store to read from.")]
-    private const string ExpectedPassword = "supersecret";
+    private const string _expectedPassword = "supersecret";
 
     public bool Validate(string username, string password) =>
-        string.Equals(username, ExpectedUsername, StringComparison.Ordinal)
-        && string.Equals(password, ExpectedPassword, StringComparison.Ordinal);
+        string.Equals(username, _expectedUsername, StringComparison.Ordinal)
+        && string.Equals(password, _expectedPassword, StringComparison.Ordinal);
 }

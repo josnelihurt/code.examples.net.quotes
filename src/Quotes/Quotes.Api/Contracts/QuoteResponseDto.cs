@@ -14,10 +14,3 @@ public sealed class QuoteResponseDto
     [Description("Attributed author of the quote.")]
     public required string Author { get; init; }
 }
-
-[Description("Error payload returned when the request is not authorized.")]
-public sealed class ErrorResponseDto
-{
-    [Description("Human-readable reason the request was rejected.")]
-    public required string Error { get; init; }
-}
