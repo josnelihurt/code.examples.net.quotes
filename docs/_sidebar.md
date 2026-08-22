@@ -6,3 +6,4 @@
 * [Testing](testing.md)
 * [SonarQube](sonar.md)
 * [Observability](observability.md)
+* [Panel Review](panel-review.md)

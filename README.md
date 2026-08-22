@@ -70,7 +70,7 @@ Transport vs domain validation: DTOs keep shallow guards (`[Required]`, `[MaxLen
 ## What it does today
 
 1. **Auth API** issues a JWT (`quotes:read` / `quotes:write` scopes) for hardcoded user `jrb` / `supersecret`, and can validate tokens via `/api/auth/validate` (optional introspection).
-2. **Quotes API** serves an in-memory catalog after JwtBearer validates the bearer token: `GET /api/quotes/random`, `GET /api/quotes/{id}`, and `POST /api/quotes` (requires `quotes:write`; rejects invalid and near-duplicate quotes).
+2. **Quotes API** serves an in-memory catalog after JwtBearer validates the bearer token: `GET /api/v1/quotes/random`, `GET /api/v1/quotes/{id}`, and `POST /api/v1/quotes` (requires `quotes:write`; rejects invalid and near-duplicate quotes).
 3. **React SPA** logs in, stores token + `X-Correlation-Id`, then fetches quotes through the Vite proxy.
 4. **Aspire AppHost** starts everything, wires service discovery, exports OpenTelemetry to the dashboard, and publishes a **YARP** gateway (no Traefik).
 
@@ -151,7 +151,7 @@ Export a full git bundle to `~/repo.bundle`:
 ./scripts/export-bundle.sh
 ```
 
-More detail in Docsify: [Testing](docs/testing.md), [SonarQube](docs/sonar.md).
+More detail in Docsify: [Testing](docs/testing.md), [SonarQube](docs/sonar.md), [Panel Review](docs/panel-review.md).
 
 ## OpenAPI / Scalar
 
