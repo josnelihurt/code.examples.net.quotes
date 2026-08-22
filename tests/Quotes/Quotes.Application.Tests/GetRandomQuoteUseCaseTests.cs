@@ -6,12 +6,11 @@ namespace Quotes.Application.Tests;
 
 public class GetRandomQuoteUseCaseTests
 {
-    private static readonly Quote _sampleQuote = new()
-    {
-        Id = "7",
-        Text = "Programs must be written for people to read.",
-        Author = "Harold Abelson"
-    };
+    private static readonly Quote _sampleQuote = Quote.Reconstitute(
+        "7",
+        "Programs must be written for people to read.",
+        "Harold Abelson",
+        Quote.ComputeFingerprint("Programs must be written for people to read."));
 
     private readonly IQuoteRepository _quotes = Substitute.For<IQuoteRepository>();
     private readonly GetRandomQuoteUseCase _sut;

@@ -1,3 +1,5 @@
+using FluentValidation;
+using Quotes.Api.Contracts;
 using Quotes.Api.Endpoints;
 using Quotes.Infrastructure;
 using Serilog;
@@ -14,6 +16,7 @@ try
     builder.AddStandardApiServices();
     builder.AddStandardJwtAuthentication();
     builder.Services.AddQuotesInfrastructure();
+    builder.Services.AddValidatorsFromAssemblyContaining<CreateQuoteRequestDtoValidator>();
 
     var app = builder.Build();
 

@@ -24,6 +24,19 @@ This repository is the **base template for production microservices** in a large
 | **Domain** | Entities and domain ports | HTTP, DI containers, infrastructure SDKs |
 | **Infrastructure** | Repositories, HTTP clients, external systems | Endpoint contracts, Swagger UI concerns |
 
+**Domain terms (this repo)**
+
+.NET / DDD vocabulary maps cleanly to Go-style `entities`, but folder names often differ: types usually live under `*.Domain` (sometimes `Domain/Entities/`). Do not confuse domain entities with EF persistence classes.
+
+| Term | Meaning | In this project |
+|------|---------|-----------------|
+| **Entity** | Domain object with identity and invariants | [`Quotes.Domain.Quote`](src/Quotes/Quotes.Domain/Quote.cs) — created via `Quote.Create`, owns catalog rules and `NormalizedFingerprint` |
+| **Value object** | No identity; equality by value; often embedded in an entity | Not a separate type yet; fingerprint/normalized text behave as value concepts inside `Quote`. Prefer extracting (e.g. `QuoteFingerprint`) when reused or rules grow |
+| **Aggregate** | Consistency boundary: one root entity that other objects change through | `Quote` is a small aggregate root (single entity). Repositories load/save the root (`IQuoteRepository`), not internal bits |
+| **EF / persistence model** | Storage shape (table/document row), mapping, DB concerns | [`QuoteRecord`](src/Quotes/Quotes.Infrastructure/Persistence/QuoteRecord.cs) in Infrastructure. Today in-memory; an EF `DbSet<QuoteRecord>` (or `QuoteEntity`) would stay here — **never** put EF attributes on Domain `Quote` |
+
+**Rule of thumb:** Domain speaks `Quote`; Infrastructure maps `Quote` ↔ `QuoteRecord` at the repository boundary. Api DTOs (`CreateQuoteRequestDto`, `QuoteResponseDto`) are transport only.
+
 **Direction of travel** (foundation backlog reflected in this sample’s evolution)
 
 1. Authentication and authorization at the host/platform — Quotes uses JwtBearer + `RequireAuthorization` on `/api/quotes` (extend the same pattern to new services).

@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddSingleton<IQuoteSelector, RandomQuoteSelector>();
         services.AddSingleton<IQuoteRepository, InMemoryQuoteRepository>();
         services.AddScoped<IGetRandomQuoteUseCase, GetRandomQuoteUseCase>();
+        services.AddScoped<ICreateQuoteUseCase, CreateQuoteUseCase>();
         return services;
     }
 }

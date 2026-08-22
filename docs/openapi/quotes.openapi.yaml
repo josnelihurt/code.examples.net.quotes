@@ -23,8 +23,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponseDto'
+  /api/quotes:
+    post:
+      tags:
+      - Quotes
+      operationId: CreateQuote
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuoteRequestDto'
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponseDto'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseDto'
 components:
   schemas:
+    CreateQuoteRequestDto:
+      type: object
+      properties:
+        text:
+          type: string
+          description: Quote body text.
+        author:
+          type: string
+          description: Attributed author of the quote.
+      description: Payload to add a quote to the in-memory catalog.
     ErrorResponseDto:
       required:
       - error
@@ -34,6 +80,38 @@ components:
           type: string
           description: Human-readable reason the request was rejected.
       description: Error payload returned when the request is not authorized.
+    HttpValidationProblemDetails:
+      type: object
+      properties:
+        type:
+          type:
+          - 'null'
+          - string
+        title:
+          type:
+          - 'null'
+          - string
+        status:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+          - 'null'
+          - integer
+          - string
+          format: int32
+        detail:
+          type:
+          - 'null'
+          - string
+        instance:
+          type:
+          - 'null'
+          - string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
     QuoteResponseDto:
       required:
       - id
@@ -50,6 +128,6 @@ components:
         author:
           type: string
           description: Attributed author of the quote.
-      description: Random quote returned to an authenticated client.
+      description: Quote returned to an authenticated client.
 tags:
 - name: Quotes

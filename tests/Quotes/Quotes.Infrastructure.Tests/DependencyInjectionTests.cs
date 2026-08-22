@@ -18,5 +18,6 @@ public class DependencyInjectionTests
         provider.GetRequiredService<IQuoteSelector>().ShouldBeOfType<RandomQuoteSelector>();
         provider.GetRequiredService<IQuoteRepository>().ShouldBeOfType<InMemoryQuoteRepository>();
         provider.GetRequiredService<IGetRandomQuoteUseCase>().ShouldBeOfType<GetRandomQuoteUseCase>();
+        provider.GetRequiredService<ICreateQuoteUseCase>().ShouldBeOfType<CreateQuoteUseCase>();
     }
 }

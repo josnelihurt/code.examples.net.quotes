@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Quotes\Quotes.Domain\Quotes.Domain.csproj" />
+  </ItemGroup>
+</Project>

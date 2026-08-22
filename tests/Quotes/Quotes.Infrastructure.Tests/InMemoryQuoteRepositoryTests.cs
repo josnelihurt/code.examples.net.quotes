@@ -1,10 +1,13 @@
 using NSubstitute;
+using Quotes.Domain;
 using Quotes.Infrastructure.Abstractions;
 
 namespace Quotes.Infrastructure.Tests;
 
 public class InMemoryQuoteRepositoryTests
 {
+    private const int SeedCount = 8;
+
     private readonly IQuoteSelector _selector = Substitute.For<IQuoteSelector>();
     private readonly InMemoryQuoteRepository _sut;
 
@@ -20,13 +23,13 @@ public class InMemoryQuoteRepositoryTests
 
         _sut.GetRandom();
 
-        _selector.Received(1).NextIndex(InMemoryQuoteRepository.Count);
+        _selector.Received(1).NextIndex(SeedCount);
     }
 
     [Fact]
     public void Every_index_maps_to_a_fully_populated_quote()
     {
-        for (var index = 0; index < InMemoryQuoteRepository.Count; index++)
+        for (var index = 0; index < SeedCount; index++)
         {
             _selector.NextIndex(Arg.Any<int>()).Returns(index);
 
@@ -35,6 +38,7 @@ public class InMemoryQuoteRepositoryTests
             quote.Id.ShouldNotBeNullOrWhiteSpace();
             quote.Text.ShouldNotBeNullOrWhiteSpace();
             quote.Author.ShouldNotBeNullOrWhiteSpace();
+            quote.NormalizedFingerprint.ShouldNotBeNullOrWhiteSpace();
         }
     }
 
@@ -42,13 +46,13 @@ public class InMemoryQuoteRepositoryTests
     public void Distinct_indexes_yield_distinct_quotes()
     {
         var ids = new List<string>();
-        for (var index = 0; index < InMemoryQuoteRepository.Count; index++)
+        for (var index = 0; index < SeedCount; index++)
         {
             _selector.NextIndex(Arg.Any<int>()).Returns(index);
             ids.Add(_sut.GetRandom().Id);
         }
 
-        ids.Distinct().Count().ShouldBe(InMemoryQuoteRepository.Count);
+        ids.Distinct().Count().ShouldBe(SeedCount);
     }
 
     [Theory]
@@ -70,5 +74,34 @@ public class InMemoryQuoteRepositoryTests
         {
             selector.NextIndex(8).ShouldBeInRange(0, 7);
         }
+    }
+
+    [Fact]
+    public void ExistsByFingerprint_detects_seeded_quotes()
+    {
+        var fingerprint = Quote.ComputeFingerprint("Talk is cheap. Show me the code.");
+
+        _sut.ExistsByFingerprint(fingerprint).ShouldBeTrue();
+        _sut.ExistsByFingerprint("totally unique fingerprint").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Add_persists_a_quote_available_to_GetRandom()
+    {
+        var created = Quote.Create(
+            "Continuous delivery keeps software releasable.",
+            "Jez Humble");
+        created.Succeeded.ShouldBeTrue();
+        var quote = created.Quote!;
+
+        _sut.Add(quote);
+        _sut.Count.ShouldBe(SeedCount + 1);
+        _sut.ExistsByFingerprint(quote.NormalizedFingerprint).ShouldBeTrue();
+
+        _selector.NextIndex(Arg.Any<int>()).Returns(SeedCount);
+        var loaded = _sut.GetRandom();
+        loaded.Id.ShouldBe(quote.Id);
+        loaded.Text.ShouldBe(quote.Text);
+        loaded.Author.ShouldBe(quote.Author);
     }
 }

@@ -74,3 +74,4 @@ With docs serving (`./scripts/serve-docs.sh` or Aspire `docs` resource):
 ### Quotes
 
 - `GET /api/quotes/random` — requires Bearer JWT (JwtBearer) + optional `X-Correlation-Id`
+- `POST /api/quotes` — create quote (Bearer JWT); rejects invalid catalog rules (400) and near-duplicate fingerprints (409)

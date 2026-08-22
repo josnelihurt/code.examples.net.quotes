@@ -3,8 +3,13 @@
     <InternalsVisibleTo Include="Quotes.Api.Tests" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\ServiceDefaults\AspireQuotesPoc.ServiceDefaults.csproj" />
     <ProjectReference Include="..\Quotes.Application\Quotes.Application.csproj" />
+    <ProjectReference Include="..\Quotes.Domain\Quotes.Domain.csproj" />
     <ProjectReference Include="..\Quotes.Infrastructure\Quotes.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

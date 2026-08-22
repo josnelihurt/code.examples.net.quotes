@@ -2,7 +2,7 @@ using System.ComponentModel;
 
 namespace Quotes.Api.Contracts;
 
-[Description("Random quote returned to an authenticated client.")]
+[Description("Quote returned to an authenticated client.")]
 public sealed class QuoteResponseDto
 {
     [Description("Stable quote identifier.")]

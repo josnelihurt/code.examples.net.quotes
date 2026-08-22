@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -75,10 +76,59 @@ public class QuoteAuthIntegrationTests
         quote.Author.ShouldBe(_sampleQuote.Author);
     }
 
-    private static async Task<WebApplication> StartAsync()
+    [Fact]
+    public async Task Create_without_bearer_token_returns_401()
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+
+        using var response = await client.PostAsJsonAsync(
+            new Uri("/api/quotes/", UriKind.Relative),
+            new CreateQuoteRequestDto
+            {
+                Text = "Refactoring is the art of improving design.",
+                Author = "Martin Fowler"
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Create_with_valid_bearer_token_returns_201()
+    {
+        var create = Substitute.For<ICreateQuoteUseCase>();
+        create.ExecuteAsync(Arg.Any<CreateQuoteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CreateQuoteResult(
+                CreateQuoteStatus.Created,
+                new QuoteDto("new-id", "Refactoring is the art of improving design.", "Martin Fowler")));
+
+        await using var app = await StartAsync(create);
+        using var client = app.GetTestClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", CreateToken("jrb"));
+
+        using var response = await client.PostAsJsonAsync(
+            new Uri("/api/quotes/", UriKind.Relative),
+            new CreateQuoteRequestDto
+            {
+                Text = "Refactoring is the art of improving design.",
+                Author = "Martin Fowler"
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var quote = await response.Content.ReadFromJsonAsync<QuoteResponseDto>(TestContext.Current.CancellationToken);
+        quote.ShouldNotBeNull();
+        quote.Id.ShouldBe("new-id");
+    }
+
+    private static async Task<WebApplication> StartAsync(ICreateQuoteUseCase? createUseCase = null)
     {
         var useCase = Substitute.For<IGetRandomQuoteUseCase>();
         useCase.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(_sampleQuote);
+
+        createUseCase ??= Substitute.For<ICreateQuoteUseCase>();
 
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.UseTestServer();
@@ -88,6 +138,8 @@ public class QuoteAuthIntegrationTests
 
         builder.AddStandardJwtAuthentication();
         builder.Services.AddSingleton(useCase);
+        builder.Services.AddSingleton(createUseCase);
+        builder.Services.AddValidatorsFromAssemblyContaining<CreateQuoteRequestDtoValidator>();
         builder.Services.AddLogging();
 
         var app = builder.Build();

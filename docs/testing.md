@@ -18,6 +18,7 @@ tests/
     Auth.Infrastructure.Tests/
     Auth.Api.Tests/
   Quotes/
+    Quotes.Domain.Tests/
     Quotes.Application.Tests/
     Quotes.Infrastructure.Tests/
     Quotes.Api.Tests/
@@ -25,8 +26,6 @@ tests/
   coverlet.runsettings
 frontend/src/**/*.test.ts(x)
 ```
-
-Domain projects hold only models/interfaces, so they have no dedicated test assemblies.
 
 ## Run .NET tests
 
@@ -53,9 +52,10 @@ npm run test:coverage    # + LCOV under frontend/coverage/
 - **Auth.Application** — login success/failure, blank input, validate delegation
 - **Auth.Infrastructure** — JWT round-trip, expiry, issuer/audience/key mismatch, hardcoded credentials
 - **Auth.Api** — FluentValidation, `ValidationFilter`, extracted login/validate handlers
-- **Quotes.Application** — `GetRandomQuoteUseCase` returns a quote from the repository
-- **Quotes.Infrastructure** — in-memory repository, deterministic `IQuoteSelector`, DI wiring
-- **Quotes.Api** — thin handler mapping; JwtBearer integration tests for `/api/quotes/random`
+- **Quotes.Domain** — `Quote.Create` catalog rules and fingerprint normalization
+- **Quotes.Application** — `GetRandomQuoteUseCase`; `CreateQuoteUseCase` success/invalid/conflict
+- **Quotes.Infrastructure** — in-memory `QuoteRecord` repository, deterministic `IQuoteSelector`, DI wiring
+- **Quotes.Api** — random/create handlers; JwtBearer integration for `/api/quotes`
 - **ServiceDefaults** — correlation middleware, metrics, Polly retries, JwtBearer registration, host wiring (health/OpenAPI/Scalar)
 - **Frontend** — `api/client`, `LoginPage`, `QuotePage`, routing/`RequireAuth`
 
