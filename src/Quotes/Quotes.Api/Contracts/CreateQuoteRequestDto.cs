@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using Quotes.Application.Abstractions;
 
 namespace Quotes.Api.Contracts;
 
@@ -6,8 +8,12 @@ namespace Quotes.Api.Contracts;
 public sealed class CreateQuoteRequestDto
 {
     [Description("Quote body text.")]
+    [Required]
+    [MaxLength(QuoteRules.MaxTextLength)]
     public string Text { get; set; } = string.Empty;
 
     [Description("Attributed author of the quote.")]
+    [Required]
+    [MaxLength(QuoteRules.MaxAuthorLength)]
     public string Author { get; set; } = string.Empty;
 }

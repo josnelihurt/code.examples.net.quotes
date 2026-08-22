@@ -56,7 +56,7 @@ npm run test:coverage    # + LCOV under frontend/coverage/
 - **Quotes.Application** — random (incl. empty-catalog 404 path), get-by-id, create success/invalid/conflict
 - **Quotes.Infrastructure** — repository contract suite (`QuoteRepositoryContractTests`, inherited by any future adapter), seeded catalog behavior, deterministic `IQuoteSelector`, DI wiring
 - **Quotes.Api** — handler-level units (200/201/400/404/409), JWT integration (401 problem + `WWW-Authenticate`, 403 without `quotes:write`), and a **full-pipeline `WebApplicationFactory<Program>` suite** booting the real composition root (create → Location → GET round trip, duplicate 409, validation 400, domain 400)
-- **ServiceDefaults** — correlation middleware, metrics (all four counters), `ValidationEndpointFilter` (incl. fail-closed on a missing validator), ErrorOr→ProblemDetails mapping, dev-key Production guard, host wiring (health/OpenAPI/Scalar in every environment)
+- **ServiceDefaults** — correlation middleware, metrics (all four counters), ErrorOr→ProblemDetails mapping, dev-key Production guard, host wiring (health/OpenAPI/Scalar in every environment)
 - **Frontend** — `api/client`, `LoginPage`, `QuotePage`, routing/`RequireAuth`
 
 ## CI

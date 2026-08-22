@@ -1,8 +1,6 @@
-using Auth.Api.Contracts;
 using Auth.Api.Endpoints;
 using Auth.Application;
 using Auth.Infrastructure;
-using FluentValidation;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -19,7 +17,7 @@ try
     // The API host is the composition root: each layer contributes its own registrations.
     builder.Services.AddAuthApplication();
     builder.Services.AddAuthInfrastructure();
-    builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestDtoValidator>();
+    builder.Services.AddValidation();
 
     var app = builder.Build();
 

@@ -1,5 +1,4 @@
 using AspireQuotesPoc.ServiceDefaults.Telemetry;
-using AspireQuotesPoc.ServiceDefaults.Validation;
 using ErrorOr;
 using Quotes.Api.Contracts;
 using Quotes.Application.Abstractions;
@@ -28,7 +27,6 @@ public static class QuoteEndpoints
 
         quotes.MapPost("", CreateAsync)
             .WithName("CreateQuote")
-            .AddEndpointFilter<ValidationEndpointFilter<CreateQuoteRequestDto>>()
             .RequireAuthorization(JwtAuthExtensions.WriteQuotesPolicy)
             .Produces<QuoteResponseDto>(StatusCodes.Status201Created)
             .ProducesValidationProblem()

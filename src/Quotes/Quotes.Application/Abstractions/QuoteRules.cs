@@ -8,9 +8,9 @@ namespace Quotes.Application.Abstractions;
 /// </summary>
 public static class QuoteRules
 {
-    public static int MinTextLength => Quote.MinTextLength;
-    public static int MaxTextLength => Quote.MaxTextLength;
-    public static int MinAuthorLength => Quote.MinAuthorLength;
-    public static int MaxAuthorLength => Quote.MaxAuthorLength;
-    public static int MinWordCount => Quote.MinWordCount;
+    public const int MinTextLength = Quote.MinTextLength;
+    public const int MaxTextLength = Quote.MaxTextLength;
+    public const int MinAuthorLength = Quote.MinAuthorLength;
+    public const int MaxAuthorLength = Quote.MaxAuthorLength;
+    public const int MinWordCount = Quote.MinWordCount;
 }

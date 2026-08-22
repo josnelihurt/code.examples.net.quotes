@@ -1,5 +1,3 @@
-using FluentValidation;
-using Quotes.Api.Contracts;
 using Quotes.Api.Endpoints;
 using Quotes.Application;
 using Quotes.Infrastructure;
@@ -20,7 +18,7 @@ try
     // The API host is the composition root: each layer contributes its own registrations.
     builder.Services.AddQuotesApplication();
     builder.Services.AddQuotesInfrastructure();
-    builder.Services.AddValidatorsFromAssemblyContaining<CreateQuoteRequestDtoValidator>();
+    builder.Services.AddValidation();
 
     var app = builder.Build();
 

@@ -1,6 +1,5 @@
 using AspireQuotesPoc.ServiceDefaults.Http;
 using AspireQuotesPoc.ServiceDefaults.Telemetry;
-using AspireQuotesPoc.ServiceDefaults.Validation;
 using Auth.Api.Contracts;
 using Auth.Application.Abstractions;
 
@@ -14,7 +13,6 @@ public static class AuthEndpoints
 
         auth.MapPost("/login", LoginAsync)
             .WithName("Login")
-            .AddEndpointFilter<ValidationEndpointFilter<LoginRequestDto>>()
             .Produces<LoginResponseDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized);

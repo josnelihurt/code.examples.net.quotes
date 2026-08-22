@@ -6,7 +6,6 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using ErrorOr;
-using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -172,7 +171,7 @@ public class QuoteAuthIntegrationTests
         builder.Services.AddSingleton(useCase);
         builder.Services.AddSingleton(getById);
         builder.Services.AddSingleton(createUseCase);
-        builder.Services.AddValidatorsFromAssemblyContaining<CreateQuoteRequestDtoValidator>();
+        builder.Services.AddValidation();
         builder.Services.AddLogging();
 
         var app = builder.Build();

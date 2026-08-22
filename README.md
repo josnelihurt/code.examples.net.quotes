@@ -43,7 +43,7 @@ This repository is the **base template for production microservices** in a large
 2. Thin Minimal API endpoints plus explicit mappers; Application outcomes are `ErrorOr` results mapped once to RFC 9457 ProblemDetails (`ErrorOrHttpExtensions.ToProblem`), with `errorCode` and `correlationId` as extensions. Expected failures never travel as exceptions.
 3. OpenAPI conventions in the platform (Bearer/security scheme via document transformer, standard 401/403/404/409/500 ProblemDetails shapes) so documentation stays consistent as endpoints grow.
 4. Composition root at the API host: each layer registers itself (`AddQuotesApplication`, `AddQuotesInfrastructure`), and Program.cs composes them. The Api project references Application + Infrastructure, never Domain directly.
-5. Fail-closed input validation: the shared `ValidationEndpointFilter<T>` (ServiceDefaults) refuses to run without a registered `IValidator<T>` instead of silently skipping validation.
+5. Transport input validation: request DTOs use Data Annotations; each API host calls `AddValidation()` so minimal API binding validates before handlers run.
 
 Hardcoded credentials and in-memory quotes are **local scaffolding** so the foundation runs offline. They are not a model for production identity or storage.
 
@@ -65,7 +65,7 @@ OTEL metrics/logs/traces -> Aspire dashboard
 | Path | Purpose |
 |------|---------|
 | `src/AppHost/` | Aspire orchestration (`AspireQuotesPoc.AppHost`) |
-| `src/ServiceDefaults/` | Platform kit: Serilog, OTEL, OpenAPI/Scalar helpers, JwtBearer auth + scope policies, fail-closed validation filter, ErrorOr→ProblemDetails mapper, correlation |
+| `src/ServiceDefaults/` | Platform kit: Serilog, OTEL, OpenAPI/Scalar helpers, JwtBearer auth + scope policies, ErrorOr→ProblemDetails mapper, correlation |
 | `src/Auth/` | Auth service — Domain / Application / Infrastructure / Api |
 | `src/Quotes/` | Quotes service — Domain / Application / Infrastructure / Api |
 | `frontend/` | React + TS Vite SPA |
@@ -156,7 +156,7 @@ See [docs/observability.md](docs/observability.md).
 ## Libraries
 
 - OpenAPI + Scalar.AspNetCore
-- FluentValidation (shared `ValidationEndpointFilter<T>` + per-DTO validators)
+- Data Annotations + `AddValidation()` (transport guards on request DTOs)
 - ErrorOr (ratified error/result standard for Domain and Application)
 - Serilog
 - Microsoft.AspNetCore.Authentication.JwtBearer (host auth + scope policies)
