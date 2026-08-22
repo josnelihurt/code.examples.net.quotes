@@ -1,6 +1,7 @@
 using Quotes.Domain;
 using Quotes.Domain.Abstractions;
 using Quotes.Infrastructure.Abstractions;
+using Quotes.Infrastructure.Mapping;
 using Quotes.Infrastructure.Persistence;
 
 namespace Quotes.Infrastructure;
@@ -40,14 +41,14 @@ public sealed class InMemoryQuoteRepository : IQuoteRepository
 
     internal static List<QuoteRecord> DefaultSeed() =>
     [
-        QuoteMapper.Seed("1", "Simplicity is the ultimate sophistication.", "Leonardo da Vinci", _seedCreatedAt),
-        QuoteMapper.Seed("2", "Code is like humor. When you have to explain it, it's bad.", "Cory House", _seedCreatedAt),
-        QuoteMapper.Seed("3", "First, solve the problem. Then, write the code.", "John Johnson", _seedCreatedAt),
-        QuoteMapper.Seed("4", "Experience is the name everyone gives to their mistakes.", "Oscar Wilde", _seedCreatedAt),
-        QuoteMapper.Seed("5", "The only way to go fast is to go well.", "Robert C. Martin", _seedCreatedAt),
-        QuoteMapper.Seed("6", "Make it work, make it right, make it fast.", "Kent Beck", _seedCreatedAt),
-        QuoteMapper.Seed("7", "Programs must be written for people to read.", "Harold Abelson", _seedCreatedAt),
-        QuoteMapper.Seed("8", "Talk is cheap. Show me the code.", "Linus Torvalds", _seedCreatedAt)
+        QuoteMappingExtensions.Seed("1", "Simplicity is the ultimate sophistication.", "Leonardo da Vinci", _seedCreatedAt),
+        QuoteMappingExtensions.Seed("2", "Code is like humor. When you have to explain it, it's bad.", "Cory House", _seedCreatedAt),
+        QuoteMappingExtensions.Seed("3", "First, solve the problem. Then, write the code.", "John Johnson", _seedCreatedAt),
+        QuoteMappingExtensions.Seed("4", "Experience is the name everyone gives to their mistakes.", "Oscar Wilde", _seedCreatedAt),
+        QuoteMappingExtensions.Seed("5", "The only way to go fast is to go well.", "Robert C. Martin", _seedCreatedAt),
+        QuoteMappingExtensions.Seed("6", "Make it work, make it right, make it fast.", "Kent Beck", _seedCreatedAt),
+        QuoteMappingExtensions.Seed("7", "Programs must be written for people to read.", "Harold Abelson", _seedCreatedAt),
+        QuoteMappingExtensions.Seed("8", "Talk is cheap. Show me the code.", "Linus Torvalds", _seedCreatedAt)
     ];
 
     public Task<Quote?> GetRandomAsync(CancellationToken cancellationToken)
@@ -66,7 +67,7 @@ public sealed class InMemoryQuoteRepository : IQuoteRepository
                         $"Quote selector returned index {index}, outside 0..{_quotes.Count - 1}.");
                 }
 
-                quote = QuoteMapper.ToDomain(_quotes[index]);
+                quote = _quotes[index].ToDomain();
             }
         }
 
@@ -84,7 +85,7 @@ public sealed class InMemoryQuoteRepository : IQuoteRepository
             var record = _quotes.FirstOrDefault(q => string.Equals(q.Id, id, StringComparison.Ordinal));
             if (record is not null)
             {
-                quote = QuoteMapper.ToDomain(record);
+                quote = record.ToDomain();
             }
         }
 
@@ -109,7 +110,7 @@ public sealed class InMemoryQuoteRepository : IQuoteRepository
 
             if (outcome is QuoteAddOutcome.Added)
             {
-                _quotes.Add(QuoteMapper.ToRecord(quote, DateTimeOffset.UtcNow));
+                _quotes.Add(quote.ToRecord(DateTimeOffset.UtcNow));
             }
         }
 

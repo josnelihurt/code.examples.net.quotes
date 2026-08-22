@@ -1,6 +1,7 @@
 using AspireQuotesPoc.ServiceDefaults.Telemetry;
 using ErrorOr;
 using Quotes.Api.Contracts;
+using Quotes.Api.Mapping;
 using Quotes.Application.Abstractions;
 
 namespace Quotes.Api.Endpoints;
@@ -56,7 +57,7 @@ public static class QuoteEndpoints
 
         AppMetrics.Record(AppMetrics.QuotesRandomCount, "success");
         logger.LogInformation("Returning quote {QuoteId}", result.Value.Id);
-        return Results.Ok(ToResponse(result.Value));
+        return Results.Ok(result.Value.ToResponse());
     }
 
     internal static async Task<IResult> GetByIdAsync(
@@ -76,7 +77,7 @@ public static class QuoteEndpoints
         }
 
         logger.LogInformation("Returning quote {QuoteId}", result.Value.Id);
-        return Results.Ok(ToResponse(result.Value));
+        return Results.Ok(result.Value.ToResponse());
     }
 
     internal static async Task<IResult> CreateAsync(
@@ -108,13 +109,6 @@ public static class QuoteEndpoints
 
         AppMetrics.Record(AppMetrics.QuotesCreateCount, "success");
         logger.LogInformation("Created quote {QuoteId}", result.Value.Id);
-        return Results.Created($"/api/quotes/{result.Value.Id}", ToResponse(result.Value));
+        return Results.Created($"/api/quotes/{result.Value.Id}", result.Value.ToResponse());
     }
-
-    private static QuoteResponseDto ToResponse(QuoteDto quote) => new()
-    {
-        Id = quote.Id,
-        Text = quote.Text,
-        Author = quote.Author
-    };
 }

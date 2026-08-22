@@ -1,5 +1,6 @@
 using ErrorOr;
 using Quotes.Application.Abstractions;
+using Quotes.Application.Mapping;
 using Quotes.Domain;
 using Quotes.Domain.Abstractions;
 
@@ -23,7 +24,6 @@ public sealed class CreateQuoteUseCase(IQuoteRepository quotes) : ICreateQuoteUs
             return QuoteErrors.DuplicateFingerprint;
         }
 
-        var quote = created.Value;
-        return new QuoteDto(quote.Id, quote.Text.Value, quote.Author.Value);
+        return created.Value.ToDto();
     }
 }

@@ -1,13 +1,14 @@
 using Quotes.Domain;
+using Quotes.Infrastructure.Persistence;
 
-namespace Quotes.Infrastructure.Persistence;
+namespace Quotes.Infrastructure.Mapping;
 
-internal static class QuoteMapper
+internal static class QuoteMappingExtensions
 {
-    public static Quote ToDomain(QuoteRecord record) =>
+    public static Quote ToDomain(this QuoteRecord record) =>
         Quote.Reconstitute(record.Id, record.Text, record.Author, record.NormalizedFingerprint);
 
-    public static QuoteRecord ToRecord(Quote quote, DateTimeOffset createdAtUtc) =>
+    public static QuoteRecord ToRecord(this Quote quote, DateTimeOffset createdAtUtc) =>
         new()
         {
             Id = quote.Id,

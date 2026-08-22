@@ -1,5 +1,6 @@
 using ErrorOr;
 using Quotes.Application.Abstractions;
+using Quotes.Application.Mapping;
 using Quotes.Domain;
 using Quotes.Domain.Abstractions;
 
@@ -17,6 +18,6 @@ public sealed class GetRandomQuoteUseCase(IQuoteRepository quotes) : IGetRandomQ
             return QuoteErrors.NotFound;
         }
 
-        return new QuoteDto(quote.Id, quote.Text.Value, quote.Author.Value);
+        return quote.ToDto();
     }
 }
