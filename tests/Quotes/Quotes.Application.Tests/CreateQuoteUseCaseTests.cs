@@ -34,8 +34,8 @@ public class CreateQuoteUseCaseTests
         quote.Author.ShouldBe("Martin Fowler");
         await _quotes.Received(1).AddAsync(
             Arg.Is<Quote>(q => q != null
-                && q.Text == "Refactoring is the art of improving design."
-                && q.Author == "Martin Fowler"),
+                && q.Text.Value == "Refactoring is the art of improving design."
+                && q.Author.Value == "Martin Fowler"),
             Arg.Any<CancellationToken>());
     }
 

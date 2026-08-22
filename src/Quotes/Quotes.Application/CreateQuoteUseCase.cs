@@ -24,6 +24,6 @@ public sealed class CreateQuoteUseCase(IQuoteRepository quotes) : ICreateQuoteUs
         }
 
         var quote = created.Value;
-        return new QuoteDto(quote.Id, quote.Text, quote.Author);
+        return new QuoteDto(quote.Id, quote.Text.Value, quote.Author.Value);
     }
 }

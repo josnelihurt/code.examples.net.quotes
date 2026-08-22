@@ -32,9 +32,9 @@ public abstract class QuoteRepositoryContractTests
         outcome.ShouldBe(QuoteAddOutcome.Added);
         var loaded = await repository.GetByIdAsync(created.Value.Id, TestContext.Current.CancellationToken);
         loaded.ShouldNotBeNull();
-        loaded.Text.ShouldBe(created.Value.Text);
-        loaded.Author.ShouldBe(created.Value.Author);
-        loaded.NormalizedFingerprint.ShouldBe(created.Value.NormalizedFingerprint);
+        loaded.Text.Value.ShouldBe(created.Value.Text.Value);
+        loaded.Author.Value.ShouldBe(created.Value.Author.Value);
+        loaded.Fingerprint.Value.ShouldBe(created.Value.Fingerprint.Value);
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public abstract class QuoteRepositoryContractTests
         outcome.ShouldBe(QuoteAddOutcome.DuplicateFingerprint);
         var stored = await repository.GetByIdAsync(first.Value.Id, TestContext.Current.CancellationToken);
         stored.ShouldNotBeNull();
-        stored.Text.ShouldBe(first.Value.Text);
+        stored.Text.Value.ShouldBe(first.Value.Text.Value);
     }
 
     [Fact]

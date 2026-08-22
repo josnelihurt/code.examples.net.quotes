@@ -11,7 +11,7 @@ public class GetRandomQuoteUseCaseTests
         "7",
         "Programs must be written for people to read.",
         "Harold Abelson",
-        Quote.ComputeFingerprint("Programs must be written for people to read."));
+        QuoteText.ComputeFingerprint("Programs must be written for people to read."));
 
     private readonly IQuoteRepository _quotes = Substitute.For<IQuoteRepository>();
     private readonly GetRandomQuoteUseCase _sut;
@@ -30,8 +30,8 @@ public class GetRandomQuoteUseCaseTests
 
         result.IsError.ShouldBeFalse();
         result.Value.Id.ShouldBe(_sampleQuote.Id);
-        result.Value.Text.ShouldBe(_sampleQuote.Text);
-        result.Value.Author.ShouldBe(_sampleQuote.Author);
+        result.Value.Text.ShouldBe(_sampleQuote.Text.Value);
+        result.Value.Author.ShouldBe(_sampleQuote.Author.Value);
     }
 
     [Fact]

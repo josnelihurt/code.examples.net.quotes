@@ -10,81 +10,10 @@ public class QuoteCreateTests
             "  Leonardo da Vinci  ");
 
         result.IsError.ShouldBeFalse();
-        result.Value.Text.ShouldBe("Simplicity is the ultimate sophistication.");
-        result.Value.Author.ShouldBe("Leonardo da Vinci");
+        result.Value.Text.Value.ShouldBe("Simplicity is the ultimate sophistication.");
+        result.Value.Author.Value.ShouldBe("Leonardo da Vinci");
         result.Value.Id.ShouldNotBeNullOrWhiteSpace();
-        result.Value.NormalizedFingerprint.ShouldBe("simplicity is the ultimate sophistication");
-    }
-
-    [Fact]
-    public void Create_rejects_text_that_is_too_short()
-    {
-        var result = Quote.Create("Too short.", "Ada Lovelace");
-
-        result.IsError.ShouldBeTrue();
-        result.FirstError.Code.ShouldBe("quote.text_too_short");
-    }
-
-    [Fact]
-    public void Create_rejects_text_that_is_too_long()
-    {
-        var result = Quote.Create(
-            new string('a', Quote.MaxTextLength + 1) + ".",
-            "Ada Lovelace");
-
-        result.IsError.ShouldBeTrue();
-        result.FirstError.Code.ShouldBe("quote.text_too_long");
-    }
-
-    [Fact]
-    public void Create_rejects_text_without_terminal_punctuation()
-    {
-        var result = Quote.Create(
-            "Programs must be written for people to read",
-            "Harold Abelson");
-
-        result.IsError.ShouldBeTrue();
-        result.FirstError.Code.ShouldBe("quote.text_must_end_with_punctuation");
-    }
-
-    [Fact]
-    public void Create_rejects_text_with_fewer_than_three_words()
-    {
-        var result = Quote.Create("Hello world!", "Ada Lovelace");
-
-        result.IsError.ShouldBeTrue();
-        result.FirstError.Code.ShouldBe("quote.text_needs_more_words");
-    }
-
-    [Fact]
-    public void Create_rejects_an_author_that_is_too_short()
-    {
-        var result = Quote.Create("Talk is cheap. Show me the code.", "A");
-
-        result.IsError.ShouldBeTrue();
-        result.FirstError.Code.ShouldBe("quote.author_too_short");
-    }
-
-    [Fact]
-    public void Create_rejects_an_author_that_is_too_long()
-    {
-        var result = Quote.Create(
-            "Talk is cheap. Show me the code.",
-            new string('a', Quote.MaxAuthorLength + 1));
-
-        result.IsError.ShouldBeTrue();
-        result.FirstError.Code.ShouldBe("quote.author_too_long");
-    }
-
-    [Fact]
-    public void Create_rejects_author_with_digits()
-    {
-        var result = Quote.Create(
-            "Make it work, make it right, make it fast.",
-            "Author 42");
-
-        result.IsError.ShouldBeTrue();
-        result.FirstError.Code.ShouldBe("quote.author_invalid_characters");
+        result.Value.Fingerprint.Value.ShouldBe("simplicity is the ultimate sophistication");
     }
 
     [Fact]
@@ -98,13 +27,21 @@ public class QuoteCreateTests
     }
 
     [Fact]
-    public void Fingerprint_ignores_case_and_punctuation()
+    public void Create_propagates_text_validation_errors()
     {
-        var left = Quote.ComputeFingerprint("Code is like humor!");
-        var right = Quote.ComputeFingerprint("code is like humor.");
+        var result = Quote.Create("Too short.", "Ada Lovelace");
 
-        left.ShouldBe(right);
-        left.ShouldBe("code is like humor");
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.text_too_short");
+    }
+
+    [Fact]
+    public void Create_propagates_author_validation_errors()
+    {
+        var result = Quote.Create("Talk is cheap. Show me the code.", "A");
+
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.author_too_short");
     }
 
     [Theory]

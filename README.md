@@ -2,9 +2,46 @@
 
 Local-first distributed foundation built with **.NET 10**, **Aspire 13**, **React + TypeScript (Vite)**, and **Podman**.
 
+## Intention
+
+This repository is a **corporate-style microservice base**, not a throwaway POC.
+
+The domain (quotes, login) is deliberately small so the sample stays readable. The **real product** is the shape teams copy when they start the next service: Clean Architecture layers, a shared platform kit (`ServiceDefaults`), stable HTTP/error/OpenAPI contracts, auth and telemetry that come for free, and domain modeling habits that survive growth. Hardcoded users and an in-memory catalog are scaffolding so the foundation runs offline—they are explicitly **not** the production story for identity or storage.
+
+### Why not “just a POC”?
+
+A disposable demo optimizes for the shortest path to a working screen. This repo optimizes for the **second, third, and twentieth service**:
+
+| Throwaway POC | This base |
+|---------------|-----------|
+| Mixes HTTP, rules, and storage in one place | Strict dependency rule: Domain/Application stay free of ASP.NET and persistence SDKs |
+| Ad-hoc errors and status codes | Canonical `ErrorOr` → RFC 9457 ProblemDetails with stable `errorCode`s |
+| Reinvent auth, logging, OpenAPI per service | Shared `ServiceDefaults` conventions every host inherits |
+| “We’ll clean the domain later” | Domain entities, value objects, and ports are present while the sample is still small |
+| Docs and contracts drift | OpenAPI export, Docsify, CI drift checks |
+
+If you treat this as throwaway, you learn Aspire wiring once and still invent policy for every new microservice. If you treat it as a **seed**, the next service clones Auth/Quotes structure and only fills in business rules.
+
+### Why invest in domain structure now?
+
+Domain work (e.g. `Quote` as aggregate root, `QuoteText` / `QuoteAuthor` / `QuoteFingerprint` as value objects, catalog rules behind `Quote.Create`) is easier and cheaper **before** the catalog becomes a real database, the API surface doubles, and five teams depend on the error codes. Doing it late means rewriting validation, mapping, and tests under delivery pressure—or shipping a “base” that secretly teaches the wrong habits.
+
+The same idea applies to transport vs domain validation: DTOs keep shallow guards (`[Required]`, `[MaxLength]`); the domain owns catalog invariants. That split is what we want teams to copy, so it has to be visible in the seed—not deferred until “production.”
+
+### What success looks like
+
+Someone cloning this repo for a new service should be able to:
+
+1. Copy the `Api` / `Application` / `Domain` / `Infrastructure` layout.
+2. Reuse `ServiceDefaults` for auth, correlation, ProblemDetails, OpenAPI/Scalar, and telemetry.
+3. Put business rules in Domain (entities + value objects), use cases in Application, adapters in Infrastructure.
+4. Ship a thin Minimal API that mostly maps request → use case → response.
+
+The quotes catalog is the **example**; the base is the **deliverable**.
+
 ## Purpose
 
-This repository is the **base template for production microservices** in a large-organization setting—not a disposable demo and not training material for newcomers. The team uses it to align on Clean Architecture, shared platform defaults, and habits that scale to many services and many endpoints.
+The team uses this repository to align on Clean Architecture, shared platform defaults, and habits that scale to many services and many endpoints.
 
 **Goals**
 
@@ -30,9 +67,9 @@ This repository is the **base template for production microservices** in a large
 
 | Term | Meaning | In this project |
 |------|---------|-----------------|
-| **Entity** | Domain object with identity and invariants | [`Quotes.Domain.Quote`](src/Quotes/Quotes.Domain/Quote.cs) — created via `Quote.Create`, owns catalog rules and `NormalizedFingerprint` |
-| **Value object** | No identity; equality by value; often embedded in an entity | Not a separate type yet; fingerprint/normalized text behave as value concepts inside `Quote`. Prefer extracting (e.g. `QuoteFingerprint`) when reused or rules grow |
-| **Aggregate** | Consistency boundary: one root entity that other objects change through | `Quote` is a small aggregate root (single entity). Repositories load/save the root (`IQuoteRepository`), not internal bits |
+| **Entity** | Domain object with identity and invariants | [`Quotes.Domain.Quote`](src/Quotes/Quotes.Domain/Quote.cs) — created via `Quote.Create`, composes value objects and owns the `AuthorEqualsText` cross-field rule |
+| **Value object** | No identity; equality by value; often embedded in an entity | [`QuoteText`](src/Quotes/Quotes.Domain/QuoteText.cs), [`QuoteAuthor`](src/Quotes/Quotes.Domain/QuoteAuthor.cs), [`QuoteFingerprint`](src/Quotes/Quotes.Domain/QuoteFingerprint.cs) — each owns its create rules; fingerprint is the catalog dedup key |
+| **Aggregate** | Consistency boundary: one root entity that other objects change through | `Quote` is a small aggregate root. Repositories load/save the root (`IQuoteRepository`), not internal bits |
 | **EF / persistence model** | Storage shape (table/document row), mapping, DB concerns | [`QuoteRecord`](src/Quotes/Quotes.Infrastructure/Persistence/QuoteRecord.cs) in Infrastructure. Today in-memory; an EF `DbSet<QuoteRecord>` (or `QuoteEntity`) would stay here — **never** put EF attributes on Domain `Quote` |
 
 **Rule of thumb:** Domain speaks `Quote`; Infrastructure maps `Quote` ↔ `QuoteRecord` at the repository boundary. Api DTOs (`CreateQuoteRequestDto`, `QuoteResponseDto`) are transport only.

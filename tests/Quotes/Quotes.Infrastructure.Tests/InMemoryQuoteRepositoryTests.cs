@@ -41,9 +41,9 @@ public class InMemoryQuoteRepositoryTests : QuoteRepositoryContractTests
 
             quote.ShouldNotBeNull();
             quote.Id.ShouldNotBeNullOrWhiteSpace();
-            quote.Text.ShouldNotBeNullOrWhiteSpace();
-            quote.Author.ShouldNotBeNullOrWhiteSpace();
-            quote.NormalizedFingerprint.ShouldNotBeNullOrWhiteSpace();
+            quote.Text.Value.ShouldNotBeNullOrWhiteSpace();
+            quote.Author.Value.ShouldNotBeNullOrWhiteSpace();
+            quote.Fingerprint.Value.ShouldNotBeNullOrWhiteSpace();
         }
     }
 
@@ -89,7 +89,7 @@ public class InMemoryQuoteRepositoryTests : QuoteRepositoryContractTests
         var quote = await _sut.GetByIdAsync("7", TestContext.Current.CancellationToken);
 
         quote.ShouldNotBeNull();
-        quote.Author.ShouldBe("Harold Abelson");
+        quote.Author.Value.ShouldBe("Harold Abelson");
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class InMemoryQuoteRepositoryTests : QuoteRepositoryContractTests
         var loaded = await _sut.GetRandomAsync(TestContext.Current.CancellationToken);
         loaded.ShouldNotBeNull();
         loaded.Id.ShouldBe(created.Value.Id);
-        loaded.Text.ShouldBe(created.Value.Text);
-        loaded.Author.ShouldBe(created.Value.Author);
+        loaded.Text.Value.ShouldBe(created.Value.Text.Value);
+        loaded.Author.Value.ShouldBe(created.Value.Author.Value);
     }
 }

@@ -18,6 +18,6 @@ public sealed class GetQuoteByIdUseCase(IQuoteRepository quotes) : IGetQuoteById
             return QuoteErrors.NotFound;
         }
 
-        return new QuoteDto(quote.Id, quote.Text, quote.Author);
+        return new QuoteDto(quote.Id, quote.Text.Value, quote.Author.Value);
     }
 }

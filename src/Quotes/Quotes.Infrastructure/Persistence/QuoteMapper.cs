@@ -11,9 +11,9 @@ internal static class QuoteMapper
         new()
         {
             Id = quote.Id,
-            Text = quote.Text,
-            Author = quote.Author,
-            NormalizedFingerprint = quote.NormalizedFingerprint,
+            Text = quote.Text.Value,
+            Author = quote.Author.Value,
+            NormalizedFingerprint = quote.Fingerprint.Value,
             CreatedAtUtc = createdAtUtc
         };
 
@@ -23,7 +23,7 @@ internal static class QuoteMapper
             Id = id,
             Text = text,
             Author = author,
-            NormalizedFingerprint = Quote.ComputeFingerprint(text),
+            NormalizedFingerprint = QuoteText.ComputeFingerprint(text),
             CreatedAtUtc = createdAtUtc
         };
 }

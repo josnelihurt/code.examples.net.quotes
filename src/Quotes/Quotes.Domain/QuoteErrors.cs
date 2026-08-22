@@ -9,22 +9,22 @@ namespace Quotes.Domain;
 public static class QuoteErrors
 {
     public static Error TextTooShort =>
-        Error.Validation("quote.text_too_short", $"Quote text must be at least {Quote.MinTextLength} characters.");
+        Error.Validation("quote.text_too_short", $"Quote text must be at least {QuoteText.MinLength} characters.");
 
     public static Error TextTooLong =>
-        Error.Validation("quote.text_too_long", $"Quote text must be at most {Quote.MaxTextLength} characters.");
+        Error.Validation("quote.text_too_long", $"Quote text must be at most {QuoteText.MaxLength} characters.");
 
     public static Error TextNeedsMoreWords =>
-        Error.Validation("quote.text_needs_more_words", $"Quote text must contain at least {Quote.MinWordCount} words.");
+        Error.Validation("quote.text_needs_more_words", $"Quote text must contain at least {QuoteText.MinWordCount} words.");
 
     public static Error TextMustEndWithPunctuation =>
         Error.Validation("quote.text_must_end_with_punctuation", "Quote text must end with '.', '!', or '?'.");
 
     public static Error AuthorTooShort =>
-        Error.Validation("quote.author_too_short", $"Author must be at least {Quote.MinAuthorLength} characters.");
+        Error.Validation("quote.author_too_short", $"Author must be at least {QuoteAuthor.MinLength} characters.");
 
     public static Error AuthorTooLong =>
-        Error.Validation("quote.author_too_long", $"Author must be at most {Quote.MaxAuthorLength} characters.");
+        Error.Validation("quote.author_too_long", $"Author must be at most {QuoteAuthor.MaxLength} characters.");
 
     public static Error AuthorInvalidCharacters =>
         Error.Validation(

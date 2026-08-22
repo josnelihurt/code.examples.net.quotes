@@ -52,7 +52,7 @@ npm run test:coverage    # + LCOV under frontend/coverage/
 - **Auth.Application** — login success/failure (ErrorOr), blank input, validate delegation
 - **Auth.Infrastructure** — JWT round-trip, expiry, issuer/audience/key mismatch, scope claims, hardcoded credentials
 - **Auth.Api** — login/validate handlers incl. the 401 ProblemDetails shape
-- **Quotes.Domain** — `Quote.Create` catalog rules (all error codes), fingerprint normalization, `Reconstitute` guards
+- **Quotes.Domain** — `QuoteText` / `QuoteAuthor` / `QuoteFingerprint` value objects, `Quote.Create` composition (incl. `AuthorEqualsText`), `Reconstitute` / `FromTrusted` guards
 - **Quotes.Application** — random (incl. empty-catalog 404 path), get-by-id, create success/invalid/conflict
 - **Quotes.Infrastructure** — repository contract suite (`QuoteRepositoryContractTests`, inherited by any future adapter), seeded catalog behavior, deterministic `IQuoteSelector`, DI wiring
 - **Quotes.Api** — handler-level units (200/201/400/404/409), JWT integration (401 problem + `WWW-Authenticate`, 403 without `quotes:write`), and a **full-pipeline `WebApplicationFactory<Program>` suite** booting the real composition root (create → Location → GET round trip, duplicate 409, validation 400, domain 400)

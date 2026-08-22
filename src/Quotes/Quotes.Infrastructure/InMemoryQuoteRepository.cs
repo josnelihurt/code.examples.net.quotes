@@ -103,7 +103,7 @@ public sealed class InMemoryQuoteRepository : IQuoteRepository
             // existing entry" and the id is generated, so only a broken caller can hit it.
             outcome = _quotes.Exists(q =>
                     string.Equals(q.Id, quote.Id, StringComparison.Ordinal)
-                    || string.Equals(q.NormalizedFingerprint, quote.NormalizedFingerprint, StringComparison.Ordinal))
+                    || string.Equals(q.NormalizedFingerprint, quote.Fingerprint.Value, StringComparison.Ordinal))
                 ? QuoteAddOutcome.DuplicateFingerprint
                 : QuoteAddOutcome.Added;
 
