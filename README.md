@@ -62,7 +62,7 @@ Transport vs domain validation: DTOs keep shallow guards (`[Required]`, `[MaxLen
 ### Conventions in place
 
 1. Authentication at the host/platform — Quotes uses JwtBearer + `RequireAuthorization`; writes need `quotes:write` (see `JwtAuthExtensions.WriteQuotesPolicy`).
-2. Thin Minimal API endpoints; Application outcomes are `ErrorOr` results mapped once to RFC 9457 ProblemDetails (`ErrorOrHttpExtensions.ToProblem`) with `errorCode` and `correlationId`. Expected failures are not exceptions.
+2. Thin Minimal API endpoints; Application outcomes are `ErrorOr` results mapped once to RFC 9457 ProblemDetails (`ErrorOrHttpExtensions.ToProblem`) with `errorCode` and `correlationId`. Expected failures are not exceptions. Branching on a result uses the ErrorOr combinators — `Switch`/`SwitchFirst` for side effects (decorators), `Match`/`MatchFirst` for mapping to a value (outcome tags, endpoint `IResult`s) — instead of `if (result.IsError)`/`else` chains.
 3. OpenAPI conventions in the platform (Bearer scheme, standard ProblemDetails shapes for 401/403/404/409/500).
 4. Composition root at the API host: layers register themselves (`AddQuotesApplication`, `AddQuotesInfrastructure`); Program.cs composes them. Api references Application + Infrastructure, never Domain directly.
 5. Transport input validation: request DTOs use Data Annotations; each host calls `AddValidation()` so binding validates before handlers run.

@@ -1,4 +1,5 @@
 using Auth.Api.Endpoints;
+using Auth.Api.Telemetry;
 using Auth.Application;
 using Auth.Infrastructure;
 using Serilog;
@@ -17,6 +18,7 @@ try
     // The API host is the composition root: each layer contributes its own registrations.
     builder.Services.AddAuthApplication();
     builder.Services.AddAuthInfrastructure();
+    builder.Services.AddAuthServiceTelemetry();
     builder.Services.AddValidation();
 
     var app = builder.Build();

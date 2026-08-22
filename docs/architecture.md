@@ -32,6 +32,10 @@ Quotes uses `AddStandardJwtAuthentication` / `UseStandardAuthentication` from Se
 
 Expected failures are `ErrorOr` results from Domain/Application, mapped once at the edge to RFC 9457 ProblemDetails (`ErrorOrHttpExtensions.ToProblem`): `errorCode` + `correlationId` extensions, validation errors under `errors`, `ErrorType` deciding the status code. Exceptions are reserved for infrastructure faults and handled by `UseExceptionHandler`.
 
+## Cross-cutting telemetry
+
+Operation metrics and structured logging live in decorator chains wired at the composition root (`Telemetry/` in each API host), not in endpoint handlers or use cases: `AddQuotesUseCaseTelemetry` / `AddAuthServiceTelemetry` resolve each use case / the auth service as `Telemetry → Logging → inner`, so handlers only map routes and results. Counter names and outcome tags are contract (see observability.md). The one endpoint-side exception is the auth validate missing-token rejection, recorded inline because bearer parsing is an API concern that fails before the service is invoked.
+
 ## Resilience
 
 Global HttpClient defaults enable Aspire service discovery only. Outbound clients that need Polly should add `Microsoft.Extensions.Http.Resilience` explicitly per client when the first service-to-service call appears — this base does not ship a speculative helper.

@@ -26,6 +26,8 @@ Custom meter: `AspireQuotesPoc`
 | `quotes.getbyid.count` | `outcome=success\|not_found\|error` |
 | `quotes.create.count` | `outcome=success\|invalid\|conflict\|error` |
 
+Counters are incremented by the telemetry decorators that wrap each use case / the auth service (`Telemetry/` in each API host); the only endpoint-side recording is the auth validate missing-token rejection, which never reaches the service.
+
 Generate traffic, then open **Metrics** and select these instruments to explore values in Aspire.
 
 ASP.NET Core, HttpClient, and runtime metrics from OpenTelemetry instrumentation are also exported.

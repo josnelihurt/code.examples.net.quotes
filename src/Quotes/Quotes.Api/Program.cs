@@ -1,3 +1,4 @@
+using Quotes.Api.Telemetry;
 using Quotes.Api.V1.Endpoints;
 using Quotes.Application;
 using Quotes.Infrastructure;
@@ -18,6 +19,7 @@ try
     // The API host is the composition root: each layer contributes its own registrations.
     builder.Services.AddQuotesApplication();
     builder.Services.AddQuotesInfrastructure();
+    builder.Services.AddQuotesUseCaseTelemetry();
     builder.Services.AddValidation();
 
     var app = builder.Build();

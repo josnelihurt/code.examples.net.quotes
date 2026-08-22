@@ -35,32 +35,22 @@ public static class AuthEndpoints
         LoginRequestDto body,
         IAuthService authService,
         HttpContext http,
-        ILogger<AuthEndpointsLog> logger,
         CancellationToken cancellationToken)
     {
         var correlationId = http.GetCorrelationId();
-        logger.LogInformation("Login attempt");
 
         var result = await authService.LoginAsync(
             new LoginRequest(body.Username, body.Password),
             cancellationToken);
-        if (result.IsError)
-        {
-            // Credentials are user input: never log the values, only the outcome.
-            AppMetrics.Record(AppMetrics.AuthLoginCount, "failure");
-            logger.LogWarning("Login failed");
-            return result.Errors.ToProblem(http);
-        }
-
-        AppMetrics.Record(AppMetrics.AuthLoginCount, "success");
-        logger.LogInformation("Login succeeded");
-        return Results.Ok(new LoginResponseDto
-        {
-            AccessToken = result.Value.AccessToken,
-            CorrelationId = correlationId,
-            ExpiresIn = result.Value.ExpiresIn,
-            Username = result.Value.Username
-        });
+        return result.Match(
+            onValue: value => Results.Ok(new LoginResponseDto
+            {
+                AccessToken = value.AccessToken,
+                CorrelationId = correlationId,
+                ExpiresIn = value.ExpiresIn,
+                Username = value.Username
+            }),
+            onError: errors => errors.ToProblem(http));
     }
 
     internal static async Task<IResult> ValidateAsync(
@@ -79,21 +69,16 @@ public static class AuthEndpoints
 
         if (string.IsNullOrWhiteSpace(token))
         {
+            // Bearer parsing is an API concern, so this pre-service failure cannot move
+            // into the decorators: record it here, before the auth service is involved.
             AppMetrics.Record(AppMetrics.AuthValidateCount, "failure");
             logger.LogWarning("Token validation request carried no token");
             return AuthErrors.MissingToken.ToProblem(http);
         }
 
         var result = await authService.ValidateAsync(token, cancellationToken);
-        if (!result.Valid)
-        {
-            AppMetrics.Record(AppMetrics.AuthValidateCount, "failure");
-            logger.LogWarning("Token validation failed");
-            return Results.Ok(new ValidateResponseDto { Valid = false });
-        }
-
-        AppMetrics.Record(AppMetrics.AuthValidateCount, "success");
-        logger.LogInformation("Token validated for user {Username}", result.Username);
-        return Results.Ok(new ValidateResponseDto { Valid = true, Username = result.Username });
+        return result.Valid
+            ? Results.Ok(new ValidateResponseDto { Valid = true, Username = result.Username })
+            : Results.Ok(new ValidateResponseDto { Valid = false });
     }
 }

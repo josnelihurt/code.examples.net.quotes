@@ -31,7 +31,6 @@ public class AuthEndpointsTests
             new LoginRequestDto { Username = "jrb", Password = "supersecret" },
             _authService,
             http,
-            _logger,
             TestContext.Current.CancellationToken);
 
         var ok = result.ShouldBeOfType<Ok<LoginResponseDto>>();
@@ -52,7 +51,6 @@ public class AuthEndpointsTests
             new LoginRequestDto { Username = "jrb", Password = "wrong" },
             _authService,
             new DefaultHttpContext(),
-            _logger,
             TestContext.Current.CancellationToken);
 
         var problem = result.ShouldBeOfType<ProblemHttpResult>();

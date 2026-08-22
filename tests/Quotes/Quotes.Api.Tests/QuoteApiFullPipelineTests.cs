@@ -232,6 +232,6 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         await using var scope = _factory.Services.CreateAsyncScope();
 
         scope.ServiceProvider.GetRequiredService<Quotes.Application.Abstractions.ICreateQuoteUseCase>()
-            .ShouldBeOfType<Quotes.Application.CreateQuoteUseCase>();
+            .ShouldBeOfType<Quotes.Api.Telemetry.CreateQuoteUseCaseTelemetry>();
     }
 }

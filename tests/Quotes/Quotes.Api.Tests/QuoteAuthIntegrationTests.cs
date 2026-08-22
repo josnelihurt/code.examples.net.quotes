@@ -172,7 +172,6 @@ public class QuoteAuthIntegrationTests
         builder.Services.AddSingleton(getById);
         builder.Services.AddSingleton(createUseCase);
         builder.Services.AddValidation();
-        builder.Services.AddLogging();
 
         var app = builder.Build();
         app.UseCorrelationId();
