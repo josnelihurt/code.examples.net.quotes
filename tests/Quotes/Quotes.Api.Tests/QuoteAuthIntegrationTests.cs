@@ -12,8 +12,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
-using Quotes.Api.Contracts;
-using Quotes.Api.Endpoints;
+using Quotes.Api.V1.Contracts;
+using Quotes.Api.V1.Endpoints;
 using Quotes.Application.Abstractions;
 
 namespace Quotes.Api.Tests;
@@ -39,7 +39,7 @@ public class QuoteAuthIntegrationTests
         using var client = app.GetTestClient();
 
         using var response = await client.GetAsync(
-            new Uri("/api/quotes/random", UriKind.Relative),
+            new Uri("/api/v1/quotes/random", UriKind.Relative),
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -57,7 +57,7 @@ public class QuoteAuthIntegrationTests
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "not-a-jwt");
 
         using var response = await client.GetAsync(
-            new Uri("/api/quotes/random", UriKind.Relative),
+            new Uri("/api/v1/quotes/random", UriKind.Relative),
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -74,7 +74,7 @@ public class QuoteAuthIntegrationTests
             new AuthenticationHeaderValue("Bearer", CreateToken("jrb", withWriteScope: true));
 
         using var response = await client.GetAsync(
-            new Uri("/api/quotes/random", UriKind.Relative),
+            new Uri("/api/v1/quotes/random", UriKind.Relative),
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -90,7 +90,7 @@ public class QuoteAuthIntegrationTests
         using var client = app.GetTestClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/quotes", UriKind.Relative),
+            new Uri("/api/v1/quotes", UriKind.Relative),
             new CreateQuoteRequestDto
             {
                 Text = "Refactoring is the art of improving design.",
@@ -110,7 +110,7 @@ public class QuoteAuthIntegrationTests
             new AuthenticationHeaderValue("Bearer", CreateToken("jrb", withWriteScope: false));
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/quotes", UriKind.Relative),
+            new Uri("/api/v1/quotes", UriKind.Relative),
             new CreateQuoteRequestDto
             {
                 Text = "Refactoring is the art of improving design.",
@@ -135,7 +135,7 @@ public class QuoteAuthIntegrationTests
             new AuthenticationHeaderValue("Bearer", CreateToken("jrb", withWriteScope: true));
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/quotes", UriKind.Relative),
+            new Uri("/api/v1/quotes", UriKind.Relative),
             new CreateQuoteRequestDto
             {
                 Text = "Refactoring is the art of improving design.",

@@ -1,18 +1,18 @@
 using AspireQuotesPoc.ServiceDefaults.Telemetry;
 using ErrorOr;
-using Quotes.Api.Contracts;
-using Quotes.Api.Mapping;
+using Quotes.Api.V1.Contracts;
+using Quotes.Api.V1.Mapping;
 using Quotes.Application.Abstractions;
 
-namespace Quotes.Api.Endpoints;
+namespace Quotes.Api.V1.Endpoints;
 
 public static class QuoteEndpoints
 {
     public static IEndpointRouteBuilder Map(IEndpointRouteBuilder endpoints)
     {
-        var quotes = endpoints.MapGroup("/api/quotes")
+        var quotes = endpoints.MapGroup("/api/v1/quotes")
             .RequireAuthorization()
-            .WithTags("Quotes");
+            .WithTags("Quotes v1");
 
         quotes.MapGet("/random", GetRandomAsync)
             .WithName("GetRandomQuote")
@@ -109,6 +109,6 @@ public static class QuoteEndpoints
 
         AppMetrics.Record(AppMetrics.QuotesCreateCount, "success");
         logger.LogInformation("Created quote {QuoteId}", result.Value.Id);
-        return Results.Created($"/api/quotes/{result.Value.Id}", result.Value.ToResponse());
+        return Results.Created($"/api/v1/quotes/{result.Value.Id}", result.Value.ToResponse());
     }
 }

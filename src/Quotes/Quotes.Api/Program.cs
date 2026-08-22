@@ -1,4 +1,4 @@
-using Quotes.Api.Endpoints;
+using Quotes.Api.V1.Endpoints;
 using Quotes.Application;
 using Quotes.Infrastructure;
 using Serilog;

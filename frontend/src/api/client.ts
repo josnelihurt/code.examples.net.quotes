@@ -73,7 +73,7 @@ export async function getRandomQuote(): Promise<QuoteResponse> {
     throw new Error('Not authenticated');
   }
 
-  const response = await fetch('/api/quotes/random', {
+  const response = await fetch('/api/v1/quotes/random', {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'X-Correlation-Id': correlationId,

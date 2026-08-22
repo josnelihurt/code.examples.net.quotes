@@ -60,7 +60,7 @@ builder.AddYarp("gateway")
     .WithConfiguration(yarp =>
     {
         yarp.AddRoute("/api/auth/{**catch-all}", auth);
-        yarp.AddRoute("/api/quotes/{**catch-all}", quotes);
+        yarp.AddRoute("/api/v1/quotes/{**catch-all}", quotes);
     })
     .WithExternalHttpEndpoints()
     .PublishWithStaticFiles(web);

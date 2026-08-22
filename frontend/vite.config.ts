@@ -14,7 +14,7 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-      '/api/quotes': {
+      '/api/v1/quotes': {
         target: quotesTarget,
         changeOrigin: true,
         secure: false,

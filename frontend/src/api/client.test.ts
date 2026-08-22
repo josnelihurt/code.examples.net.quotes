@@ -132,7 +132,7 @@ describe('getRandomQuote', () => {
     expect(quote).toEqual({ id: '1', text: 'hello', author: 'someone' });
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('/api/quotes/random');
+    expect(url).toBe('/api/v1/quotes/random');
     const headers = init?.headers as Record<string, string>;
     expect(headers.Authorization).toBe('Bearer issued-token');
     expect(headers['X-Correlation-Id']).toBe('corr-1');

@@ -3,7 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Quotes.Api.Contracts;
+using Quotes.Api.V1.Contracts;
 
 namespace Quotes.Api.Tests;
 
@@ -30,7 +30,7 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         using var client = CreateClient();
 
         using var response = await client.GetAsync(
-            new Uri("/api/quotes/random", UriKind.Relative),
+            new Uri("/api/v1/quotes/random", UriKind.Relative),
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -45,7 +45,7 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         using var client = CreateClient();
 
         using var response = await client.GetAsync(
-            new Uri("/api/quotes/7", UriKind.Relative),
+            new Uri("/api/v1/quotes/7", UriKind.Relative),
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -60,7 +60,7 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         using var client = CreateClient();
 
         using var response = await client.GetAsync(
-            new Uri("/api/quotes/nope", UriKind.Relative),
+            new Uri("/api/v1/quotes/nope", UriKind.Relative),
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -76,13 +76,13 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         var text = $"Integration quotes deserve unique bodies {Guid.NewGuid():N}.";
 
         using var created = await client.PostAsJsonAsync(
-            new Uri("/api/quotes", UriKind.Relative),
+            new Uri("/api/v1/quotes", UriKind.Relative),
             new CreateQuoteRequestDto { Text = text, Author = "Integration Test" },
             TestContext.Current.CancellationToken);
 
         created.StatusCode.ShouldBe(HttpStatusCode.Created);
         var location = created.Headers.Location.ShouldNotBeNull();
-        location.ToString().ShouldStartWith("/api/quotes/");
+        location.ToString().ShouldStartWith("/api/v1/quotes/");
 
         using var fetched = await client.GetAsync(location, TestContext.Current.CancellationToken);
         fetched.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -98,14 +98,14 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         var text = $"Duplicates are rejected deterministically {Guid.NewGuid():N}.";
 
         using var first = await client.PostAsJsonAsync(
-            new Uri("/api/quotes", UriKind.Relative),
+            new Uri("/api/v1/quotes", UriKind.Relative),
             new CreateQuoteRequestDto { Text = text, Author = "Integration Test" },
             TestContext.Current.CancellationToken);
         first.StatusCode.ShouldBe(HttpStatusCode.Created);
 
         // Same meaning, different punctuation and author: same fingerprint.
         using var second = await client.PostAsJsonAsync(
-            new Uri("/api/quotes", UriKind.Relative),
+            new Uri("/api/v1/quotes", UriKind.Relative),
             new CreateQuoteRequestDto
             {
                 Text = text.TrimEnd('.') + "!",
@@ -124,7 +124,7 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         using var client = CreateClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/quotes", UriKind.Relative),
+            new Uri("/api/v1/quotes", UriKind.Relative),
             new CreateQuoteRequestDto { Text = "", Author = "" },
             TestContext.Current.CancellationToken);
 
@@ -142,7 +142,7 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         using var client = CreateClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/quotes", UriKind.Relative),
+            new Uri("/api/v1/quotes", UriKind.Relative),
             new CreateQuoteRequestDto { Text = "Too short.", Author = "Ada Lovelace" },
             TestContext.Current.CancellationToken);
 
@@ -158,7 +158,7 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         using var client = CreateClient(withWriteScope: false);
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/quotes", UriKind.Relative),
+            new Uri("/api/v1/quotes", UriKind.Relative),
             new CreateQuoteRequestDto { Text = "Talk is cheap. Show me the code.", Author = "Linus Torvalds" },
             TestContext.Current.CancellationToken);
 
@@ -171,7 +171,7 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         using var client = _factory.CreateClient();
 
         using var response = await client.GetAsync(
-            new Uri("/api/quotes/random", UriKind.Relative),
+            new Uri("/api/v1/quotes/random", UriKind.Relative),
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

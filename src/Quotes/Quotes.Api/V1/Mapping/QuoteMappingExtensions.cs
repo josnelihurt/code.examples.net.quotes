@@ -1,7 +1,7 @@
-using Quotes.Api.Contracts;
+using Quotes.Api.V1.Contracts;
 using Quotes.Application.Abstractions;
 
-namespace Quotes.Api.Mapping;
+namespace Quotes.Api.V1.Mapping;
 
 public static class QuoteMappingExtensions
 {

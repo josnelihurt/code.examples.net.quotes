@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace Quotes.Api.Contracts;
+namespace Quotes.Api.V1.Contracts;
 
 [Description("Quote returned to an authenticated client.")]
 public sealed class QuoteResponseDto

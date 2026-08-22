@@ -9,8 +9,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Quotes.Api.Contracts;
-using Quotes.Api.Endpoints;
+using Quotes.Api.V1.Contracts;
+using Quotes.Api.V1.Endpoints;
 using Quotes.Application.Abstractions;
 
 namespace Quotes.Api.Tests;
@@ -111,7 +111,7 @@ public class QuoteEndpointsTests
             TestContext.Current.CancellationToken);
 
         var created = response.ShouldBeOfType<Created<QuoteResponseDto>>();
-        created.Location.ShouldBe($"/api/quotes/{_sampleQuote.Id}");
+        created.Location.ShouldBe($"/api/v1/quotes/{_sampleQuote.Id}");
         created.Value.ShouldNotBeNull();
         created.Value.Id.ShouldBe(_sampleQuote.Id);
     }
@@ -178,11 +178,11 @@ public class QuoteEndpointsTests
                 .OfType<RouteEndpoint>()
                 .ToList();
 
-            var random = endpoints.Single(e => e.RoutePattern.RawText == "/api/quotes/random");
-            var byId = endpoints.Single(e => e.RoutePattern.RawText == "/api/quotes/{id}");
+            var random = endpoints.Single(e => e.RoutePattern.RawText == "/api/v1/quotes/random");
+            var byId = endpoints.Single(e => e.RoutePattern.RawText == "/api/v1/quotes/{id}");
             // The combined raw text renders with a trailing slash, but MapPost("") matches
-            // the contract-documented form /api/quotes (covered by the integration tests).
-            var create = endpoints.Single(e => e.RoutePattern.RawText!.TrimEnd('/') == "/api/quotes");
+            // the contract-documented form /api/v1/quotes (covered by the integration tests).
+            var create = endpoints.Single(e => e.RoutePattern.RawText!.TrimEnd('/') == "/api/v1/quotes");
 
             random.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull();
             byId.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull();
