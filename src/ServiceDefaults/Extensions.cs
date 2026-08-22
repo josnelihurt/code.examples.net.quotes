@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using AspireQuotesPoc.Http;
-using AspireQuotesPoc.Telemetry;
+using AspireQuotesPoc.ServiceDefaults.Http;
+using AspireQuotesPoc.ServiceDefaults.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
@@ -18,8 +18,8 @@ public static class Extensions
 {
     public const string CorrelationIdHeaderName = HttpHeaderNames.CorrelationId;
 
-    private const string _healthEndpointPath = "/health";
     private const string _alivenessEndpointPath = "/alive";
+    private const string _healthEndpointPath = "/health";
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
@@ -28,9 +28,8 @@ public static class Extensions
         builder.AddDefaultHealthChecks();
         builder.Services.AddServiceDiscovery();
 
-        // Global HttpClient: service discovery only.
-        // Outbound clients that need Polly should call AddAuthHttpClientResilience explicitly
-        // (avoids double retry if a future default resilience handler is added).
+        // Global HttpClient: service discovery only. Outbound clients that need resilience
+        // opt into it explicitly so they are never double-wrapped.
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
             http.AddServiceDiscovery();
@@ -81,14 +80,13 @@ public static class Extensions
 
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
-        if (app.Environment.IsDevelopment())
+        // Probes must exist in every environment: orchestrators (compose/Kubernetes) wire
+        // readiness and liveness to these paths and cannot depend on the Development flag.
+        app.MapHealthChecks(_healthEndpointPath);
+        app.MapHealthChecks(_alivenessEndpointPath, new HealthCheckOptions
         {
-            app.MapHealthChecks(_healthEndpointPath);
-            app.MapHealthChecks(_alivenessEndpointPath, new HealthCheckOptions
-            {
-                Predicate = r => r.Tags.Contains("live")
-            });
-        }
+            Predicate = r => r.Tags.Contains("live")
+        });
 
         return app;
     }

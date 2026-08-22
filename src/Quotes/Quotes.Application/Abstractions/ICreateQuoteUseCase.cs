@@ -1,6 +1,8 @@
+using ErrorOr;
+
 namespace Quotes.Application.Abstractions;
 
 public interface ICreateQuoteUseCase
 {
-    Task<CreateQuoteResult> ExecuteAsync(CreateQuoteCommand command, CancellationToken cancellationToken);
+    Task<ErrorOr<QuoteDto>> ExecuteAsync(CreateQuoteCommand command, CancellationToken cancellationToken);
 }

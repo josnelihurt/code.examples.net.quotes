@@ -9,13 +9,12 @@ namespace Auth.Infrastructure;
 /// </summary>
 public sealed class HardcodedCredentialStore : ICredentialStore
 {
-    private const string _expectedUsername = "jrb";
-
     [SuppressMessage(
         "Security",
         "S2068:Hard-coded credentials are security-sensitive",
         Justification = "POC demo credential; there is no credential backing store to read from.")]
     private const string _expectedPassword = "supersecret";
+    private const string _expectedUsername = "jrb";
 
     public bool Validate(string username, string password) =>
         string.Equals(username, _expectedUsername, StringComparison.Ordinal)

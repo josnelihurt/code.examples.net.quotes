@@ -8,13 +8,20 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddDockerComposeEnvironment("compose");
 
+// One secret shared by both APIs (Auth signs, Quotes verifies). Local runs get a
+// generated value from the dashboard; published output exposes it as a compose
+// variable that operators must fill with a real secret.
+var jwtSigningKey = builder.AddParameter("jwt-signing-key", secret: true);
+
 var auth = builder.AddProject<Projects.Auth_Api>("auth-api")
+    .WithEnvironment("Jwt__SigningKey", jwtSigningKey)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
     .WithUrlForEndpoint("https", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText })
     .WithUrlForEndpoint("http", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText });
 
 var quotes = builder.AddProject<Projects.Quotes_Api>("quotes-api")
+    .WithEnvironment("Jwt__SigningKey", jwtSigningKey)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
     .WithUrlForEndpoint("https", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText })

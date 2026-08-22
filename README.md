@@ -39,17 +39,18 @@ This repository is the **base template for production microservices** in a large
 
 **Direction of travel** (foundation backlog reflected in this sample’s evolution)
 
-1. Authentication and authorization at the host/platform — Quotes uses JwtBearer + `RequireAuthorization` on `/api/quotes` (extend the same pattern to new services).
-2. Thin Minimal API endpoints plus explicit mappers; Application outcomes mapped once to ProblemDetails (or a single org error contract).
-3. OpenAPI conventions in the platform (Bearer/security scheme, standard 401/403/500 shapes) so documentation stays consistent as endpoints grow.
-4. Split `AddApplication` / `AddInfrastructure` at the composition root; keep MediatR (or similar) as an optional later standard once cross-cutting behaviors justify it—not required for the first vertical slices.
+1. Authentication and authorization at the host/platform — Quotes uses JwtBearer + `RequireAuthorization`; writes require the `quotes:write` scope (see `JwtAuthExtensions.WriteQuotesPolicy`), reads only an authenticated user. Extend the same pattern to new services.
+2. Thin Minimal API endpoints plus explicit mappers; Application outcomes are `ErrorOr` results mapped once to RFC 9457 ProblemDetails (`ErrorOrHttpExtensions.ToProblem`), with `errorCode` and `correlationId` as extensions. Expected failures never travel as exceptions.
+3. OpenAPI conventions in the platform (Bearer/security scheme via document transformer, standard 401/403/404/409/500 ProblemDetails shapes) so documentation stays consistent as endpoints grow.
+4. Composition root at the API host: each layer registers itself (`AddQuotesApplication`, `AddQuotesInfrastructure`), and Program.cs composes them. The Api project references Application + Infrastructure, never Domain directly.
+5. Fail-closed input validation: the shared `ValidationEndpointFilter<T>` (ServiceDefaults) refuses to run without a registered `IValidator<T>` instead of silently skipping validation.
 
 Hardcoded credentials and in-memory quotes are **local scaffolding** so the foundation runs offline. They are not a model for production identity or storage.
 
 ## What it does today
 
-1. **Auth API** issues a JWT for hardcoded user `jrb` / `supersecret` and can validate tokens via `/api/auth/validate` (introspection demo).
-2. **Quotes API** returns a random quote from an in-memory dictionary after JwtBearer middleware validates the bearer token locally.
+1. **Auth API** issues a JWT (with `quotes:read` / `quotes:write` scope claims) for hardcoded user `jrb` / `supersecret` and can validate tokens via `/api/auth/validate` (introspection demo).
+2. **Quotes API** serves quotes from an in-memory catalog after JwtBearer middleware validates the bearer token locally: `GET /api/quotes/random`, `GET /api/quotes/{id}`, and `POST /api/quotes` (requires the `quotes:write` scope; creates validate catalog rules and reject near-duplicates by fingerprint).
 3. **React SPA** logs in, stores token + `X-Correlation-Id`, then fetches quotes through the Vite proxy.
 4. **Aspire AppHost** starts everything, wires service discovery, exports OpenTelemetry to the dashboard, and publishes a **YARP** gateway (no Traefik).
 
@@ -64,7 +65,7 @@ OTEL metrics/logs/traces -> Aspire dashboard
 | Path | Purpose |
 |------|---------|
 | `src/AppHost/` | Aspire orchestration (`AspireQuotesPoc.AppHost`) |
-| `src/ServiceDefaults/` | Platform kit: Serilog, OTEL, OpenAPI/Scalar helpers, JwtBearer auth, Polly, correlation |
+| `src/ServiceDefaults/` | Platform kit: Serilog, OTEL, OpenAPI/Scalar helpers, JwtBearer auth + scope policies, fail-closed validation filter, ErrorOr→ProblemDetails mapper, correlation |
 | `src/Auth/` | Auth service — Domain / Application / Infrastructure / Api |
 | `src/Quotes/` | Quotes service — Domain / Application / Infrastructure / Api |
 | `frontend/` | React + TS Vite SPA |
@@ -148,21 +149,29 @@ Static YAML: `docs/openapi/auth.openapi.yaml`, `docs/openapi/quotes.openapi.yaml
 
 - **Serilog** → console + OTLP (Aspire structured logs), enriched with `CorrelationId`
 - **Traces** → ASP.NET + HttpClient instrumentation
-- **Metrics** (meter `AspireQuotesPoc`): `auth.login.count`, `auth.validate.count`, `quotes.random.count` with tag `outcome=success|failure`
+- **Metrics** (meter `AspireQuotesPoc`): `auth.login.count` (`outcome=success|failure`), `auth.validate.count` (`outcome=success|failure`), `quotes.random.count` (`outcome=success|not_found`), `quotes.create.count` (`outcome=success|invalid|conflict|error`)
 
 See [docs/observability.md](docs/observability.md).
 
 ## Libraries
 
 - OpenAPI + Scalar.AspNetCore
-- FluentValidation (Auth login)
+- FluentValidation (shared `ValidationEndpointFilter<T>` + per-DTO validators)
+- ErrorOr (ratified error/result standard for Domain and Application)
 - Serilog
-- Microsoft.AspNetCore.Authentication.JwtBearer (Quotes host auth)
-- Microsoft.Extensions.Http.Resilience (Polly v8 helpers in ServiceDefaults)
+- Microsoft.AspNetCore.Authentication.JwtBearer (host auth + scope policies)
 - OpenTelemetry (ASP.NET, HttpClient, runtime + custom meters)
 - ProblemDetails / health checks
 
-## Credentials
+## Credentials and secrets
 
 - User: `jrb`
 - Password: `supersecret`
+- JWT signing key: **not committed**. For standalone `dotnet run` in Development, put the documented dev key in user-secrets (Aspire `run` injects the shared `jwt-signing-key` parameter automatically):
+
+```bash
+dotnet user-secrets set "Jwt:SigningKey" "AspireQuotesPoc-Dev-Signing-Key-32chars!" --project src/Auth/Auth.Api
+dotnet user-secrets set "Jwt:SigningKey" "AspireQuotesPoc-Dev-Signing-Key-32chars!" --project src/Quotes/Quotes.Api
+```
+
+Production startup fails if the key is missing or equal to the public development key (`JwtAuthExtensions`). The hermetic OpenAPI export (`Dockerfile.build`) uses a build-time throwaway key.

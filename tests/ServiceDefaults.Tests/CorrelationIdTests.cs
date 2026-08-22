@@ -1,4 +1,4 @@
-using AspireQuotesPoc.Http;
+using AspireQuotesPoc.ServiceDefaults.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;

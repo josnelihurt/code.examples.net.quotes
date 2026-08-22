@@ -1,12 +1,13 @@
 using NSubstitute;
 using Quotes.Domain;
+using Quotes.Domain.Abstractions;
 using Quotes.Infrastructure.Abstractions;
 
 namespace Quotes.Infrastructure.Tests;
 
-public class InMemoryQuoteRepositoryTests
+public class InMemoryQuoteRepositoryTests : QuoteRepositoryContractTests
 {
-    private const int SeedCount = 8;
+    private const int _seedCount = 8;
 
     private readonly IQuoteSelector _selector = Substitute.For<IQuoteSelector>();
     private readonly InMemoryQuoteRepository _sut;
@@ -16,25 +17,29 @@ public class InMemoryQuoteRepositoryTests
         _sut = new InMemoryQuoteRepository(_selector);
     }
 
+    protected override Task<IQuoteRepository> CreateRepositoryAsync() =>
+        Task.FromResult<IQuoteRepository>(new InMemoryQuoteRepository(_selector, []));
+
     [Fact]
-    public void GetRandom_asks_the_selector_for_an_index_inside_the_catalogue()
+    public async Task GetRandomAsync_asks_the_selector_for_an_index_inside_the_catalogue()
     {
         _selector.NextIndex(Arg.Any<int>()).Returns(0);
 
-        _sut.GetRandom();
+        await _sut.GetRandomAsync(TestContext.Current.CancellationToken);
 
-        _selector.Received(1).NextIndex(SeedCount);
+        _selector.Received(1).NextIndex(_seedCount);
     }
 
     [Fact]
-    public void Every_index_maps_to_a_fully_populated_quote()
+    public async Task Every_index_maps_to_a_fully_populated_quote()
     {
-        for (var index = 0; index < SeedCount; index++)
+        for (var index = 0; index < _seedCount; index++)
         {
             _selector.NextIndex(Arg.Any<int>()).Returns(index);
 
-            var quote = _sut.GetRandom();
+            var quote = await _sut.GetRandomAsync(TestContext.Current.CancellationToken);
 
+            quote.ShouldNotBeNull();
             quote.Id.ShouldNotBeNullOrWhiteSpace();
             quote.Text.ShouldNotBeNullOrWhiteSpace();
             quote.Author.ShouldNotBeNullOrWhiteSpace();
@@ -43,26 +48,28 @@ public class InMemoryQuoteRepositoryTests
     }
 
     [Fact]
-    public void Distinct_indexes_yield_distinct_quotes()
+    public async Task Distinct_indexes_yield_distinct_quotes()
     {
         var ids = new List<string>();
-        for (var index = 0; index < SeedCount; index++)
+        for (var index = 0; index < _seedCount; index++)
         {
             _selector.NextIndex(Arg.Any<int>()).Returns(index);
-            ids.Add(_sut.GetRandom().Id);
+            var quote = await _sut.GetRandomAsync(TestContext.Current.CancellationToken);
+            ids.Add(quote!.Id);
         }
 
-        ids.Distinct().Count().ShouldBe(SeedCount);
+        ids.Distinct().Count().ShouldBe(_seedCount);
     }
 
     [Theory]
     [InlineData(-1)]
     [InlineData(int.MaxValue)]
-    public void An_out_of_range_index_is_rejected_rather_than_throwing_an_index_error(int index)
+    public async Task An_out_of_range_index_is_rejected_rather_than_throwing_an_index_error(int index)
     {
         _selector.NextIndex(Arg.Any<int>()).Returns(index);
 
-        Should.Throw<InvalidOperationException>(() => _sut.GetRandom());
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => _sut.GetRandomAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -72,36 +79,32 @@ public class InMemoryQuoteRepositoryTests
 
         for (var attempt = 0; attempt < 500; attempt++)
         {
-            selector.NextIndex(8).ShouldBeInRange(0, 7);
+            selector.NextIndex(_seedCount).ShouldBeInRange(0, _seedCount - 1);
         }
     }
 
     [Fact]
-    public void ExistsByFingerprint_detects_seeded_quotes()
+    public async Task GetByIdAsync_resolves_a_seeded_quote()
     {
-        var fingerprint = Quote.ComputeFingerprint("Talk is cheap. Show me the code.");
+        var quote = await _sut.GetByIdAsync("7", TestContext.Current.CancellationToken);
 
-        _sut.ExistsByFingerprint(fingerprint).ShouldBeTrue();
-        _sut.ExistsByFingerprint("totally unique fingerprint").ShouldBeFalse();
+        quote.ShouldNotBeNull();
+        quote.Author.ShouldBe("Harold Abelson");
     }
 
     [Fact]
-    public void Add_persists_a_quote_available_to_GetRandom()
+    public async Task AddAsync_persists_a_quote_available_to_GetRandomAsync()
     {
-        var created = Quote.Create(
-            "Continuous delivery keeps software releasable.",
-            "Jez Humble");
-        created.Succeeded.ShouldBeTrue();
-        var quote = created.Quote!;
+        var created = Quote.Create("Continuous delivery keeps software releasable.", "Jez Humble");
+        await _sut.AddAsync(created.Value, TestContext.Current.CancellationToken);
 
-        _sut.Add(quote);
-        _sut.Count.ShouldBe(SeedCount + 1);
-        _sut.ExistsByFingerprint(quote.NormalizedFingerprint).ShouldBeTrue();
+        _sut.Count.ShouldBe(_seedCount + 1);
 
-        _selector.NextIndex(Arg.Any<int>()).Returns(SeedCount);
-        var loaded = _sut.GetRandom();
-        loaded.Id.ShouldBe(quote.Id);
-        loaded.Text.ShouldBe(quote.Text);
-        loaded.Author.ShouldBe(quote.Author);
+        _selector.NextIndex(Arg.Any<int>()).Returns(_seedCount);
+        var loaded = await _sut.GetRandomAsync(TestContext.Current.CancellationToken);
+        loaded.ShouldNotBeNull();
+        loaded.Id.ShouldBe(created.Value.Id);
+        loaded.Text.ShouldBe(created.Value.Text);
+        loaded.Author.ShouldBe(created.Value.Author);
     }
 }

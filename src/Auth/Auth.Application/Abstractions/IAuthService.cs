@@ -1,7 +1,10 @@
+using ErrorOr;
+
 namespace Auth.Application.Abstractions;
 
 public interface IAuthService
 {
-    LoginResult? Login(LoginRequest request);
+    Task<ErrorOr<LoginResult>> LoginAsync(LoginRequest request, CancellationToken cancellationToken);
+
     ValidateResult Validate(string accessToken);
 }

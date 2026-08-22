@@ -26,8 +26,12 @@ Header `X-Correlation-Id` is created or accepted on each request, returned from 
 
 ## Authentication
 
-Quotes uses `AddStandardJwtAuthentication` / `UseStandardAuthentication` from ServiceDefaults (JwtBearer + `RequireAuthorization` on the `/api/quotes` group). Auth and Quotes share the same `Jwt` issuer, audience, and signing key. Auth `POST /api/auth/validate` is kept as an optional introspection endpoint; Quotes no longer calls it per request.
+Quotes uses `AddStandardJwtAuthentication` / `UseStandardAuthentication` from ServiceDefaults (JwtBearer + `RequireAuthorization` on the `/api/quotes` group; writes require the `quotes:write` scope policy). Auth and Quotes share the same `Jwt` issuer, audience, and signing key — in Development it comes from user-secrets (or the Aspire `jwt-signing-key` parameter), never from committed files, and Production startup rejects the public development key. Auth `POST /api/auth/validate` is kept as an optional introspection endpoint; Quotes no longer calls it per request.
+
+## Error flow
+
+Expected failures are `ErrorOr` results from Domain/Application, mapped once at the edge to RFC 9457 ProblemDetails (`ErrorOrHttpExtensions.ToProblem`): `errorCode` + `correlationId` extensions, validation errors under `errors`, `ErrorType` deciding the status code. Exceptions are reserved for infrastructure faults and handled by `UseExceptionHandler`.
 
 ## Resilience
 
-`AddAuthHttpClientResilience` remains in ServiceDefaults for outbound HttpClients that need explicit Polly (retry + circuit breaker + timeout). Global HttpClient defaults only enable Aspire service discovery (no double retry).
+Global HttpClient defaults enable Aspire service discovery only. Outbound clients that need Polly should add `Microsoft.Extensions.Http.Resilience` explicitly per client when the first real service-to-service call appears (the seed deliberately ships no speculative helper).

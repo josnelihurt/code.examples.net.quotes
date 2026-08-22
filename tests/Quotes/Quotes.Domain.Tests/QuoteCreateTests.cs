@@ -9,12 +9,11 @@ public class QuoteCreateTests
             "  Simplicity   is the ultimate sophistication.  ",
             "  Leonardo da Vinci  ");
 
-        result.Succeeded.ShouldBeTrue();
-        result.Quote.ShouldNotBeNull();
-        result.Quote.Text.ShouldBe("Simplicity is the ultimate sophistication.");
-        result.Quote.Author.ShouldBe("Leonardo da Vinci");
-        result.Quote.Id.ShouldNotBeNullOrWhiteSpace();
-        result.Quote.NormalizedFingerprint.ShouldBe("simplicity is the ultimate sophistication");
+        result.IsError.ShouldBeFalse();
+        result.Value.Text.ShouldBe("Simplicity is the ultimate sophistication.");
+        result.Value.Author.ShouldBe("Leonardo da Vinci");
+        result.Value.Id.ShouldNotBeNullOrWhiteSpace();
+        result.Value.NormalizedFingerprint.ShouldBe("simplicity is the ultimate sophistication");
     }
 
     [Fact]
@@ -22,8 +21,19 @@ public class QuoteCreateTests
     {
         var result = Quote.Create("Too short.", "Ada Lovelace");
 
-        result.Succeeded.ShouldBeFalse();
-        result.Error.ShouldBe(QuoteCreateError.TextTooShort);
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.text_too_short");
+    }
+
+    [Fact]
+    public void Create_rejects_text_that_is_too_long()
+    {
+        var result = Quote.Create(
+            new string('a', Quote.MaxTextLength + 1) + ".",
+            "Ada Lovelace");
+
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.text_too_long");
     }
 
     [Fact]
@@ -33,8 +43,8 @@ public class QuoteCreateTests
             "Programs must be written for people to read",
             "Harold Abelson");
 
-        result.Succeeded.ShouldBeFalse();
-        result.Error.ShouldBe(QuoteCreateError.TextMustEndWithPunctuation);
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.text_must_end_with_punctuation");
     }
 
     [Fact]
@@ -42,8 +52,28 @@ public class QuoteCreateTests
     {
         var result = Quote.Create("Hello world!", "Ada Lovelace");
 
-        result.Succeeded.ShouldBeFalse();
-        result.Error.ShouldBe(QuoteCreateError.TextNeedsMoreWords);
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.text_needs_more_words");
+    }
+
+    [Fact]
+    public void Create_rejects_an_author_that_is_too_short()
+    {
+        var result = Quote.Create("Talk is cheap. Show me the code.", "A");
+
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.author_too_short");
+    }
+
+    [Fact]
+    public void Create_rejects_an_author_that_is_too_long()
+    {
+        var result = Quote.Create(
+            "Talk is cheap. Show me the code.",
+            new string('a', Quote.MaxAuthorLength + 1));
+
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.author_too_long");
     }
 
     [Fact]
@@ -53,8 +83,8 @@ public class QuoteCreateTests
             "Make it work, make it right, make it fast.",
             "Author 42");
 
-        result.Succeeded.ShouldBeFalse();
-        result.Error.ShouldBe(QuoteCreateError.AuthorInvalidCharacters);
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.author_invalid_characters");
     }
 
     [Fact]
@@ -63,8 +93,8 @@ public class QuoteCreateTests
         const string text = "Simple words make a point.";
         var result = Quote.Create(text, text);
 
-        result.Succeeded.ShouldBeFalse();
-        result.Error.ShouldBe(QuoteCreateError.AuthorEqualsText);
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.author_equals_text");
     }
 
     [Fact]
@@ -75,5 +105,27 @@ public class QuoteCreateTests
 
         left.ShouldBe(right);
         left.ShouldBe("code is like humor");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Reconstitute_rejects_a_blank_id(string id)
+    {
+        Should.Throw<ArgumentException>(() => Quote.Reconstitute(
+            id,
+            "Programs must be written for people to read.",
+            "Harold Abelson",
+            "programs must be written for people to read"));
+    }
+
+    [Fact]
+    public void Reconstitute_rejects_a_blank_fingerprint()
+    {
+        Should.Throw<ArgumentException>(() => Quote.Reconstitute(
+            "7",
+            "Programs must be written for people to read.",
+            "Harold Abelson",
+            "  "));
     }
 }

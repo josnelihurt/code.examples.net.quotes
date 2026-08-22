@@ -1,3 +1,4 @@
+using ErrorOr;
 using NSubstitute;
 using Quotes.Application.Abstractions;
 using Quotes.Domain;
@@ -18,7 +19,8 @@ public class CreateQuoteUseCaseTests
     [Fact]
     public async Task Creates_and_persists_a_valid_quote()
     {
-        _quotes.ExistsByFingerprint(Arg.Any<string>()).Returns(false);
+        _quotes.AddAsync(Arg.Any<Quote>(), Arg.Any<CancellationToken>())
+            .Returns(QuoteAddOutcome.Added);
 
         var result = await _sut.ExecuteAsync(
             new CreateQuoteCommand(
@@ -26,20 +28,22 @@ public class CreateQuoteUseCaseTests
                 "Martin Fowler"),
             TestContext.Current.CancellationToken);
 
-        result.Status.ShouldBe(CreateQuoteStatus.Created);
-        result.Quote.ShouldNotBeNull();
-        var quote = result.Quote!;
+        result.IsError.ShouldBeFalse();
+        var quote = result.Value!;
         quote.Text.ShouldBe("Refactoring is the art of improving design.");
         quote.Author.ShouldBe("Martin Fowler");
-        _quotes.Received(1).Add(Arg.Is<Quote>(q =>
-            q.Text == "Refactoring is the art of improving design."
-            && q.Author == "Martin Fowler"));
+        await _quotes.Received(1).AddAsync(
+            Arg.Is<Quote>(q => q != null
+                && q.Text == "Refactoring is the art of improving design."
+                && q.Author == "Martin Fowler"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Returns_conflict_when_fingerprint_exists()
+    public async Task Returns_conflict_when_the_repository_reports_a_duplicate_fingerprint()
     {
-        _quotes.ExistsByFingerprint(Arg.Any<string>()).Returns(true);
+        _quotes.AddAsync(Arg.Any<Quote>(), Arg.Any<CancellationToken>())
+            .Returns(QuoteAddOutcome.DuplicateFingerprint);
 
         var result = await _sut.ExecuteAsync(
             new CreateQuoteCommand(
@@ -47,9 +51,9 @@ public class CreateQuoteUseCaseTests
                 "Someone Else"),
             TestContext.Current.CancellationToken);
 
-        result.Status.ShouldBe(CreateQuoteStatus.Conflict);
-        result.Quote.ShouldBeNull();
-        _quotes.DidNotReceive().Add(Arg.Any<Quote>());
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.duplicate_fingerprint");
+        result.FirstError.Type.ShouldBe(ErrorType.Conflict);
     }
 
     [Fact]
@@ -59,9 +63,8 @@ public class CreateQuoteUseCaseTests
             new CreateQuoteCommand("Nope.", "X"),
             TestContext.Current.CancellationToken);
 
-        result.Status.ShouldBe(CreateQuoteStatus.Invalid);
-        result.Error.ShouldBe(QuoteCreateError.TextTooShort);
-        _quotes.DidNotReceive().ExistsByFingerprint(Arg.Any<string>());
-        _quotes.DidNotReceive().Add(Arg.Any<Quote>());
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.text_too_short");
+        await _quotes.DidNotReceiveWithAnyArgs().AddAsync(default!, TestContext.Current.CancellationToken);
     }
 }

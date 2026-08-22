@@ -23,18 +23,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponseDto'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponseDto'
         '400':
           description: Bad Request
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/HttpValidationProblemDetails'
+        '401':
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/auth/validate:
     post:
       tags:
@@ -62,15 +62,6 @@ paths:
                 $ref: '#/components/schemas/ValidateResponseDto'
 components:
   schemas:
-    ErrorResponseDto:
-      required:
-      - error
-      type: object
-      properties:
-        error:
-          type: string
-          description: Human-readable reason authentication failed.
-      description: Error payload returned when authentication fails.
     HttpValidationProblemDetails:
       type: object
       properties:
@@ -139,6 +130,32 @@ components:
           type: string
           description: Authenticated username.
       description: Successful login result including the issued access token.
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type:
+          - 'null'
+          - string
+        title:
+          type:
+          - 'null'
+          - string
+        status:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+          - 'null'
+          - integer
+          - string
+          format: int32
+        detail:
+          type:
+          - 'null'
+          - string
+        instance:
+          type:
+          - 'null'
+          - string
     ValidateRequestDto:
       type: object
       properties:

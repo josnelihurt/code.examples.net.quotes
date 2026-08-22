@@ -10,10 +10,18 @@ namespace Auth.Infrastructure;
 
 public sealed class JwtTokenService : ITokenService
 {
-    private readonly SymmetricSecurityKey _key;
-    private readonly string _issuer;
+    // Scopes granted to the demo user; the Quotes API requires quotes:write to create.
+    private const string _quotesReadScope = "quotes:read";
+    private const string _quotesWriteScope = "quotes:write";
+
+    // Must match JwtAuthExtensions.ScopeClaimType in ServiceDefaults, which owns the
+    // policy that consumes these claims.
+    private const string _scopeClaimType = "scope";
+
     private readonly string _audience;
     private readonly int _expiresInSeconds;
+    private readonly string _issuer;
+    private readonly SymmetricSecurityKey _key;
     private readonly ILogger<JwtTokenService> _logger;
 
     public JwtTokenService(IConfiguration configuration, ILogger<JwtTokenService> logger)
@@ -36,7 +44,13 @@ public sealed class JwtTokenService : ITokenService
         var token = new JwtSecurityToken(
             issuer: _issuer,
             audience: _audience,
-            claims: [new Claim(ClaimTypes.Name, username), new Claim(JwtRegisteredClaimNames.Sub, username)],
+            claims:
+            [
+                new Claim(ClaimTypes.Name, username),
+                new Claim(JwtRegisteredClaimNames.Sub, username),
+                new Claim(_scopeClaimType, _quotesReadScope),
+                new Claim(_scopeClaimType, _quotesWriteScope)
+            ],
             expires: DateTime.UtcNow.AddSeconds(_expiresInSeconds),
             signingCredentials: credentials);
 

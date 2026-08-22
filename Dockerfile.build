@@ -6,7 +6,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY Directory.Build.props nuget.config ./
+COPY Directory.Build.props Directory.Packages.props nuget.config ./
 COPY src/ServiceDefaults ./src/ServiceDefaults
 COPY src/Auth ./src/Auth
 COPY src/Quotes ./src/Quotes
@@ -23,6 +23,11 @@ RUN apt-get update \
 
 RUN bash -euo pipefail <<'EOF'
 mkdir -p /out /tmp/logs
+
+# Throwaway key for the export only: both APIs must agree on it, and it must never
+# match the committed development key (the Production guard would reject it, and
+# this throwaway never leaves the build container).
+export Jwt__SigningKey="openapi-export-throwaway-key-0123456789abcdef"
 
 ASPNETCORE_ENVIRONMENT=Development \
 ASPNETCORE_URLS=http://127.0.0.1:18081 \

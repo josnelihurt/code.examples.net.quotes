@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: build & test (Release)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Test projects pull in the whole dependency graph (APIs, ServiceDefaults, both
+      # bounded contexts) without the Vite frontend, and Release builds enforce
+      # TreatWarningsAsErrors, which never runs in the local Debug flow.
+      - name: Test (Release)
+        run: |
+          set -euo pipefail
+          find tests -name '*.Tests.csproj' -print0 | xargs -0 -n1 dotnet test -c Release
+
+  contract-drift:
+    name: openapi contract drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The frozen contracts under docs/openapi are product: regenerate them hermetically
+      # (same flow as scripts/update-contracts.sh) and fail when they no longer match.
+      - name: Export contracts
+        run: docker build -f Dockerfile.build --target contracts -o type=local,dest=out .
+
+      - name: Fail on drift vs frozen contracts
+        run: |
+          diff -u docs/openapi/auth.openapi.yaml out/auth.openapi.yaml
+          diff -u docs/openapi/quotes.openapi.yaml out/quotes.openapi.yaml

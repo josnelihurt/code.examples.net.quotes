@@ -1,5 +1,6 @@
-using AspireQuotesPoc.Http;
-using AspireQuotesPoc.Telemetry;
+using AspireQuotesPoc.ServiceDefaults.Http;
+using AspireQuotesPoc.ServiceDefaults.Telemetry;
+using AspireQuotesPoc.ServiceDefaults.Validation;
 using Auth.Api.Contracts;
 using Auth.Application.Abstractions;
 
@@ -13,9 +14,10 @@ public static class AuthEndpoints
 
         auth.MapPost("/login", LoginAsync)
             .WithName("Login")
+            .AddEndpointFilter<ValidationEndpointFilter<LoginRequestDto>>()
             .Produces<LoginResponseDto>(StatusCodes.Status200OK)
-            .Produces<ErrorResponseDto>(StatusCodes.Status401Unauthorized)
-            .ProducesValidationProblem();
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         auth.MapPost("/validate", Validate)
             .WithName("ValidateToken")
@@ -29,36 +31,31 @@ public static class AuthEndpoints
         LoginRequestDto body,
         IAuthService authService,
         HttpContext http,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        CancellationToken cancellationToken)
     {
         var logger = loggerFactory.CreateLogger(nameof(AuthEndpoints));
-        var validation = await ValidationFilter.ValidateAsync(body, http);
-        if (validation is not null)
-        {
-            return validation;
-        }
-
         var correlationId = http.GetCorrelationId();
         logger.LogInformation("Login attempt for user {Username}", body.Username);
 
-        var result = authService.Login(new LoginRequest(body.Username, body.Password));
-        if (result is null)
+        var result = await authService.LoginAsync(
+            new LoginRequest(body.Username, body.Password),
+            cancellationToken);
+        if (result.IsError)
         {
             AppMetrics.Record(AppMetrics.AuthLoginCount, "failure");
             logger.LogWarning("Login failed for user {Username}", body.Username);
-            return Results.Json(
-                new ErrorResponseDto { Error = "Invalid credentials" },
-                statusCode: StatusCodes.Status401Unauthorized);
+            return result.Errors.ToProblem(http);
         }
 
         AppMetrics.Record(AppMetrics.AuthLoginCount, "success");
-        logger.LogInformation("Login succeeded for user {Username}", result.Username);
+        logger.LogInformation("Login succeeded for user {Username}", result.Value.Username);
         return Results.Ok(new LoginResponseDto
         {
-            AccessToken = result.AccessToken,
+            AccessToken = result.Value.AccessToken,
             CorrelationId = correlationId,
-            ExpiresIn = result.ExpiresIn,
-            Username = result.Username
+            ExpiresIn = result.Value.ExpiresIn,
+            Username = result.Value.Username
         });
     }
 

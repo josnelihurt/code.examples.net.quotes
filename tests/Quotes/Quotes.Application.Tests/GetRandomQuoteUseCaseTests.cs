@@ -1,3 +1,4 @@
+using ErrorOr;
 using NSubstitute;
 using Quotes.Domain;
 using Quotes.Domain.Abstractions;
@@ -23,13 +24,26 @@ public class GetRandomQuoteUseCaseTests
     [Fact]
     public async Task Returns_a_quote_from_the_repository()
     {
-        _quotes.GetRandom().Returns(_sampleQuote);
+        _quotes.GetRandomAsync(Arg.Any<CancellationToken>()).Returns(_sampleQuote);
 
         var result = await _sut.ExecuteAsync(TestContext.Current.CancellationToken);
 
-        result.Id.ShouldBe(_sampleQuote.Id);
-        result.Text.ShouldBe(_sampleQuote.Text);
-        result.Author.ShouldBe(_sampleQuote.Author);
+        result.IsError.ShouldBeFalse();
+        result.Value.Id.ShouldBe(_sampleQuote.Id);
+        result.Value.Text.ShouldBe(_sampleQuote.Text);
+        result.Value.Author.ShouldBe(_sampleQuote.Author);
+    }
+
+    [Fact]
+    public async Task Returns_not_found_when_the_catalog_is_empty()
+    {
+        _quotes.GetRandomAsync(Arg.Any<CancellationToken>()).Returns((Quote?)null);
+
+        var result = await _sut.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.not_found");
+        result.FirstError.Type.ShouldBe(ErrorType.NotFound);
     }
 
     [Fact]
@@ -41,6 +55,6 @@ public class GetRandomQuoteUseCaseTests
         await Should.ThrowAsync<OperationCanceledException>(
             () => _sut.ExecuteAsync(cts.Token));
 
-        _quotes.DidNotReceive().GetRandom();
+        await _quotes.DidNotReceiveWithAnyArgs().GetRandomAsync(TestContext.Current.CancellationToken);
     }
 }

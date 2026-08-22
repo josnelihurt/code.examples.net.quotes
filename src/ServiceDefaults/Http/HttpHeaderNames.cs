@@ -1,4 +1,4 @@
-namespace AspireQuotesPoc.Http;
+namespace AspireQuotesPoc.ServiceDefaults.Http;
 
 public static class HttpHeaderNames
 {

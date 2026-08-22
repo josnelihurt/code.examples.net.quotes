@@ -1,5 +1,5 @@
 using FluentValidation;
-using Quotes.Domain;
+using Quotes.Application.Abstractions;
 
 namespace Quotes.Api.Contracts;
 
@@ -7,7 +7,8 @@ public sealed class CreateQuoteRequestDtoValidator : AbstractValidator<CreateQuo
 {
     public CreateQuoteRequestDtoValidator()
     {
-        RuleFor(x => x.Text).NotEmpty().MaximumLength(Quote.MaxTextLength);
-        RuleFor(x => x.Author).NotEmpty().MaximumLength(Quote.MaxAuthorLength);
+        // Transport-shape guards only; the domain stays the single source of catalog rules.
+        RuleFor(x => x.Text).NotEmpty().MaximumLength(QuoteRules.MaxTextLength);
+        RuleFor(x => x.Author).NotEmpty().MaximumLength(QuoteRules.MaxAuthorLength);
     }
 }

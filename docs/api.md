@@ -31,7 +31,7 @@ This runs a multi-stage [`Dockerfile.build`](../Dockerfile.build) that:
 
 Review the git diff, then commit the YAML with the code change.
 
-OpenAPI version and schema names follow what ASP.NET emits (today OpenAPI 3.1, DTO type names). Prefer fixing docs via code/`[Description]` over patching YAML. Security schemes and extra parameters appear only if the running document includes them (configure via OpenAPI transformers in `ServiceDefaults` if needed).
+OpenAPI version and schema names follow what ASP.NET emits (today OpenAPI 3.1, DTO type names). Prefer fixing docs via code/`[Description]` over patching YAML. The Bearer security scheme is added by the `BearerSecuritySchemeTransformer` in `ServiceDefaults`, so every authorized operation is documented as secured.
 
 Runtime Scalar on each API still uses live `/openapi/v1.json`; the freeze under `docs/openapi/` is for offline Docsify/Scalar and reviewed PRs.
 
@@ -40,8 +40,8 @@ Runtime Scalar on each API still uses live `/openapi/v1.json`; the freeze under 
 | Tool | Use when |
 |------|----------|
 | **Scalar** | Interactive try-request / browse OpenAPI (human) |
-| **`./scripts/test-api.sh`** | Automated smoke without a browser |
-| xUnit (later) | Regression tests |
+| **`./scripts/test-api.sh`** | Automated smoke without a browser (login, random, create + Location round trip, 409 duplicate, 400 invalid) |
+| xUnit (`./scripts/test.sh`) | Regression tests, incl. full-pipeline `WebApplicationFactory` suites |
 
 Scalar is **not required** to verify the APIs; it is the preferred interactive client from [scalar/scalar](https://github.com/scalar/scalar).
 
@@ -64,14 +64,19 @@ With docs serving (`./scripts/serve-docs.sh` or Aspire `docs` resource):
 - [Combined Auth + Quotes reference](scalar/) — loads both OpenAPI YAML files
 - Aspire dashboard: **Scalar** link on the `docs` resource (combined Auth+Quotes reference)
 
+## Error contract
+
+Every error response is RFC 9457 ProblemDetails (`application/problem+json`), including the JwtBearer 401 (which also carries `WWW-Authenticate`). `ErrorOr` failures from Domain/Application are mapped once by `ErrorOrHttpExtensions.ToProblem`: error code and correlation id travel as `errorCode` / `correlationId` extensions; validation errors appear under `errors` keyed by error code (domain rules, e.g. `quote.text_too_short`) or property name (transport validation).
+
 ## Endpoints
 
 ### Auth
 
-- `POST /api/auth/login` — body `{ username, password }`
+- `POST /api/auth/login` — body `{ username, password }`; failure is 401 ProblemDetails
 - `POST /api/auth/validate` — body `{ accessToken }` or `Authorization: Bearer`
 
 ### Quotes
 
-- `GET /api/quotes/random` — requires Bearer JWT (JwtBearer) + optional `X-Correlation-Id`
-- `POST /api/quotes` — create quote (Bearer JWT); rejects invalid catalog rules (400) and near-duplicate fingerprints (409)
+- `GET /api/quotes/random` — requires Bearer JWT (JwtBearer) + optional `X-Correlation-Id`; 404 ProblemDetails when the catalog is empty
+- `GET /api/quotes/{id}` — requires Bearer JWT; 404 ProblemDetails for unknown ids
+- `POST /api/quotes` — requires Bearer JWT **with the `quotes:write` scope** (403 otherwise); 400 for invalid catalog rules, 409 for near-duplicate fingerprints; 201 returns the `Location` header of the created quote

@@ -1,16 +1,17 @@
+using ErrorOr;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Quotes.Api.Contracts;
 using Quotes.Api.Endpoints;
 using Quotes.Application.Abstractions;
-using Quotes.Domain;
 
 namespace Quotes.Api.Tests;
 
@@ -19,17 +20,20 @@ public class QuoteEndpointsTests
     private static readonly ILoggerFactory _loggerFactory = NullLoggerFactory.Instance;
     private static readonly QuoteDto _sampleQuote = new("7", "Programs must be written for people to read.", "Harold Abelson");
 
-    private readonly IGetRandomQuoteUseCase _useCase = Substitute.For<IGetRandomQuoteUseCase>();
     private readonly ICreateQuoteUseCase _createUseCase = Substitute.For<ICreateQuoteUseCase>();
+    private readonly IGetQuoteByIdUseCase _getByIdUseCase = Substitute.For<IGetQuoteByIdUseCase>();
+    private readonly IGetRandomQuoteUseCase _useCase = Substitute.For<IGetRandomQuoteUseCase>();
 
     [Fact]
     public async Task Returns_the_quote_from_the_use_case()
     {
-        _useCase.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(_sampleQuote);
+        ErrorOr<QuoteDto> result = _sampleQuote;
+        _useCase.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(result);
 
-        var result = await QuoteEndpoints.GetRandomAsync(_useCase, _loggerFactory, TestContext.Current.CancellationToken);
+        var response = await QuoteEndpoints.GetRandomAsync(
+            _useCase, _loggerFactory, new DefaultHttpContext(), TestContext.Current.CancellationToken);
 
-        var ok = result.ShouldBeOfType<Ok<QuoteResponseDto>>();
+        var ok = response.ShouldBeOfType<Ok<QuoteResponseDto>>();
         ok.Value.ShouldNotBeNull();
         ok.Value.Id.ShouldBe(_sampleQuote.Id);
         ok.Value.Text.ShouldBe(_sampleQuote.Text);
@@ -37,80 +41,121 @@ public class QuoteEndpointsTests
     }
 
     [Fact]
+    public async Task Returns_a_404_problem_when_the_catalog_is_empty()
+    {
+        ErrorOr<QuoteDto> result = Error.NotFound("quote.not_found", "Quote not found.");
+        _useCase.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(result);
+
+        var response = await QuoteEndpoints.GetRandomAsync(
+            _useCase, _loggerFactory, new DefaultHttpContext(), TestContext.Current.CancellationToken);
+
+        var problem = response.ShouldBeOfType<ProblemHttpResult>();
+        problem.ProblemDetails.Status.ShouldBe(StatusCodes.Status404NotFound);
+    }
+
+    [Fact]
     public async Task Forwards_the_cancellation_token_to_the_use_case()
     {
         using var cts = new CancellationTokenSource();
-        _useCase.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(_sampleQuote);
+        ErrorOr<QuoteDto> result = _sampleQuote;
+        _useCase.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(result);
 
-        await QuoteEndpoints.GetRandomAsync(_useCase, _loggerFactory, cts.Token);
+        await QuoteEndpoints.GetRandomAsync(_useCase, _loggerFactory, new DefaultHttpContext(), cts.Token);
 
         await _useCase.Received(1).ExecuteAsync(cts.Token);
     }
 
     [Fact]
+    public async Task GetById_returns_the_quote_from_the_use_case()
+    {
+        ErrorOr<QuoteDto> result = _sampleQuote;
+        _getByIdUseCase.ExecuteAsync(_sampleQuote.Id, Arg.Any<CancellationToken>()).Returns(result);
+
+        var response = await QuoteEndpoints.GetByIdAsync(
+            _sampleQuote.Id, _getByIdUseCase, _loggerFactory, new DefaultHttpContext(), TestContext.Current.CancellationToken);
+
+        var ok = response.ShouldBeOfType<Ok<QuoteResponseDto>>();
+        ok.Value.ShouldNotBeNull();
+        ok.Value.Id.ShouldBe(_sampleQuote.Id);
+    }
+
+    [Fact]
+    public async Task GetById_returns_a_404_problem_for_an_unknown_id()
+    {
+        ErrorOr<QuoteDto> result = Error.NotFound("quote.not_found", "Quote not found.");
+        _getByIdUseCase.ExecuteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(result);
+
+        var response = await QuoteEndpoints.GetByIdAsync(
+            "missing", _getByIdUseCase, _loggerFactory, new DefaultHttpContext(), TestContext.Current.CancellationToken);
+
+        var problem = response.ShouldBeOfType<ProblemHttpResult>();
+        problem.ProblemDetails.Status.ShouldBe(StatusCodes.Status404NotFound);
+    }
+
+    [Fact]
     public async Task Create_returns_201_when_the_use_case_succeeds()
     {
+        ErrorOr<QuoteDto> result = _sampleQuote;
         _createUseCase.ExecuteAsync(Arg.Any<CreateQuoteCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new CreateQuoteResult(CreateQuoteStatus.Created, _sampleQuote));
+            .Returns(result);
 
-        var http = CreateHttpContext();
-        var result = await QuoteEndpoints.CreateAsync(
+        var response = await QuoteEndpoints.CreateAsync(
             new CreateQuoteRequestDto
             {
                 Text = _sampleQuote.Text,
                 Author = _sampleQuote.Author
             },
             _createUseCase,
-            http,
+            new DefaultHttpContext(),
             _loggerFactory,
             TestContext.Current.CancellationToken);
 
-        var created = result.ShouldBeOfType<Created<QuoteResponseDto>>();
+        var created = response.ShouldBeOfType<Created<QuoteResponseDto>>();
         created.Location.ShouldBe($"/api/quotes/{_sampleQuote.Id}");
         created.Value.ShouldNotBeNull();
         created.Value.Id.ShouldBe(_sampleQuote.Id);
     }
 
     [Fact]
-    public async Task Create_returns_400_when_domain_validation_fails()
+    public async Task Create_returns_a_400_problem_with_the_error_code_when_domain_validation_fails()
     {
+        ErrorOr<QuoteDto> result = Error.Validation("quote.text_too_short", "Quote text must be at least 12 characters.");
         _createUseCase.ExecuteAsync(Arg.Any<CreateQuoteCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new CreateQuoteResult(CreateQuoteStatus.Invalid, Error: QuoteCreateError.TextTooShort));
+            .Returns(result);
 
-        var http = CreateHttpContext();
-        var result = await QuoteEndpoints.CreateAsync(
+        var response = await QuoteEndpoints.CreateAsync(
             new CreateQuoteRequestDto { Text = "Nope.", Author = "Ada" },
             _createUseCase,
-            http,
+            new DefaultHttpContext(),
             _loggerFactory,
             TestContext.Current.CancellationToken);
 
-        var json = result.ShouldBeOfType<JsonHttpResult<ErrorResponseDto>>();
-        json.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
-        json.Value.ShouldNotBeNull();
-        json.Value.Error.ShouldContain("at least");
+        var problem = response.ShouldBeOfType<ProblemHttpResult>();
+        problem.ProblemDetails.Status.ShouldBe(StatusCodes.Status400BadRequest);
+        var validation = problem.ProblemDetails.ShouldBeOfType<HttpValidationProblemDetails>();
+        validation.Errors.Keys.ShouldContain("quote.text_too_short");
     }
 
     [Fact]
-    public async Task Create_returns_409_on_fingerprint_conflict()
+    public async Task Create_returns_a_409_problem_on_a_fingerprint_conflict()
     {
+        ErrorOr<QuoteDto> result = Error.Conflict("quote.duplicate_fingerprint", "A quote with the same meaning already exists.");
         _createUseCase.ExecuteAsync(Arg.Any<CreateQuoteCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new CreateQuoteResult(CreateQuoteStatus.Conflict));
+            .Returns(result);
 
-        var http = CreateHttpContext();
-        var result = await QuoteEndpoints.CreateAsync(
+        var response = await QuoteEndpoints.CreateAsync(
             new CreateQuoteRequestDto
             {
                 Text = "Talk is cheap. Show me the code!",
                 Author = "Someone Else"
             },
             _createUseCase,
-            http,
+            new DefaultHttpContext(),
             _loggerFactory,
             TestContext.Current.CancellationToken);
 
-        var json = result.ShouldBeOfType<JsonHttpResult<ErrorResponseDto>>();
-        json.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+        var problem = response.ShouldBeOfType<ProblemHttpResult>();
+        problem.ProblemDetails.Status.ShouldBe(StatusCodes.Status409Conflict);
     }
 
     [Fact]
@@ -120,6 +165,7 @@ public class QuoteEndpointsTests
         builder.Services.AddAuthentication().AddJwtBearer();
         builder.Services.AddAuthorization();
         builder.Services.AddSingleton(Substitute.For<IGetRandomQuoteUseCase>());
+        builder.Services.AddSingleton(Substitute.For<IGetQuoteByIdUseCase>());
         builder.Services.AddSingleton(Substitute.For<ICreateQuoteUseCase>());
 
         var app = builder.Build();
@@ -133,25 +179,19 @@ public class QuoteEndpointsTests
                 .ToList();
 
             var random = endpoints.Single(e => e.RoutePattern.RawText == "/api/quotes/random");
-            var create = endpoints.Single(e => e.RoutePattern.RawText == "/api/quotes/");
+            var byId = endpoints.Single(e => e.RoutePattern.RawText == "/api/quotes/{id}");
+            // The combined raw text renders with a trailing slash, but MapPost("") matches
+            // the contract-documented form /api/quotes (covered by the integration tests).
+            var create = endpoints.Single(e => e.RoutePattern.RawText!.TrimEnd('/') == "/api/quotes");
 
             random.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull();
-            create.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull();
+            byId.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull();
+            var createAuthorize = create.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull();
+            createAuthorize.Policy.ShouldBe(JwtAuthExtensions.WriteQuotesPolicy);
         }
         finally
         {
             ((IDisposable)app).Dispose();
         }
-    }
-
-    private static DefaultHttpContext CreateHttpContext()
-    {
-        var services = new ServiceCollection();
-        services.AddLogging();
-        var http = new DefaultHttpContext
-        {
-            RequestServices = services.BuildServiceProvider()
-        };
-        return http;
     }
 }

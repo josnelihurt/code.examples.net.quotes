@@ -1,4 +1,4 @@
-using AspireQuotesPoc.Http;
+using AspireQuotesPoc.ServiceDefaults.Http;
 
 namespace ServiceDefaults.Tests;
 

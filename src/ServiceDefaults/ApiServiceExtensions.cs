@@ -1,3 +1,4 @@
+using AspireQuotesPoc.ServiceDefaults.OpenApi;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Scalar.AspNetCore;
@@ -6,10 +7,14 @@ namespace Microsoft.Extensions.Hosting;
 
 public static class ApiServiceExtensions
 {
-    public static TBuilder AddStandardApiServices<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    public static TBuilder AddStandardApiServices<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
     {
         builder.Services.AddProblemDetails();
-        builder.Services.AddOpenApi();
+        builder.Services.AddOpenApi(options =>
+        {
+            options.AddOperationTransformer<BearerSecuritySchemeTransformer>();
+        });
         return builder;
     }
 

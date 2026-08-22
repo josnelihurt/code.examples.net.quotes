@@ -1,5 +1,5 @@
 using System.Diagnostics.Metrics;
-using AspireQuotesPoc.Telemetry;
+using AspireQuotesPoc.ServiceDefaults.Telemetry;
 
 namespace ServiceDefaults.Tests;
 
@@ -16,9 +16,16 @@ public class AppMetricsTests
     [InlineData("auth.login.count")]
     [InlineData("auth.validate.count")]
     [InlineData("quotes.random.count")]
+    [InlineData("quotes.create.count")]
     public void Every_counter_is_named_and_described(string expectedName)
     {
-        var counter = new[] { AppMetrics.AuthLoginCount, AppMetrics.AuthValidateCount, AppMetrics.QuotesRandomCount }
+        var counter = new[]
+            {
+                AppMetrics.AuthLoginCount,
+                AppMetrics.AuthValidateCount,
+                AppMetrics.QuotesRandomCount,
+                AppMetrics.QuotesCreateCount
+            }
             .Single(c => c.Name == expectedName);
 
         counter.Description.ShouldNotBeNullOrWhiteSpace();
@@ -28,6 +35,10 @@ public class AppMetricsTests
     public void Record_increments_by_one_and_tags_the_outcome()
     {
         var measurements = new List<(long Value, string? Outcome)>();
+
+        // Force the static counters to publish before the listener starts; otherwise the
+        // test depends on other tests having touched AppMetrics first.
+        _ = AppMetrics.AuthLoginCount;
 
         using var listener = new MeterListener
         {

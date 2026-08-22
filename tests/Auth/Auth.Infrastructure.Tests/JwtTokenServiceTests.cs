@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -66,6 +67,23 @@ public class JwtTokenServiceTests
 
         result.Valid.ShouldBeTrue();
         result.Username.ShouldBe("jrb");
+    }
+
+    [Fact]
+    public void A_freshly_issued_token_carries_the_read_and_write_scopes()
+    {
+        var sut = CreateService();
+
+        var token = sut.CreateToken("jrb", out _);
+        var scopes = new JwtSecurityTokenHandler()
+            .ReadJwtToken(token)
+            .Claims
+            .Where(claim => claim.Type == "scope")
+            .Select(claim => claim.Value)
+            .ToList();
+
+        scopes.ShouldContain("quotes:read");
+        scopes.ShouldContain("quotes:write");
     }
 
     [Theory]

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using ErrorOr;
 
 namespace Quotes.Domain;
 
@@ -24,54 +25,53 @@ public sealed class Quote
     public string Author { get; }
     public string NormalizedFingerprint { get; }
 
-    public static QuoteCreateResult Create(string? text, string? author)
+    public static ErrorOr<Quote> Create(string? text, string? author)
     {
         var normalizedText = NormalizeWhitespace(text);
         var normalizedAuthor = NormalizeWhitespace(author);
 
         if (normalizedText.Length < MinTextLength)
         {
-            return QuoteCreateResult.Failure(QuoteCreateError.TextTooShort);
+            return QuoteErrors.TextTooShort;
         }
 
         if (normalizedText.Length > MaxTextLength)
         {
-            return QuoteCreateResult.Failure(QuoteCreateError.TextTooLong);
+            return QuoteErrors.TextTooLong;
         }
 
         if (CountWords(normalizedText) < MinWordCount)
         {
-            return QuoteCreateResult.Failure(QuoteCreateError.TextNeedsMoreWords);
+            return QuoteErrors.TextNeedsMoreWords;
         }
 
         if (!EndsWithSentencePunctuation(normalizedText))
         {
-            return QuoteCreateResult.Failure(QuoteCreateError.TextMustEndWithPunctuation);
+            return QuoteErrors.TextMustEndWithPunctuation;
         }
 
         if (normalizedAuthor.Length < MinAuthorLength)
         {
-            return QuoteCreateResult.Failure(QuoteCreateError.AuthorTooShort);
+            return QuoteErrors.AuthorTooShort;
         }
 
         if (normalizedAuthor.Length > MaxAuthorLength)
         {
-            return QuoteCreateResult.Failure(QuoteCreateError.AuthorTooLong);
+            return QuoteErrors.AuthorTooLong;
         }
 
         if (!IsValidAuthor(normalizedAuthor))
         {
-            return QuoteCreateResult.Failure(QuoteCreateError.AuthorInvalidCharacters);
+            return QuoteErrors.AuthorInvalidCharacters;
         }
 
         if (string.Equals(normalizedText, normalizedAuthor, StringComparison.OrdinalIgnoreCase))
         {
-            return QuoteCreateResult.Failure(QuoteCreateError.AuthorEqualsText);
+            return QuoteErrors.AuthorEqualsText;
         }
 
         var fingerprint = ComputeFingerprint(normalizedText);
-        var quote = new Quote(Guid.NewGuid().ToString("N"), normalizedText, normalizedAuthor, fingerprint);
-        return QuoteCreateResult.Success(quote);
+        return new Quote(Guid.NewGuid().ToString("N"), normalizedText, normalizedAuthor, fingerprint);
     }
 
     /// <summary>

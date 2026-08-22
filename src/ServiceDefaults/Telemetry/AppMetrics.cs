@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 
-namespace AspireQuotesPoc.Telemetry;
+namespace AspireQuotesPoc.ServiceDefaults.Telemetry;
 
 public static class AppMetrics
 {

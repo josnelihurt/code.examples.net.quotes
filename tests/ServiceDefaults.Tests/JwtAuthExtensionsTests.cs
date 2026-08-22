@@ -38,4 +38,33 @@ public class JwtAuthExtensionsTests
         Should.Throw<InvalidOperationException>(act)
             .Message.ShouldContain(JwtAuthExtensions.SigningKeyKey);
     }
+
+    [Fact]
+    public void AddStandardJwtAuthentication_rejects_the_development_key_in_production()
+    {
+        var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production
+        });
+        builder.Configuration["Jwt:SigningKey"] = JwtAuthExtensions.DevelopmentSigningKey;
+
+        var act = () => builder.AddStandardJwtAuthentication();
+
+        Should.Throw<InvalidOperationException>(act)
+            .Message.ShouldContain("development key");
+    }
+
+    [Fact]
+    public void AddStandardJwtAuthentication_accepts_a_real_key_in_production()
+    {
+        var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production
+        });
+        builder.Configuration["Jwt:SigningKey"] = "a-production-grade-secret-key-of-sufficient-length";
+
+        builder.AddStandardJwtAuthentication();
+
+        builder.Services.ShouldNotBeNull();
+    }
 }

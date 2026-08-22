@@ -1,8 +1,8 @@
-using AspireQuotesPoc.Http;
+using AspireQuotesPoc.ServiceDefaults.Http;
 using Auth.Api.Contracts;
 using Auth.Api.Endpoints;
 using Auth.Application.Abstractions;
-using FluentValidation;
+using ErrorOr;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,23 +18,21 @@ public class AuthEndpointsTests
 
     private readonly IAuthService _authService = Substitute.For<IAuthService>();
 
-    private static TestHost CreateHostWithValidator() => TestHost.Create(services =>
-        services.AddSingleton<IValidator<LoginRequestDto>, LoginRequestDtoValidator>());
-
     [Fact]
     public async Task Login_returns_the_token_and_the_request_correlation_id()
     {
-        _authService.Login(new LoginRequest("jrb", "supersecret"))
-            .Returns(new LoginResult("issued-token", "jrb", 3600));
+        ErrorOr<LoginResult> login = new LoginResult("issued-token", "jrb", 3600);
+        _authService.LoginAsync(Arg.Any<LoginRequest>(), Arg.Any<CancellationToken>()).Returns(login);
 
-        using var host = CreateHostWithValidator();
-        host.Context.Items[HttpHeaderNames.CorrelationId] = "corr-123";
+        var http = new DefaultHttpContext();
+        http.Items[HttpHeaderNames.CorrelationId] = "corr-123";
 
         var result = await AuthEndpoints.LoginAsync(
             new LoginRequestDto { Username = "jrb", Password = "supersecret" },
             _authService,
-            host.Context,
-            _loggerFactory);
+            http,
+            _loggerFactory,
+            TestContext.Current.CancellationToken);
 
         var ok = result.ShouldBeOfType<Ok<LoginResponseDto>>();
         ok.Value.ShouldNotBeNull();
@@ -45,38 +43,20 @@ public class AuthEndpointsTests
     }
 
     [Fact]
-    public async Task Login_returns_401_when_the_auth_service_rejects_the_credentials()
+    public async Task Login_returns_a_401_problem_when_the_auth_service_rejects_the_credentials()
     {
-        _authService.Login(Arg.Any<LoginRequest>()).Returns((LoginResult?)null);
-
-        using var host = CreateHostWithValidator();
+        ErrorOr<LoginResult> login = AuthErrors.InvalidCredentials;
+        _authService.LoginAsync(Arg.Any<LoginRequest>(), Arg.Any<CancellationToken>()).Returns(login);
 
         var result = await AuthEndpoints.LoginAsync(
             new LoginRequestDto { Username = "jrb", Password = "wrong" },
             _authService,
-            host.Context,
-            _loggerFactory);
+            new DefaultHttpContext(),
+            _loggerFactory,
+            TestContext.Current.CancellationToken);
 
-        var json = result.ShouldBeOfType<JsonHttpResult<ErrorResponseDto>>();
-        json.StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
-        json.Value.ShouldNotBeNull();
-        json.Value.Error.ShouldBe("Invalid credentials");
-    }
-
-    [Fact]
-    public async Task Login_short_circuits_on_a_validation_failure()
-    {
-        using var host = CreateHostWithValidator();
-
-        var result = await AuthEndpoints.LoginAsync(
-            new LoginRequestDto { Username = "", Password = "" },
-            _authService,
-            host.Context,
-            _loggerFactory);
-
-        result.ShouldBeOfType<ProblemHttpResult>()
-            .ProblemDetails.ShouldBeOfType<HttpValidationProblemDetails>();
-        _authService.DidNotReceiveWithAnyArgs().Login(default!);
+        var problem = result.ShouldBeOfType<ProblemHttpResult>();
+        problem.ProblemDetails.Status.ShouldBe(StatusCodes.Status401Unauthorized);
     }
 
     [Fact]
@@ -84,12 +64,10 @@ public class AuthEndpointsTests
     {
         _authService.Validate("body-token").Returns(new ValidateResult(true, "jrb"));
 
-        using var host = TestHost.Create();
-
         var result = AuthEndpoints.Validate(
             new ValidateRequestDto { AccessToken = "body-token" },
             _authService,
-            host.Context,
+            new DefaultHttpContext(),
             _loggerFactory);
 
         var ok = result.ShouldBeOfType<Ok<ValidateResponseDto>>();
@@ -103,10 +81,10 @@ public class AuthEndpointsTests
     {
         _authService.Validate("header-token").Returns(new ValidateResult(true, "jrb"));
 
-        using var host = TestHost.Create();
-        host.Context.Request.Headers.Authorization = "Bearer header-token";
+        var http = new DefaultHttpContext();
+        http.Request.Headers.Authorization = "Bearer header-token";
 
-        var result = AuthEndpoints.Validate(body: null, _authService, host.Context, _loggerFactory);
+        var result = AuthEndpoints.Validate(body: null, _authService, http, _loggerFactory);
 
         result.ShouldBeOfType<Ok<ValidateResponseDto>>();
         _authService.Received(1).Validate("header-token");
@@ -117,13 +95,13 @@ public class AuthEndpointsTests
     {
         _authService.Validate(Arg.Any<string>()).Returns(new ValidateResult(true, "jrb"));
 
-        using var host = TestHost.Create();
-        host.Context.Request.Headers.Authorization = "Bearer header-token";
+        var http = new DefaultHttpContext();
+        http.Request.Headers.Authorization = "Bearer header-token";
 
         AuthEndpoints.Validate(
             new ValidateRequestDto { AccessToken = "body-token" },
             _authService,
-            host.Context,
+            http,
             _loggerFactory);
 
         _authService.Received(1).Validate("body-token");
@@ -132,9 +110,8 @@ public class AuthEndpointsTests
     [Fact]
     public void Validate_returns_401_without_calling_the_auth_service_when_no_token_is_present()
     {
-        using var host = TestHost.Create();
-
-        var result = AuthEndpoints.Validate(body: null, _authService, host.Context, _loggerFactory);
+        var result = AuthEndpoints.Validate(
+            body: null, _authService, new DefaultHttpContext(), _loggerFactory);
 
         var json = result.ShouldBeOfType<JsonHttpResult<ValidateResponseDto>>();
         json.StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
@@ -148,12 +125,10 @@ public class AuthEndpointsTests
     {
         _authService.Validate("stale").Returns(new ValidateResult(false, null));
 
-        using var host = TestHost.Create();
-
         var result = AuthEndpoints.Validate(
             new ValidateRequestDto { AccessToken = "stale" },
             _authService,
-            host.Context,
+            new DefaultHttpContext(),
             _loggerFactory);
 
         var json = result.ShouldBeOfType<JsonHttpResult<ValidateResponseDto>>();

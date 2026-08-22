@@ -1,4 +1,3 @@
-using Auth.Application;
 using Auth.Application.Abstractions;
 using Auth.Domain.Abstractions;
 using Microsoft.Extensions.Configuration;
@@ -9,7 +8,7 @@ namespace Auth.Infrastructure.Tests;
 public class DependencyInjectionTests
 {
     [Fact]
-    public void AddAuthInfrastructure_resolves_the_whole_auth_chain()
+    public void AddAuthInfrastructure_resolves_the_infrastructure_adapters()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -27,6 +26,5 @@ public class DependencyInjectionTests
 
         provider.GetRequiredService<ICredentialStore>().ShouldBeOfType<HardcodedCredentialStore>();
         provider.GetRequiredService<ITokenService>().ShouldBeOfType<JwtTokenService>();
-        provider.GetRequiredService<IAuthService>().ShouldBeOfType<AuthService>();
     }
 }

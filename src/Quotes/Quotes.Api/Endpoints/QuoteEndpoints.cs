@@ -1,7 +1,8 @@
-using AspireQuotesPoc.Telemetry;
+using AspireQuotesPoc.ServiceDefaults.Telemetry;
+using AspireQuotesPoc.ServiceDefaults.Validation;
+using ErrorOr;
 using Quotes.Api.Contracts;
 using Quotes.Application.Abstractions;
-using Quotes.Domain;
 
 namespace Quotes.Api.Endpoints;
 
@@ -16,15 +17,25 @@ public static class QuoteEndpoints
         quotes.MapGet("/random", GetRandomAsync)
             .WithName("GetRandomQuote")
             .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
-            .Produces<ErrorResponseDto>(StatusCodes.Status401Unauthorized);
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
-        quotes.MapPost("/", CreateAsync)
+        quotes.MapGet("/{id}", GetByIdAsync)
+            .WithName("GetQuoteById")
+            .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        quotes.MapPost("", CreateAsync)
             .WithName("CreateQuote")
+            .AddEndpointFilter<ValidationEndpointFilter<CreateQuoteRequestDto>>()
+            .RequireAuthorization(JwtAuthExtensions.WriteQuotesPolicy)
             .Produces<QuoteResponseDto>(StatusCodes.Status201Created)
-            .Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest)
-            .Produces<ErrorResponseDto>(StatusCodes.Status409Conflict)
-            .Produces<ErrorResponseDto>(StatusCodes.Status401Unauthorized)
-            .ProducesValidationProblem();
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         return endpoints;
     }
@@ -32,21 +43,42 @@ public static class QuoteEndpoints
     internal static async Task<IResult> GetRandomAsync(
         IGetRandomQuoteUseCase useCase,
         ILoggerFactory loggerFactory,
+        HttpContext http,
         CancellationToken cancellationToken)
     {
         var logger = loggerFactory.CreateLogger(nameof(QuoteEndpoints));
         logger.LogInformation("Fetching random quote");
 
-        var quote = await useCase.ExecuteAsync(cancellationToken);
+        var result = await useCase.ExecuteAsync(cancellationToken);
+        if (result.IsError)
+        {
+            AppMetrics.Record(AppMetrics.QuotesRandomCount, "not_found");
+            return result.Errors.ToProblem(http);
+        }
 
         AppMetrics.Record(AppMetrics.QuotesRandomCount, "success");
-        logger.LogInformation("Returning quote {QuoteId}", quote.Id);
-        return Results.Ok(new QuoteResponseDto
+        logger.LogInformation("Returning quote {QuoteId}", result.Value.Id);
+        return Results.Ok(ToResponse(result.Value));
+    }
+
+    internal static async Task<IResult> GetByIdAsync(
+        string id,
+        IGetQuoteByIdUseCase useCase,
+        ILoggerFactory loggerFactory,
+        HttpContext http,
+        CancellationToken cancellationToken)
+    {
+        var logger = loggerFactory.CreateLogger(nameof(QuoteEndpoints));
+
+        var result = await useCase.ExecuteAsync(id, cancellationToken);
+        if (result.IsError)
         {
-            Id = quote.Id,
-            Text = quote.Text,
-            Author = quote.Author
-        });
+            logger.LogInformation("Quote {QuoteId} was not found", id);
+            return result.Errors.ToProblem(http);
+        }
+
+        logger.LogInformation("Returning quote {QuoteId}", result.Value.Id);
+        return Results.Ok(ToResponse(result.Value));
     }
 
     internal static async Task<IResult> CreateAsync(
@@ -57,77 +89,34 @@ public static class QuoteEndpoints
         CancellationToken cancellationToken)
     {
         var logger = loggerFactory.CreateLogger(nameof(QuoteEndpoints));
-        var validation = await ValidationFilter.ValidateAsync(body, http);
-        if (validation is not null)
-        {
-            return validation;
-        }
-
-        logger.LogInformation("Creating quote attributed to {Author}", body.Author);
+        // Author is user input: log its length, never the value itself.
+        logger.LogInformation("Creating quote attributed to an author of length {AuthorLength}", body.Author.Length);
 
         var result = await useCase.ExecuteAsync(
             new CreateQuoteCommand(body.Text, body.Author),
             cancellationToken);
-
-        return result.Status switch
+        if (result.IsError)
         {
-            CreateQuoteStatus.Created when result.Quote is not null => Created(result.Quote, logger),
-            CreateQuoteStatus.Invalid => Invalid(result.Error, logger),
-            CreateQuoteStatus.Conflict => Conflict(logger),
-            _ => Unexpected(result.Status, logger)
-        };
-    }
+            var outcome = result.FirstError.Type switch
+            {
+                ErrorType.Validation => "invalid",
+                ErrorType.Conflict => "conflict",
+                _ => "error"
+            };
+            AppMetrics.Record(AppMetrics.QuotesCreateCount, outcome);
+            logger.LogWarning("Quote create rejected: {ErrorCode}", result.FirstError.Code);
+            return result.Errors.ToProblem(http);
+        }
 
-    private static IResult Created(QuoteDto quote, ILogger logger)
-    {
         AppMetrics.Record(AppMetrics.QuotesCreateCount, "success");
-        logger.LogInformation("Created quote {QuoteId}", quote.Id);
-        return Results.Created($"/api/quotes/{quote.Id}", new QuoteResponseDto
-        {
-            Id = quote.Id,
-            Text = quote.Text,
-            Author = quote.Author
-        });
+        logger.LogInformation("Created quote {QuoteId}", result.Value.Id);
+        return Results.Created($"/api/quotes/{result.Value.Id}", ToResponse(result.Value));
     }
 
-    private static IResult Invalid(QuoteCreateError? error, ILogger logger)
+    private static QuoteResponseDto ToResponse(QuoteDto quote) => new()
     {
-        AppMetrics.Record(AppMetrics.QuotesCreateCount, "invalid");
-        var message = Describe(error);
-        logger.LogWarning("Quote create rejected: {Reason}", message);
-        return Results.Json(
-            new ErrorResponseDto { Error = message },
-            statusCode: StatusCodes.Status400BadRequest);
-    }
-
-    private static IResult Conflict(ILogger logger)
-    {
-        AppMetrics.Record(AppMetrics.QuotesCreateCount, "conflict");
-        logger.LogWarning("Quote create conflicted with an existing fingerprint");
-        return Results.Json(
-            new ErrorResponseDto { Error = "A quote with the same meaning already exists." },
-            statusCode: StatusCodes.Status409Conflict);
-    }
-
-    private static IResult Unexpected(CreateQuoteStatus status, ILogger logger)
-    {
-        AppMetrics.Record(AppMetrics.QuotesCreateCount, "error");
-        logger.LogError("Quote create returned unexpected status {Status}", status);
-        return Results.Json(
-            new ErrorResponseDto { Error = "Unable to create quote." },
-            statusCode: StatusCodes.Status500InternalServerError);
-    }
-
-    private static string Describe(QuoteCreateError? error) => error switch
-    {
-        QuoteCreateError.TextTooShort => $"Quote text must be at least {Quote.MinTextLength} characters.",
-        QuoteCreateError.TextTooLong => $"Quote text must be at most {Quote.MaxTextLength} characters.",
-        QuoteCreateError.TextNeedsMoreWords => $"Quote text must contain at least {Quote.MinWordCount} words.",
-        QuoteCreateError.TextMustEndWithPunctuation => "Quote text must end with '.', '!', or '?'.",
-        QuoteCreateError.AuthorTooShort => $"Author must be at least {Quote.MinAuthorLength} characters.",
-        QuoteCreateError.AuthorTooLong => $"Author must be at most {Quote.MaxAuthorLength} characters.",
-        QuoteCreateError.AuthorInvalidCharacters => "Author may only contain letters, spaces, hyphens, apostrophes, and periods.",
-        QuoteCreateError.AuthorEqualsText => "Author must not be the same as the quote text.",
-        _ => "Quote is invalid."
+        Id = quote.Id,
+        Text = quote.Text,
+        Author = quote.Author
     };
 }

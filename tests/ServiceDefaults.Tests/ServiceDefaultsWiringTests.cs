@@ -51,16 +51,17 @@ public class ServiceDefaultsWiringTests
     }
 
     [Fact]
-    public async Task Production_keeps_the_health_endpoints_unmapped()
+    public async Task Production_maps_the_health_endpoints_for_orchestrator_probes()
     {
         await using var app = await StartAsync(Environments.Production);
         using var client = app.GetTestClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
 
-        using var health = await client.GetAsync(
-            new Uri("/health", UriKind.Relative),
-            TestContext.Current.CancellationToken);
+        using var health = await client.GetAsync(new Uri("/health", UriKind.Relative), cancellationToken);
+        using var alive = await client.GetAsync(new Uri("/alive", UriKind.Relative), cancellationToken);
 
-        health.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        health.StatusCode.ShouldBe(HttpStatusCode.OK);
+        alive.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     [Fact]

@@ -4,7 +4,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Json.Serialization;
+using System.Text.Json;
+using ErrorOr;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
@@ -18,16 +19,22 @@ using Quotes.Application.Abstractions;
 
 namespace Quotes.Api.Tests;
 
+/// <summary>
+/// Auth-focused integration tests over a slim pipeline (endpoint + JWT middleware only).
+/// Full-pipeline coverage lives in <see cref="QuoteApiFullPipelineTests"/>.
+/// </summary>
 public class QuoteAuthIntegrationTests
 {
-    private const string _signingKey = "AspireQuotesPoc-Dev-Signing-Key-32chars!";
-    private const string _issuer = "auth-api";
     private const string _audience = "aspire-quotes-poc";
+    private const string _issuer = "auth-api";
 
     private static readonly QuoteDto _sampleQuote = new("7", "Programs must be written for people to read.", "Harold Abelson");
 
+    // Random per test run: tests never depend on a shared, committed key.
+    private static readonly string _signingKey = $"test-key-{Guid.NewGuid():N}{Guid.NewGuid():N}";
+
     [Fact]
-    public async Task Missing_bearer_token_returns_401_with_error_body()
+    public async Task Missing_bearer_token_returns_401_problem_with_www_authenticate()
     {
         await using var app = await StartAsync();
         using var client = app.GetTestClient();
@@ -37,13 +44,14 @@ public class QuoteAuthIntegrationTests
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        var body = await response.Content.ReadFromJsonAsync<ErrorBody>(TestContext.Current.CancellationToken);
-        body.ShouldNotBeNull();
-        body.Error.ShouldBe("Unauthorized");
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        response.Headers.WwwAuthenticate.ShouldNotBeEmpty();
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.GetProperty("title").GetString().ShouldBe("Unauthorized");
     }
 
     [Fact]
-    public async Task Invalid_bearer_token_returns_401()
+    public async Task Invalid_bearer_token_returns_401_with_invalid_token_challenge()
     {
         await using var app = await StartAsync();
         using var client = app.GetTestClient();
@@ -54,6 +62,8 @@ public class QuoteAuthIntegrationTests
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        response.Headers.WwwAuthenticate.Single().Parameter.ShouldNotBeNull()
+            .ShouldContain("error=\"invalid_token\"");
     }
 
     [Fact]
@@ -62,7 +72,7 @@ public class QuoteAuthIntegrationTests
         await using var app = await StartAsync();
         using var client = app.GetTestClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", CreateToken("jrb"));
+            new AuthenticationHeaderValue("Bearer", CreateToken("jrb", withWriteScope: true));
 
         using var response = await client.GetAsync(
             new Uri("/api/quotes/random", UriKind.Relative),
@@ -72,8 +82,6 @@ public class QuoteAuthIntegrationTests
         var quote = await response.Content.ReadFromJsonAsync<QuoteResponseDto>(TestContext.Current.CancellationToken);
         quote.ShouldNotBeNull();
         quote.Id.ShouldBe(_sampleQuote.Id);
-        quote.Text.ShouldBe(_sampleQuote.Text);
-        quote.Author.ShouldBe(_sampleQuote.Author);
     }
 
     [Fact]
@@ -83,7 +91,7 @@ public class QuoteAuthIntegrationTests
         using var client = app.GetTestClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/quotes/", UriKind.Relative),
+            new Uri("/api/quotes", UriKind.Relative),
             new CreateQuoteRequestDto
             {
                 Text = "Refactoring is the art of improving design.",
@@ -95,21 +103,40 @@ public class QuoteAuthIntegrationTests
     }
 
     [Fact]
-    public async Task Create_with_valid_bearer_token_returns_201()
+    public async Task Create_with_a_token_lacking_the_write_scope_returns_403()
     {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", CreateToken("jrb", withWriteScope: false));
+
+        using var response = await client.PostAsJsonAsync(
+            new Uri("/api/quotes", UriKind.Relative),
+            new CreateQuoteRequestDto
+            {
+                Text = "Refactoring is the art of improving design.",
+                Author = "Martin Fowler"
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Create_with_a_scoped_token_returns_201()
+    {
+        ErrorOr<QuoteDto> created = new QuoteDto("new-id", "Refactoring is the art of improving design.", "Martin Fowler");
         var create = Substitute.For<ICreateQuoteUseCase>();
         create.ExecuteAsync(Arg.Any<CreateQuoteCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new CreateQuoteResult(
-                CreateQuoteStatus.Created,
-                new QuoteDto("new-id", "Refactoring is the art of improving design.", "Martin Fowler")));
+            .Returns(created);
 
         await using var app = await StartAsync(create);
         using var client = app.GetTestClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", CreateToken("jrb"));
+            new AuthenticationHeaderValue("Bearer", CreateToken("jrb", withWriteScope: true));
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/quotes/", UriKind.Relative),
+            new Uri("/api/quotes", UriKind.Relative),
             new CreateQuoteRequestDto
             {
                 Text = "Refactoring is the art of improving design.",
@@ -126,7 +153,12 @@ public class QuoteAuthIntegrationTests
     private static async Task<WebApplication> StartAsync(ICreateQuoteUseCase? createUseCase = null)
     {
         var useCase = Substitute.For<IGetRandomQuoteUseCase>();
-        useCase.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(_sampleQuote);
+        ErrorOr<QuoteDto> sample = _sampleQuote;
+        useCase.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(sample);
+
+        var getById = Substitute.For<IGetQuoteByIdUseCase>();
+        ErrorOr<QuoteDto> notFound = Error.NotFound("quote.not_found", "Quote not found.");
+        getById.ExecuteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(notFound);
 
         createUseCase ??= Substitute.For<ICreateQuoteUseCase>();
 
@@ -138,33 +170,40 @@ public class QuoteAuthIntegrationTests
 
         builder.AddStandardJwtAuthentication();
         builder.Services.AddSingleton(useCase);
+        builder.Services.AddSingleton(getById);
         builder.Services.AddSingleton(createUseCase);
         builder.Services.AddValidatorsFromAssemblyContaining<CreateQuoteRequestDtoValidator>();
         builder.Services.AddLogging();
 
         var app = builder.Build();
+        app.UseCorrelationId();
         app.UseStandardAuthentication();
         QuoteEndpoints.Map(app);
         await app.StartAsync();
         return app;
     }
 
-    private static string CreateToken(string username)
+    private static string CreateToken(string username, bool withWriteScope)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_signingKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, username),
+            new(JwtRegisteredClaimNames.Sub, username)
+        };
+        if (withWriteScope)
+        {
+            claims.Add(new Claim("scope", "quotes:read"));
+            claims.Add(new Claim("scope", "quotes:write"));
+        }
+
         var token = new JwtSecurityToken(
             issuer: _issuer,
             audience: _audience,
-            claims: [new Claim(ClaimTypes.Name, username), new Claim(JwtRegisteredClaimNames.Sub, username)],
+            claims: claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: credentials);
         return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    private sealed class ErrorBody
-    {
-        [JsonPropertyName("error")]
-        public string? Error { get; init; }
     }
 }

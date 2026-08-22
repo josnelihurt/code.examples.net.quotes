@@ -1,6 +1,7 @@
 using FluentValidation;
 using Quotes.Api.Contracts;
 using Quotes.Api.Endpoints;
+using Quotes.Application;
 using Quotes.Infrastructure;
 using Serilog;
 
@@ -15,6 +16,9 @@ try
     builder.AddServiceDefaults();
     builder.AddStandardApiServices();
     builder.AddStandardJwtAuthentication();
+
+    // The API host is the composition root: each layer contributes its own registrations.
+    builder.Services.AddQuotesApplication();
     builder.Services.AddQuotesInfrastructure();
     builder.Services.AddValidatorsFromAssemblyContaining<CreateQuoteRequestDtoValidator>();
 
@@ -44,3 +48,6 @@ finally
 {
     await Log.CloseAndFlushAsync();
 }
+
+/// <summary>Entry-point marker for WebApplicationFactory-based integration tests.</summary>
+public partial class Program;

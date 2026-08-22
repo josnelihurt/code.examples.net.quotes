@@ -52,6 +52,37 @@ QUOTE="$(curl -fsS "${QUOTES_URL}/api/quotes/random" \
 echo "login=ok"
 echo "quote=${QUOTE}"
 
+# Create round trip: 201, then GET the Location header, then a 409 for a near duplicate.
+UNIQUE="Smoke test quote $(date +%s)."
+HEADERS="$(curl -fsS -o /dev/null -D - -X POST "${QUOTES_URL}/api/quotes" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-Id: ${CORR}" \
+  -d "{\"text\":\"${UNIQUE}\",\"author\":\"Smoke Test\"}")"
+LOCATION="$(printf '%s' "$HEADERS" | awk 'tolower($1)=="location:" {print $2}' | tr -d '\r')"
+echo "created=${LOCATION}"
+
+if [[ -n "$LOCATION" ]]; then
+  curl -fsS -o /dev/null -w "location_status=%{http_code}\n" "${QUOTES_URL}${LOCATION}" \
+    -H "Authorization: Bearer ${TOKEN}" \
+    -H "X-Correlation-Id: ${CORR}"
+fi
+
+# Same text with '!' instead of '.': same fingerprint, so a 409 is expected.
+STATUS="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "${QUOTES_URL}/api/quotes" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-Id: ${CORR}" \
+  -d "{\"text\":\"${UNIQUE%.}!\",\"author\":\"Somebody Else\"}")"
+echo "duplicate_status=${STATUS} (expect 409)"
+
+STATUS="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "${QUOTES_URL}/api/quotes" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-Id: ${CORR}" \
+  -d '{"text":"short","author":"Smoke Test"}')"
+echo "invalid_status=${STATUS} (expect 400)"
+
 curl -fsS -o /dev/null -w "scalar_auth=%{http_code}\n" "${AUTH_URL}/scalar/"
 curl -fsS -o /dev/null -w "openapi_auth=%{http_code}\n" "${AUTH_URL}/openapi/v1.json"
 echo "smoke ok"
