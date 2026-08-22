@@ -32,6 +32,8 @@ Quotes uses `AddStandardJwtAuthentication` / `UseStandardAuthentication` from Se
 
 Expected failures are `ErrorOr` results from Domain/Application, mapped once at the edge to RFC 9457 ProblemDetails (`ErrorOrHttpExtensions.ToProblem`): `errorCode` + `correlationId` extensions, validation errors under `errors`, `ErrorType` deciding the status code. Exceptions are reserved for infrastructure faults and handled by `UseExceptionHandler`.
 
+Result branching uses the ErrorOr combinators rather than manual `IsError` checks: `Switch`/`SwitchFirst` for side effects (the telemetry/logging decorators are the reference implementation) and `Match`/`MatchFirst` for mapping to another value (outcome tags, endpoint `IResult`s — `Match`'s error payload is the `List<Error>` that `ToProblem` extends). Plain early returns remain correct for one-branch flows (`if (quote is null) return QuoteErrors.NotFound;`) and for non-ErrorOr results such as auth's `ValidateResult`.
+
 ## Cross-cutting telemetry
 
 Operation metrics and structured logging live in decorator chains wired at the composition root (`Telemetry/` in each API host), not in endpoint handlers or use cases: `AddQuotesUseCaseTelemetry` / `AddAuthServiceTelemetry` resolve each use case / the auth service as `Telemetry → Logging → inner`, so handlers only map routes and results. Counter names and outcome tags are contract (see observability.md). The one endpoint-side exception is the auth validate missing-token rejection, recorded inline because bearer parsing is an API concern that fails before the service is invoked.
