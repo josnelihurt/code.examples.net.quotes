@@ -72,11 +72,12 @@ Every error response is RFC 9457 ProblemDetails (`application/problem+json`), in
 
 ### Auth
 
-- `POST /api/auth/login` — body `{ username, password }`; failure is 401 ProblemDetails (`auth.invalid_credentials`)
+- `POST /api/auth/login` — body `{ username, password }`; failure is 401 ProblemDetails (`auth.invalid_credentials`). Both auth endpoints are rate-limited per client IP (fixed window); over-limit answers 429 ProblemDetails (`auth.rate_limited`)
 - `POST /api/auth/validate` — body `{ accessToken }` or `Authorization: Bearer`; RFC 7662-style introspection: valid and invalid tokens both answer 200 with `{ valid, username }`, only a missing token is 400 ProblemDetails (`auth.token_missing`)
 
 ### Quotes
 
 - `GET /api/v1/quotes/random` — requires Bearer JWT **with the `quotes:read` scope** (403 otherwise) + optional `X-Correlation-Id`; 404 ProblemDetails when the catalog is empty
 - `GET /api/v1/quotes/{id}` — requires Bearer JWT with `quotes:read`; 404 ProblemDetails for unknown ids
+- `GET /api/v1/quotes?page=1&pageSize=20` — requires Bearer JWT with `quotes:read`; the ratified pagination pattern: 1-based page, `pageSize` between 1 and 100 (defaults 1 / 20), 400 ProblemDetails (`quote.invalid_page_request`) outside the range; 200 returns `{ items, page, pageSize, totalItems, totalPages }` in stable catalog order, with an empty `items` array beyond the last page
 - `POST /api/v1/quotes` — requires Bearer JWT **with the `quotes:write` scope** (403 otherwise); 400 for invalid catalog rules, 409 for near-duplicate fingerprints; 201 returns the `Location` header of the created quote

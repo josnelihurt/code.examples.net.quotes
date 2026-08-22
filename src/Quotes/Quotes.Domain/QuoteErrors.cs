@@ -37,6 +37,9 @@ public static class QuoteErrors
     public static Error NotFound =>
         Error.NotFound("quote.not_found", "Quote not found.");
 
+    public static Error InvalidPageRequest =>
+        Error.Validation("quote.invalid_page_request", "The requested page or page size is outside the allowed range.");
+
     public static Error DuplicateFingerprint =>
         Error.Conflict("quote.duplicate_fingerprint", "A quote with the same meaning already exists.");
 }

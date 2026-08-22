@@ -37,17 +37,30 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
       security:
       - Bearer: []
-  /api/v1/quotes/{id}:
+  /api/v1/quotes:
     get:
       tags:
       - Quotes v1
-      operationId: GetQuoteById
+      operationId: ListQuotes
       parameters:
-      - name: id
-        in: path
-        required: true
+      - name: page
+        in: query
         schema:
-          type: string
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+          - integer
+          - string
+          format: int32
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+          - integer
+          - string
+          format: int32
+          default: 20
       responses:
         '401':
           description: Unauthorized
@@ -60,9 +73,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteResponseDto'
-        '404':
-          description: Not Found
+                $ref: '#/components/schemas/QuotePageResponseDto'
+        '400':
+          description: Bad Request
           content:
             application/problem+json:
               schema:
@@ -75,7 +88,6 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
       security:
       - Bearer: []
-  /api/v1/quotes:
     post:
       tags:
       - Quotes v1
@@ -107,6 +119,44 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
         '409':
           description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+      - Bearer: []
+  /api/v1/quotes/{id}:
+    get:
+      tags:
+      - Quotes v1
+      operationId: GetQuoteById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponseDto'
+        '404':
+          description: Not Found
           content:
             application/problem+json:
               schema:
@@ -162,6 +212,49 @@ components:
           type:
           - 'null'
           - string
+    QuotePageResponseDto:
+      required:
+      - items
+      - page
+      - pageSize
+      - totalItems
+      - totalPages
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuoteResponseDto'
+          description: Quotes on this page, in stable catalog order.
+        page:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+          - integer
+          - string
+          description: 1-based page number this response represents.
+          format: int32
+        pageSize:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+          - integer
+          - string
+          description: Number of items per page that was requested.
+          format: int32
+        totalItems:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+          - integer
+          - string
+          description: Total number of quotes in the catalog.
+          format: int32
+        totalPages:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+          - integer
+          - string
+          description: Total number of pages at the requested page size.
+          format: int32
+      description: One page of the quote catalog.
     QuoteResponseDto:
       required:
       - id

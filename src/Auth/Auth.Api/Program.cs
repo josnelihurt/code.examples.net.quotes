@@ -1,3 +1,4 @@
+using Auth.Api;
 using Auth.Api.Endpoints;
 using Auth.Api.Telemetry;
 using Auth.Application;
@@ -17,8 +18,9 @@ try
 
     // The API host is the composition root: each layer contributes its own registrations.
     builder.Services.AddAuthApplication();
-    builder.Services.AddAuthInfrastructure();
+    builder.Services.AddAuthInfrastructure(builder.Environment);
     builder.Services.AddAuthServiceTelemetry();
+    builder.Services.AddAuthRateLimiting(builder.Configuration);
     builder.Services.AddValidation();
 
     var app = builder.Build();
@@ -26,6 +28,7 @@ try
     app.UseExceptionHandler();
     app.UseSerilogDefaults();
     app.UseCorrelationId();
+    app.UseRateLimiter();
     app.MapDefaultEndpoints();
     app.MapStandardApiDocumentation();
 

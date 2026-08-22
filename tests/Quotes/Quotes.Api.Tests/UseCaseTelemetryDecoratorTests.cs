@@ -19,7 +19,10 @@ public class UseCaseTelemetryDecoratorTests
 
     private readonly IGetRandomQuoteUseCase _random = Substitute.For<IGetRandomQuoteUseCase>();
     private readonly IGetQuoteByIdUseCase _getById = Substitute.For<IGetQuoteByIdUseCase>();
+    private readonly IListQuotesUseCase _list = Substitute.For<IListQuotesUseCase>();
     private readonly ICreateQuoteUseCase _create = Substitute.For<ICreateQuoteUseCase>();
+
+    private static readonly QuotePageDto _samplePage = new([_sampleQuote], 1, 20, 1, 1);
 
     [Fact]
     public async Task Random_decorator_records_success_and_not_found_and_passes_the_result_through()
@@ -107,16 +110,39 @@ public class UseCaseTelemetryDecoratorTests
     }
 
     [Fact]
+    public async Task List_decorator_records_success_and_invalid_and_passes_the_result_through()
+    {
+        ErrorOr<QuotePageDto> sample = _samplePage;
+        ErrorOr<QuotePageDto> rejected = QuoteErrors.InvalidPageRequest;
+        _list.ExecuteAsync(Arg.Any<ListQuotesQuery>(), Arg.Any<CancellationToken>()).Returns(sample, rejected);
+
+        var sut = new ListQuotesUseCaseTelemetry(_list);
+        var query = new ListQuotesQuery(1, 20);
+
+        var first = await CaptureAsync(AppMetrics.QuotesListCount,
+            () => sut.ExecuteAsync(query, TestContext.Current.CancellationToken));
+        var second = await CaptureAsync(AppMetrics.QuotesListCount,
+            () => sut.ExecuteAsync(query, TestContext.Current.CancellationToken));
+
+        first.Measurements.ShouldBe([(1L, "success")]);
+        first.Result.Value.TotalItems.ShouldBe(1);
+        second.Measurements.ShouldBe([(1L, "invalid")]);
+        second.Result.FirstError.Code.ShouldBe("quote.invalid_page_request");
+    }
+
+    [Fact]
     public async Task Logging_decorators_pass_the_result_through_untouched()
     {
         ErrorOr<QuoteDto> sample = _sampleQuote;
         _random.ExecuteAsync(Arg.Any<CancellationToken>()).Returns(sample);
         _getById.ExecuteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(sample);
         _create.ExecuteAsync(Arg.Any<CreateQuoteCommand>(), Arg.Any<CancellationToken>()).Returns(sample);
+        _list.ExecuteAsync(Arg.Any<ListQuotesQuery>(), Arg.Any<CancellationToken>()).Returns(_samplePage);
 
         var random = new GetRandomQuoteUseCaseLogging(_random, NullLogger<GetRandomQuoteUseCaseLogging>.Instance);
         var getById = new GetQuoteByIdUseCaseLogging(_getById, NullLogger<GetQuoteByIdUseCaseLogging>.Instance);
         var create = new CreateQuoteUseCaseLogging(_create, NullLogger<CreateQuoteUseCaseLogging>.Instance);
+        var list = new ListQuotesUseCaseLogging(_list, NullLogger<ListQuotesUseCaseLogging>.Instance);
 
         (await random.ExecuteAsync(TestContext.Current.CancellationToken)).Value.Id.ShouldBe(_sampleQuote.Id);
         (await getById.ExecuteAsync(_sampleQuote.Id, TestContext.Current.CancellationToken)).Value.Id
@@ -125,6 +151,8 @@ public class UseCaseTelemetryDecoratorTests
                 new CreateQuoteCommand(_sampleQuote.Text, _sampleQuote.Author),
                 TestContext.Current.CancellationToken))
             .Value.Id.ShouldBe(_sampleQuote.Id);
+        (await list.ExecuteAsync(new ListQuotesQuery(1, 20), TestContext.Current.CancellationToken))
+            .Value.TotalItems.ShouldBe(1);
     }
 
     [Fact]
@@ -143,6 +171,8 @@ public class UseCaseTelemetryDecoratorTests
             .ShouldBeOfType<GetRandomQuoteUseCaseTelemetry>();
         scope.ServiceProvider.GetRequiredService<IGetQuoteByIdUseCase>()
             .ShouldBeOfType<GetQuoteByIdUseCaseTelemetry>();
+        scope.ServiceProvider.GetRequiredService<IListQuotesUseCase>()
+            .ShouldBeOfType<ListQuotesUseCaseTelemetry>();
         scope.ServiceProvider.GetRequiredService<ICreateQuoteUseCase>()
             .ShouldBeOfType<CreateQuoteUseCaseTelemetry>();
 

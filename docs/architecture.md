@@ -24,9 +24,26 @@ Aspire AppHost orchestrates processes + YARP gateway (publish) + Docsify
 
 Header `X-Correlation-Id` is created or accepted on each request, returned from login, and reused by the UI on quote calls. Serilog and OTEL scopes/tags carry the same id.
 
+## Bounded context shape rules
+
+The two contexts must answer every structural question the same way; these rules are enforced mechanically by `tests/Architecture.Tests` (NetArchTest).
+
+1. **Project shape**: Domain / Application / Infrastructure / Api per context. A Domain project exists only when the context owns invariants (Auth's is a single port today because tokens have no domain rules yet — add types there, not to Application, when they appear).
+2. **Port placement**: repository-style ports (persistence, external state) live in `*.Domain.Abstractions`; technical ports (token minting, machine concerns) live in `*.Application.Abstractions`. Adapters implement them in Infrastructure.
+3. **Dependency direction**: Domain depends on nothing; Application depends on its own Domain; Infrastructure on Domain + Application; the Api host composes Application + Infrastructure and never references Domain types. Bounded contexts never reference each other; ServiceDefaults references no context.
+4. **Service lifetimes**: register use cases and their decorator chains as **Scoped** by default; Singleton only for adapters proven stateless (credential store, token service). One lifetime rule per seed, not per context.
+5. **API versioning**: every context versions its surface from its first endpoint (`/api/v1/...`). Auth's unversioned `/api/auth` predates the rule and moves to `/api/v1/auth` at its first breaking change, not before.
+6. **Value objects** implement `IEquatable<T>` with ordinal value equality — the glossary's "equality by value" is code, not aspiration.
+
+## Collections and pagination
+
+`GET /api/v1/quotes` is the ratified list pattern: 1-based `page` + `pageSize` query parameters (defaults `1` / `20`, maximum `100`, violations answer `400 quote.invalid_page_request`), offset arithmetic in the use case, `ListAsync(skip, take)` on the repository port returning `QuotePage(Items, Total)`, and a response carrying `items`, `page`, `pageSize`, `totalItems`, `totalPages`. Pages follow stable catalog order; offsets beyond the end return an empty page, never an error. New collection endpoints copy this shape instead of inventing cursors or offsets ad hoc.
+
 ## Authentication
 
 Quotes uses `AddStandardJwtAuthentication` / `UseStandardAuthentication` from ServiceDefaults (JwtBearer + `RequireAuthorization` on the `/api/v1/quotes` group; reads require the `quotes:read` scope policy and writes the `quotes:write` policy, so a valid token alone grants nothing). Auth and Quotes share the same `Jwt` issuer, audience, and signing key — in Development it comes from user-secrets (or the Aspire `jwt-signing-key` parameter), never from committed files, and Production startup rejects the public development key. Auth `POST /api/auth/validate` is an RFC 7662-style introspection endpoint (invalid tokens answer `200 {valid: false}`; only a missing token is a 400); Quotes no longer calls it per request.
+
+Scope differentiation is real, not decorative: the credential store returns the granted scopes with every successful validation (`CredentialValidationResult`), and the token service mints exactly those claims — `jrb` holds read+write, `reader` holds read-only, so a 403 is reachable by any client of the seed, not only by hand-minted test tokens. The scaffolding credential store refuses to register in Production (startup-time, same stance as the dev signing key), and the public auth endpoints sit behind a fixed-window rate limiter (per client IP; over-limit answers `429` as ProblemDetails with `errorCode auth.rate_limited`).
 
 ## Error flow
 

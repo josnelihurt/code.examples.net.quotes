@@ -25,12 +25,17 @@ function renderPage() {
   };
 }
 
+function typeCredentials(username: HTMLInputElement, password: HTMLInputElement) {
+  fireEvent.change(username, { target: { value: 'jrb' } });
+  fireEvent.change(password, { target: { value: 'supersecret' } });
+}
+
 describe('LoginPage', () => {
-  it('prefills the local credentials', () => {
+  it('starts with empty credentials', () => {
     const { username, password } = renderPage();
 
-    expect(username.value).toBe('jrb');
-    expect(password.value).toBe('supersecret');
+    expect(username.value).toBe('');
+    expect(password.value).toBe('');
   });
 
   it('sends whatever the user typed', async () => {
@@ -57,7 +62,8 @@ describe('LoginPage', () => {
       username: 'jrb',
     });
 
-    const { submit } = renderPage();
+    const { username, password, submit } = renderPage();
+    typeCredentials(username, password);
     fireEvent.click(submit);
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/quote'));
@@ -67,7 +73,8 @@ describe('LoginPage', () => {
     vi.spyOn(client, 'login').mockRejectedValue(new Error('Invalid credentials'));
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const { submit } = renderPage();
+    const { username, password, submit } = renderPage();
+    typeCredentials(username, password);
     fireEvent.click(submit);
 
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Invalid credentials'));
@@ -78,7 +85,8 @@ describe('LoginPage', () => {
     vi.spyOn(client, 'login').mockRejectedValue('nope');
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const { submit } = renderPage();
+    const { username, password, submit } = renderPage();
+    typeCredentials(username, password);
     fireEvent.click(submit);
 
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Login failed'));

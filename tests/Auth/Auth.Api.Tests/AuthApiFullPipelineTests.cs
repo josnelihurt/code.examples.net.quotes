@@ -175,15 +175,39 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
         JwtAuthExtensions.WriteQuotesPolicy.ShouldBe(AuthorizationScopes.QuotesWrite);
         JwtAuthExtensions.ScopeClaimType.ShouldBe(AuthorizationScopes.ClaimType);
 
+        // The 401 challenge vocabulary lives in ServiceDefaults for the same reason.
+        JwtAuthExtensions.TokenMissingErrorCode.ShouldBe(AuthErrors.MissingToken.Code);
+
         var token = await _factory.IssueTokenAsync();
-        var scopes = new JwtSecurityTokenHandler()
+        var scopes = ReadScopes(token);
+
+        scopes.ShouldContain(JwtAuthExtensions.ReadQuotesScope);
+        scopes.ShouldContain(JwtAuthExtensions.WriteQuotesScope);
+    }
+
+    [Fact]
+    public async Task The_reader_login_mints_only_the_read_scope()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            new Uri("/api/auth/login", UriKind.Relative),
+            new LoginRequestDto { Username = "reader", Password = "readsecret" },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var login = await response.Content.ReadFromJsonAsync<LoginResponseDto>(TestContext.Current.CancellationToken);
+        login.ShouldNotBeNull();
+
+        var scopes = ReadScopes(login.AccessToken);
+        scopes.ShouldBe([AuthorizationScopes.QuotesRead], ignoreOrder: true);
+    }
+
+    private static List<string> ReadScopes(string token) =>
+        new JwtSecurityTokenHandler()
             .ReadJwtToken(token)
             .Claims
             .Where(claim => claim.Type == AuthorizationScopes.ClaimType)
             .Select(claim => claim.Value)
             .ToList();
-
-        scopes.ShouldContain(JwtAuthExtensions.ReadQuotesScope);
-        scopes.ShouldContain(JwtAuthExtensions.WriteQuotesScope);
-    }
 }

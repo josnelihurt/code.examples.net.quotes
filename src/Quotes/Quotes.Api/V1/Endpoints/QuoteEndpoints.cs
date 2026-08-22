@@ -22,6 +22,14 @@ public static class QuoteEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
+        quotes.MapGet("", ListAsync)
+            .WithName("ListQuotes")
+            .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
+            .Produces<QuotePageResponseDto>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
         quotes.MapGet("/{id}", GetByIdAsync)
             .WithName(GetByIdRouteName)
             .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
@@ -47,6 +55,19 @@ public static class QuoteEndpoints
         CancellationToken cancellationToken)
     {
         var result = await useCase.ExecuteAsync(cancellationToken);
+        return result.Match(
+            onValue: value => Results.Ok(value.ToResponse()),
+            onError: errors => errors.ToProblem(http));
+    }
+
+    internal static async Task<IResult> ListAsync(
+        IListQuotesUseCase useCase,
+        HttpContext http,
+        CancellationToken cancellationToken,
+        int page = 1,
+        int pageSize = QuoteRules.DefaultPageSize)
+    {
+        var result = await useCase.ExecuteAsync(new ListQuotesQuery(page, pageSize), cancellationToken);
         return result.Match(
             onValue: value => Results.Ok(value.ToResponse()),
             onError: errors => errors.ToProblem(http));

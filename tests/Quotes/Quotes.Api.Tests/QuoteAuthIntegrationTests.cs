@@ -24,8 +24,8 @@ namespace Quotes.Api.Tests;
 /// </summary>
 public class QuoteAuthIntegrationTests
 {
-    private const string _audience = "aspire-quotes-poc";
-    private const string _issuer = "auth-api";
+    private static readonly string _audience = JwtAuthExtensions.DefaultAudience;
+    private static readonly string _issuer = JwtAuthExtensions.DefaultIssuer;
 
     private static readonly QuoteDto _sampleQuote = new("7", "Programs must be written for people to read.", "Harold Abelson");
 
@@ -47,6 +47,7 @@ public class QuoteAuthIntegrationTests
         response.Headers.WwwAuthenticate.ShouldNotBeEmpty();
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         problem.GetProperty("title").GetString().ShouldBe("Unauthorized");
+        problem.GetProperty("errorCode").GetString().ShouldBe(JwtAuthExtensions.TokenMissingErrorCode);
     }
 
     [Fact]
@@ -63,6 +64,8 @@ public class QuoteAuthIntegrationTests
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         response.Headers.WwwAuthenticate.Single().Parameter.ShouldNotBeNull()
             .ShouldContain("error=\"invalid_token\"");
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.GetProperty("errorCode").GetString().ShouldBe(JwtAuthExtensions.TokenInvalidErrorCode);
     }
 
     [Fact]
@@ -170,6 +173,7 @@ public class QuoteAuthIntegrationTests
         builder.AddStandardJwtAuthentication();
         builder.Services.AddSingleton(useCase);
         builder.Services.AddSingleton(getById);
+        builder.Services.AddSingleton(Substitute.For<IListQuotesUseCase>());
         builder.Services.AddSingleton(createUseCase);
         builder.Services.AddValidation();
 

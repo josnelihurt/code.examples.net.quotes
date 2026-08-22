@@ -10,13 +10,23 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "${ROOT}"
 
-args=(AspireQuotesPoc.sln --severity warn)
+# The solution includes frontend/frontend.esproj (VS JavaScript SDK), which a clean .NET
+# SDK checkout cannot build, so format the SDK projects individually. CI runs this same
+# script; there is no second, divergent lint invocation.
+PROJECTS=()
+while IFS= read -r -d '' project; do
+  PROJECTS+=("${project}")
+done < <(find src tests -name '*.csproj' -print0)
 
 if [[ "${1:-}" == "--fix" ]]; then
-  exec dotnet format "${args[@]}"
+  for project in "${PROJECTS[@]}"; do
+    dotnet format "${project}" --severity warn
+  done
 elif [[ -n "${1:-}" ]]; then
   echo "Usage: $0 [--fix]" >&2
   exit 2
 else
-  exec dotnet format "${args[@]}" --verify-no-changes
+  for project in "${PROJECTS[@]}"; do
+    dotnet format "${project}" --severity warn --verify-no-changes
+  done
 fi

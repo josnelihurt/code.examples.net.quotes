@@ -4,8 +4,8 @@ import { login } from '../api/client';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('jrb');
-  const [password, setPassword] = useState('supersecret');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -27,7 +27,9 @@ export function LoginPage() {
   return (
     <section className="panel">
       <h1>Sign in</h1>
-      <p className="muted">Local credentials: jrb / supersecret</p>
+      <p className="muted">
+        Local credentials — maintainer: jrb / supersecret, read-only: reader / readsecret
+      </p>
       <form onSubmit={onSubmit} className="form">
         <label>
           <span>Username</span>

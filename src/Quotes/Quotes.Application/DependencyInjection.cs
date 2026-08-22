@@ -13,6 +13,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IGetRandomQuoteUseCase, GetRandomQuoteUseCase>();
         services.AddScoped<IGetQuoteByIdUseCase, GetQuoteByIdUseCase>();
+        services.AddScoped<IListQuotesUseCase, ListQuotesUseCase>();
         services.AddScoped<ICreateQuoteUseCase, CreateQuoteUseCase>();
         return services;
     }

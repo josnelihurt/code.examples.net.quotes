@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using Auth.Application.Abstractions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Auth.Infrastructure.Tests;
@@ -9,13 +10,13 @@ public class JwtTokenServiceTests
 {
     private const string _signingKey = "unit-test-signing-key-that-is-long-enough-1234567890";
 
-    private static JwtTokenService CreateService(params (string Key, string Value)[] overrides)
+    private static JwtTokenService CreateService(params (string Key, string? Value)[] overrides)
     {
         var settings = new Dictionary<string, string?>
         {
             ["Jwt:SigningKey"] = _signingKey,
-            ["Jwt:Issuer"] = "auth-api",
-            ["Jwt:Audience"] = "aspire-quotes-poc",
+            ["Jwt:Issuer"] = JwtAuthExtensions.DefaultIssuer,
+            ["Jwt:Audience"] = JwtAuthExtensions.DefaultAudience,
             ["Jwt:ExpiresInSeconds"] = "3600"
         };
 
@@ -42,7 +43,7 @@ public class JwtTokenServiceTests
     {
         var sut = CreateService(("Jwt:ExpiresInSeconds", "120"));
 
-        var issued = await sut.CreateTokenAsync("jrb", TestContext.Current.CancellationToken);
+        var issued = await sut.CreateTokenAsync("jrb", [AuthorizationScopes.QuotesRead], TestContext.Current.CancellationToken);
 
         issued.AccessToken.ShouldNotBeNullOrWhiteSpace();
         issued.ExpiresInSeconds.ShouldBe(120);
@@ -53,7 +54,7 @@ public class JwtTokenServiceTests
     {
         var sut = CreateService(("Jwt:ExpiresInSeconds", "not-a-number"));
 
-        var issued = await sut.CreateTokenAsync("jrb", TestContext.Current.CancellationToken);
+        var issued = await sut.CreateTokenAsync("jrb", [AuthorizationScopes.QuotesRead], TestContext.Current.CancellationToken);
 
         issued.ExpiresInSeconds.ShouldBe(3600);
     }
@@ -63,7 +64,7 @@ public class JwtTokenServiceTests
     {
         var sut = CreateService();
 
-        var issued = await sut.CreateTokenAsync("jrb", TestContext.Current.CancellationToken);
+        var issued = await sut.CreateTokenAsync("jrb", [AuthorizationScopes.QuotesRead], TestContext.Current.CancellationToken);
         var result = await sut.ValidateTokenAsync(issued.AccessToken, TestContext.Current.CancellationToken);
 
         result.Valid.ShouldBeTrue();
@@ -71,11 +72,14 @@ public class JwtTokenServiceTests
     }
 
     [Fact]
-    public async Task A_freshly_issued_token_carries_the_read_and_write_scopes()
+    public async Task A_freshly_issued_token_carries_exactly_the_requested_scopes()
     {
         var sut = CreateService();
 
-        var issued = await sut.CreateTokenAsync("jrb", TestContext.Current.CancellationToken);
+        var issued = await sut.CreateTokenAsync(
+            "jrb",
+            [AuthorizationScopes.QuotesRead, AuthorizationScopes.QuotesWrite],
+            TestContext.Current.CancellationToken);
         var scopes = new JwtSecurityTokenHandler()
             .ReadJwtToken(issued.AccessToken)
             .Claims
@@ -83,8 +87,26 @@ public class JwtTokenServiceTests
             .Select(claim => claim.Value)
             .ToList();
 
-        scopes.ShouldContain(AuthorizationScopes.QuotesRead);
-        scopes.ShouldContain(AuthorizationScopes.QuotesWrite);
+        scopes.ShouldBe([AuthorizationScopes.QuotesRead, AuthorizationScopes.QuotesWrite], ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task Fallback_issuer_and_audience_match_the_platform_defaults()
+    {
+        // Mirror pin: JwtTokenService cannot reference ServiceDefaults, so its fallback
+        // literals must be pinned to JwtAuthExtensions.Default* by test.
+        var withoutIssuerOrAudience = CreateService(
+            ("Jwt:Issuer", null),
+            ("Jwt:Audience", null));
+        var verifier = CreateService(
+            ("Jwt:Issuer", JwtAuthExtensions.DefaultIssuer),
+            ("Jwt:Audience", JwtAuthExtensions.DefaultAudience));
+
+        var issued = await withoutIssuerOrAudience.CreateTokenAsync(
+            "jrb", [AuthorizationScopes.QuotesRead], TestContext.Current.CancellationToken);
+
+        (await verifier.ValidateTokenAsync(issued.AccessToken, TestContext.Current.CancellationToken))
+            .Valid.ShouldBeTrue();
     }
 
     [Theory]
@@ -106,7 +128,7 @@ public class JwtTokenServiceTests
         var verifier = CreateService();
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        var issued = await issuer.CreateTokenAsync("jrb", cancellationToken);
+        var issued = await issuer.CreateTokenAsync("jrb", [AuthorizationScopes.QuotesRead], cancellationToken);
         var result = await verifier.ValidateTokenAsync(issued.AccessToken, cancellationToken);
 
         result.Valid.ShouldBeFalse();
@@ -119,7 +141,7 @@ public class JwtTokenServiceTests
         var verifier = CreateService();
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        var issued = await issuer.CreateTokenAsync("jrb", cancellationToken);
+        var issued = await issuer.CreateTokenAsync("jrb", [AuthorizationScopes.QuotesRead], cancellationToken);
 
         (await verifier.ValidateTokenAsync(issued.AccessToken, cancellationToken)).Valid.ShouldBeFalse();
     }
@@ -131,7 +153,7 @@ public class JwtTokenServiceTests
         var verifier = CreateService();
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        var issued = await issuer.CreateTokenAsync("jrb", cancellationToken);
+        var issued = await issuer.CreateTokenAsync("jrb", [AuthorizationScopes.QuotesRead], cancellationToken);
 
         (await verifier.ValidateTokenAsync(issued.AccessToken, cancellationToken)).Valid.ShouldBeFalse();
     }
@@ -142,7 +164,7 @@ public class JwtTokenServiceTests
         var sut = CreateService();
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        var issued = await sut.CreateTokenAsync("jrb", cancellationToken);
+        var issued = await sut.CreateTokenAsync("jrb", [AuthorizationScopes.QuotesRead], cancellationToken);
         var parts = issued.AccessToken.Split('.');
         var tampered = string.Join('.', parts[0], parts[1], new string('a', parts[2].Length));
 
@@ -155,7 +177,7 @@ public class JwtTokenServiceTests
         // Clock skew inside JwtTokenService is one minute, so the token must be older than that.
         var sut = CreateService(("Jwt:ExpiresInSeconds", "-120"));
 
-        var issued = await sut.CreateTokenAsync("jrb", TestContext.Current.CancellationToken);
+        var issued = await sut.CreateTokenAsync("jrb", [AuthorizationScopes.QuotesRead], TestContext.Current.CancellationToken);
 
         (await sut.ValidateTokenAsync(issued.AccessToken, TestContext.Current.CancellationToken)).Valid.ShouldBeFalse();
     }

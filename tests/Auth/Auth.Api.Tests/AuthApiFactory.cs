@@ -15,7 +15,7 @@ namespace Auth.Api.Tests;
 /// and token service) so the Auth composition root is under test, mirroring the Quotes
 /// suite. The signing key is random per factory instance.
 /// </summary>
-public sealed class AuthApiFactory : WebApplicationFactory<Program>
+public class AuthApiFactory : WebApplicationFactory<Program>
 {
     public string SigningKey { get; } = $"auth-integration-key-{Guid.NewGuid():N}{Guid.NewGuid():N}";
 
@@ -23,14 +23,18 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment(Environments.Development);
         builder.UseSetting("Jwt:SigningKey", SigningKey);
-        builder.UseSetting("Jwt:Issuer", "auth-api");
-        builder.UseSetting("Jwt:Audience", "aspire-quotes-poc");
+        // The shared fixture issues many auth requests; keep the limiter far away so only
+        // the dedicated rate-limit suite (RateLimitedAuthApiFactory) exercises it.
+        builder.UseSetting("RateLimiting:Auth:PermitLimit", "1000");
     }
 
     public async Task<string> IssueTokenAsync()
     {
         var tokenService = Services.GetRequiredService<ITokenService>();
-        var issued = await tokenService.CreateTokenAsync("jrb", CancellationToken.None);
+        var issued = await tokenService.CreateTokenAsync(
+            "jrb",
+            [AuthorizationScopes.QuotesRead, AuthorizationScopes.QuotesWrite],
+            CancellationToken.None);
         return issued.AccessToken;
     }
 
@@ -39,8 +43,8 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes($"foreign-{Guid.NewGuid():N}{Guid.NewGuid():N}"));
         var token = new JwtSecurityToken(
-            issuer: "auth-api",
-            audience: "aspire-quotes-poc",
+            issuer: JwtAuthExtensions.DefaultIssuer,
+            audience: JwtAuthExtensions.DefaultAudience,
             claims: [new Claim(ClaimTypes.Name, "jrb"), new Claim(JwtRegisteredClaimNames.Sub, "jrb")],
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));

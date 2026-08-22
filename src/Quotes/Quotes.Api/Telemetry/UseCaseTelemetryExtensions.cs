@@ -25,6 +25,12 @@ public static class UseCaseTelemetryExtensions
                 sp.GetRequiredService<GetQuoteByIdUseCase>(),
                 sp.GetRequiredService<ILogger<GetQuoteByIdUseCaseLogging>>())));
 
+        services.AddScoped<ListQuotesUseCase>();
+        services.AddScoped<IListQuotesUseCase>(sp => new ListQuotesUseCaseTelemetry(
+            new ListQuotesUseCaseLogging(
+                sp.GetRequiredService<ListQuotesUseCase>(),
+                sp.GetRequiredService<ILogger<ListQuotesUseCaseLogging>>())));
+
         services.AddScoped<CreateQuoteUseCase>();
         services.AddScoped<ICreateQuoteUseCase>(sp => new CreateQuoteUseCaseTelemetry(
             new CreateQuoteUseCaseLogging(

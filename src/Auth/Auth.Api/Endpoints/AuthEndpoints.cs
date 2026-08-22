@@ -12,13 +12,14 @@ public static class AuthEndpoints
 {
     public static IEndpointRouteBuilder Map(IEndpointRouteBuilder endpoints)
     {
-        var auth = endpoints.MapGroup("/api/auth").WithTags("Auth");
+        var auth = endpoints.MapGroup("/api/auth").WithTags("Auth").RequireRateLimiting(RateLimitingExtensions.AuthPolicyName);
 
         auth.MapPost("/login", LoginAsync)
             .WithName("Login")
             .Produces<LoginResponseDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status401Unauthorized);
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         // RFC 7662-style introspection: both "valid" and "invalid" are successful answers
         // (200 with the flag); only a missing token is a request error (400).
@@ -26,7 +27,8 @@ public static class AuthEndpoints
             .WithName("ValidateToken")
             .Produces<ValidateResponseDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         return endpoints;
     }

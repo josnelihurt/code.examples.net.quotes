@@ -17,12 +17,13 @@ public sealed class AuthService(
             return AuthErrors.InvalidCredentials;
         }
 
-        if (!await credentials.ValidateAsync(request.Username, request.Password, cancellationToken))
+        var decision = await credentials.ValidateAsync(request.Username, request.Password, cancellationToken);
+        if (!decision.IsValid)
         {
             return AuthErrors.InvalidCredentials;
         }
 
-        var issued = await tokens.CreateTokenAsync(request.Username, cancellationToken);
+        var issued = await tokens.CreateTokenAsync(request.Username, decision.Scopes, cancellationToken);
         return new LoginResult(issued.AccessToken, request.Username, issued.ExpiresInSeconds);
     }
 

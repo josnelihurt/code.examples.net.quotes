@@ -92,6 +92,25 @@ public sealed class InMemoryQuoteRepository : IQuoteRepository
         return Task.FromResult(quote);
     }
 
+    public Task<QuotePage> ListAsync(int skip, int take, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(skip);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(take);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        QuotePage page;
+        lock (_gate)
+        {
+            // Insertion order is the stable catalog order: seed rows first, then created
+            // quotes in the order they were added.
+            page = new QuotePage(
+                [.. _quotes.Skip(skip).Take(take).Select(record => record.ToDomain())],
+                _quotes.Count);
+        }
+
+        return Task.FromResult(page);
+    }
+
     public Task<QuoteAddOutcome> AddAsync(Quote quote, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(quote);

@@ -3,7 +3,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Quotes.Api.V1.Contracts;
+using Quotes.Application.Abstractions;
 
 namespace Quotes.Api.Tests;
 
@@ -196,6 +198,84 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
     }
 
     [Fact]
+    public async Task List_returns_a_page_of_the_seeded_catalog()
+    {
+        using var client = CreateClient();
+
+        using var response = await client.GetAsync(
+            new Uri("/api/v1/quotes?page=1&pageSize=3", UriKind.Relative),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var page = await response.Content.ReadFromJsonAsync<QuotePageResponseDto>(TestContext.Current.CancellationToken);
+        page.ShouldNotBeNull();
+        page.Items.Count.ShouldBe(3);
+        page.Page.ShouldBe(1);
+        page.PageSize.ShouldBe(3);
+        // The fixture shares one catalog, so create tests may have appended quotes:
+        // assert the arithmetic, not an exact total.
+        page.TotalItems.ShouldBeGreaterThanOrEqualTo(8);
+        page.TotalPages.ShouldBe((int)Math.Ceiling(page.TotalItems / 3.0));
+    }
+
+    [Fact]
+    public async Task List_second_page_continues_without_overlapping_the_first()
+    {
+        using var client = CreateClient();
+
+        using var firstResponse = await client.GetAsync(
+            new Uri("/api/v1/quotes?page=1&pageSize=5", UriKind.Relative),
+            TestContext.Current.CancellationToken);
+        using var secondResponse = await client.GetAsync(
+            new Uri("/api/v1/quotes?page=2&pageSize=5", UriKind.Relative),
+            TestContext.Current.CancellationToken);
+
+        var first = await firstResponse.Content.ReadFromJsonAsync<QuotePageResponseDto>(TestContext.Current.CancellationToken);
+        var second = await secondResponse.Content.ReadFromJsonAsync<QuotePageResponseDto>(TestContext.Current.CancellationToken);
+        first.ShouldNotBeNull();
+        second.ShouldNotBeNull();
+        second.Page.ShouldBe(2);
+        first.Items.Count.ShouldBe(5);
+        second.Items.Count.ShouldBe(second.TotalItems - 5);
+        second.TotalItems.ShouldBe(first.TotalItems);
+        first.Items.Select(quote => quote.Id)
+            .Intersect(second.Items.Select(quote => quote.Id))
+            .ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task List_without_query_parameters_uses_the_documented_defaults()
+    {
+        using var client = CreateClient();
+
+        using var response = await client.GetAsync(
+            new Uri("/api/v1/quotes", UriKind.Relative),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var page = await response.Content.ReadFromJsonAsync<QuotePageResponseDto>(TestContext.Current.CancellationToken);
+        page.ShouldNotBeNull();
+        page.Page.ShouldBe(1);
+        page.PageSize.ShouldBe(QuoteRules.DefaultPageSize);
+        page.TotalItems.ShouldBeGreaterThanOrEqualTo(8);
+    }
+
+    [Fact]
+    public async Task List_returns_a_400_problem_with_the_error_code_for_an_invalid_page()
+    {
+        using var client = CreateClient();
+
+        using var response = await client.GetAsync(
+            new Uri("/api/v1/quotes?page=0&pageSize=3", UriKind.Relative),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.GetProperty("errorCode").GetString().ShouldBe("quote.invalid_page_request");
+    }
+
+    [Fact]
     public async Task Requests_without_a_token_get_a_401_problem_with_a_correlation_id()
     {
         using var client = _factory.CreateClient();
@@ -209,6 +289,7 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         response.Headers.WwwAuthenticate.ShouldNotBeEmpty();
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         problem.GetProperty("correlationId").GetString().ShouldNotBeNullOrWhiteSpace();
+        problem.GetProperty("errorCode").GetString().ShouldBe(JwtAuthExtensions.TokenMissingErrorCode);
     }
 
     [Fact]

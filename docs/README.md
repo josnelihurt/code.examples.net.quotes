@@ -15,5 +15,5 @@ See the [repository README](../README.md) for intention, layering rules, and con
 
 ## Credentials (local scaffolding)
 
-- Username: `jrb`
-- Password: `supersecret`
+- Maintainer (read + write): `jrb` / `supersecret`
+- Reader (read only): `reader` / `readsecret`

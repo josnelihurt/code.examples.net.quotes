@@ -19,8 +19,9 @@ public class AuthServiceTests
     [Fact]
     public async Task LoginAsync_returns_a_result_when_credentials_are_accepted()
     {
-        _credentials.ValidateAsync("jrb", "secret", Arg.Any<CancellationToken>()).Returns(true);
-        _tokens.CreateTokenAsync("jrb", Arg.Any<CancellationToken>())
+        var granted = new CredentialValidationResult(true, [AuthorizationScopes.QuotesRead]);
+        _credentials.ValidateAsync("jrb", "secret", Arg.Any<CancellationToken>()).Returns(granted);
+        _tokens.CreateTokenAsync("jrb", granted.Scopes, Arg.Any<CancellationToken>())
             .Returns(new IssuedToken("issued-token", 900));
 
         var result = await _sut.LoginAsync(
@@ -34,9 +35,31 @@ public class AuthServiceTests
     }
 
     [Fact]
+    public async Task LoginAsync_forwards_the_scopes_the_store_granted_to_the_token_service()
+    {
+        var granted = new CredentialValidationResult(true, [AuthorizationScopes.QuotesRead, AuthorizationScopes.QuotesWrite]);
+        _credentials.ValidateAsync("reader", "secret", Arg.Any<CancellationToken>()).Returns(granted);
+        _tokens.CreateTokenAsync(Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new IssuedToken("issued-token", 900));
+
+        await _sut.LoginAsync(
+            new LoginRequest("reader", "secret"),
+            TestContext.Current.CancellationToken);
+
+        await _tokens.Received(1).CreateTokenAsync(
+            "reader",
+            Arg.Is<IReadOnlyList<string>>(scopes =>
+                scopes != null
+                && scopes.Contains(AuthorizationScopes.QuotesRead)
+                && scopes.Contains(AuthorizationScopes.QuotesWrite)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task LoginAsync_returns_invalid_credentials_when_the_store_rejects()
     {
-        _credentials.ValidateAsync("jrb", "wrong", Arg.Any<CancellationToken>()).Returns(false);
+        _credentials.ValidateAsync("jrb", "wrong", Arg.Any<CancellationToken>())
+            .Returns(CredentialValidationResult.Invalid);
 
         var result = await _sut.LoginAsync(
             new LoginRequest("jrb", "wrong"),
@@ -45,7 +68,7 @@ public class AuthServiceTests
         result.IsError.ShouldBeTrue();
         result.FirstError.Code.ShouldBe("auth.invalid_credentials");
         result.FirstError.Type.ShouldBe(ErrorType.Unauthorized);
-        await _tokens.DidNotReceiveWithAnyArgs().CreateTokenAsync(default!, TestContext.Current.CancellationToken);
+        await _tokens.DidNotReceiveWithAnyArgs().CreateTokenAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Theory]

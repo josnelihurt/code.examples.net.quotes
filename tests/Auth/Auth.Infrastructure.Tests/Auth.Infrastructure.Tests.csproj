@@ -7,6 +7,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Auth\Auth.Infrastructure\Auth.Infrastructure.csproj" />
+    <!-- Pins JwtTokenService's fallback issuer/audience to the platform defaults in ServiceDefaults. -->
+    <ProjectReference Include="..\..\..\src\ServiceDefaults\AspireQuotesPoc.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

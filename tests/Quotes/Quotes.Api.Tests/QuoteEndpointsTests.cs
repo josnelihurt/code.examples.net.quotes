@@ -10,6 +10,7 @@ using NSubstitute;
 using Quotes.Api.V1.Contracts;
 using Quotes.Api.V1.Endpoints;
 using Quotes.Application.Abstractions;
+using Quotes.Domain;
 
 namespace Quotes.Api.Tests;
 
@@ -20,6 +21,7 @@ public class QuoteEndpointsTests
     private readonly ICreateQuoteUseCase _createUseCase = Substitute.For<ICreateQuoteUseCase>();
     private readonly IGetQuoteByIdUseCase _getByIdUseCase = Substitute.For<IGetQuoteByIdUseCase>();
     private readonly IGetRandomQuoteUseCase _useCase = Substitute.For<IGetRandomQuoteUseCase>();
+    private readonly IListQuotesUseCase _listUseCase = Substitute.For<IListQuotesUseCase>();
 
     [Fact]
     public async Task Returns_the_quote_from_the_use_case()
@@ -162,6 +164,7 @@ public class QuoteEndpointsTests
         builder.Services.AddAuthorization();
         builder.Services.AddSingleton(Substitute.For<IGetRandomQuoteUseCase>());
         builder.Services.AddSingleton(Substitute.For<IGetQuoteByIdUseCase>());
+        builder.Services.AddSingleton(Substitute.For<IListQuotesUseCase>());
         builder.Services.AddSingleton(Substitute.For<ICreateQuoteUseCase>());
 
         var app = builder.Build();
@@ -176,13 +179,18 @@ public class QuoteEndpointsTests
 
             var random = endpoints.Single(e => e.RoutePattern.RawText == "/api/v1/quotes/random");
             var byId = endpoints.Single(e => e.RoutePattern.RawText == "/api/v1/quotes/{id}");
-            // The combined raw text renders with a trailing slash, but MapPost("") matches
-            // the contract-documented form /api/v1/quotes (covered by the integration tests).
-            var create = endpoints.Single(e => e.RoutePattern.RawText!.TrimEnd('/') == "/api/v1/quotes");
+            // The combined raw text renders with a trailing slash, but MapGet("")/MapPost("")
+            // match the contract-documented form /api/v1/quotes (covered by the integration tests).
+            var list = endpoints.Single(e =>
+                e.RoutePattern.RawText!.TrimEnd('/') == "/api/v1/quotes" && e.Metadata.OfType<HttpMethodMetadata>().Single().HttpMethods.Single() == "GET");
+            var create = endpoints.Single(e =>
+                e.RoutePattern.RawText!.TrimEnd('/') == "/api/v1/quotes" && e.Metadata.OfType<HttpMethodMetadata>().Single().HttpMethods.Single() == "POST");
 
             random.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull()
                 .Policy.ShouldBe(JwtAuthExtensions.ReadQuotesPolicy);
             byId.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull()
+                .Policy.ShouldBe(JwtAuthExtensions.ReadQuotesPolicy);
+            list.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull()
                 .Policy.ShouldBe(JwtAuthExtensions.ReadQuotesPolicy);
             var createAuthorize = create.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull();
             createAuthorize.Policy.ShouldBe(JwtAuthExtensions.WriteQuotesPolicy);
@@ -191,5 +199,50 @@ public class QuoteEndpointsTests
         {
             ((IDisposable)app).Dispose();
         }
+    }
+
+    [Fact]
+    public async Task List_returns_the_page_from_the_use_case()
+    {
+        ErrorOr<QuotePageDto> page = new QuotePageDto([_sampleQuote], 2, 3, 8, 3);
+        _listUseCase.ExecuteAsync(Arg.Any<ListQuotesQuery>(), Arg.Any<CancellationToken>()).Returns(page);
+
+        var response = await QuoteEndpoints.ListAsync(
+            _listUseCase, new DefaultHttpContext(), TestContext.Current.CancellationToken, page: 2, pageSize: 3);
+
+        var ok = response.ShouldBeOfType<Ok<QuotePageResponseDto>>();
+        ok.Value.ShouldNotBeNull();
+        ok.Value.Page.ShouldBe(2);
+        ok.Value.PageSize.ShouldBe(3);
+        ok.Value.TotalItems.ShouldBe(8);
+        ok.Value.TotalPages.ShouldBe(3);
+        ok.Value.Items.Single().Id.ShouldBe(_sampleQuote.Id);
+    }
+
+    [Fact]
+    public async Task List_forwards_the_query_and_the_cancellation_token()
+    {
+        ErrorOr<QuotePageDto> page = new QuotePageDto([_sampleQuote], 1, 20, 1, 1);
+        _listUseCase.ExecuteAsync(Arg.Any<ListQuotesQuery>(), Arg.Any<CancellationToken>()).Returns(page);
+        using var cts = new CancellationTokenSource();
+
+        await QuoteEndpoints.ListAsync(
+            _listUseCase, new DefaultHttpContext(), cts.Token, page: 4, pageSize: 25);
+
+        await _listUseCase.Received(1).ExecuteAsync(
+            new ListQuotesQuery(4, 25), cts.Token);
+    }
+
+    [Fact]
+    public async Task List_returns_a_400_problem_for_an_invalid_page_request()
+    {
+        ErrorOr<QuotePageDto> rejected = QuoteErrors.InvalidPageRequest;
+        _listUseCase.ExecuteAsync(Arg.Any<ListQuotesQuery>(), Arg.Any<CancellationToken>()).Returns(rejected);
+
+        var response = await QuoteEndpoints.ListAsync(
+            _listUseCase, new DefaultHttpContext(), TestContext.Current.CancellationToken);
+
+        var problem = response.ShouldBeOfType<ProblemHttpResult>();
+        problem.ProblemDetails.Status.ShouldBe(StatusCodes.Status400BadRequest);
     }
 }

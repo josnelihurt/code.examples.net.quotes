@@ -68,20 +68,53 @@ if [[ -n "$LOCATION" ]]; then
     -H "X-Correlation-Id: ${CORR}"
 fi
 
+expect_status() {
+  local actual="$1" expected="$2" label="$3"
+  if [[ "${actual}" != "${expected}" ]]; then
+    echo "${label}: expected ${expected}, got ${actual}" >&2
+    exit 1
+  fi
+  echo "${label}=${actual} (ok)"
+}
+
 # Same text with '!' instead of '.': same fingerprint, so a 409 is expected.
 STATUS="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "${QUOTES_URL}/api/v1/quotes" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -H "X-Correlation-Id: ${CORR}" \
   -d "{\"text\":\"${UNIQUE%.}!\",\"author\":\"Somebody Else\"}")"
-echo "duplicate_status=${STATUS} (expect 409)"
+expect_status "${STATUS}" 409 "duplicate_status"
 
 STATUS="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "${QUOTES_URL}/api/v1/quotes" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -H "X-Correlation-Id: ${CORR}" \
   -d '{"text":"short","author":"Smoke Test"}')"
-echo "invalid_status=${STATUS} (expect 400)"
+expect_status "${STATUS}" 400 "invalid_status"
+
+# List endpoint: the ratified pagination shape, three items off the first page.
+PAGE="$(curl -fsS "${QUOTES_URL}/api/v1/quotes?page=1&pageSize=3" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "X-Correlation-Id: ${CORR}")"
+echo "list=${PAGE}"
+
+# The reader account holds only quotes:read, so its tokens cannot write.
+READER_LOGIN="$(curl -fsS -X POST "${AUTH_URL}/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-Id: ${CORR}" \
+  -d '{"username":"reader","password":"readsecret"}')"
+READER_TOKEN="$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['accessToken'])" "$READER_LOGIN")"
+
+READER_RANDOM_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" "${QUOTES_URL}/api/v1/quotes/random" \
+  -H "Authorization: Bearer ${READER_TOKEN}" \
+  -H "X-Correlation-Id: ${CORR}")"
+READER_CREATE_STATUS="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "${QUOTES_URL}/api/v1/quotes" \
+  -H "Authorization: Bearer ${READER_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-Id: ${CORR}" \
+  -d '{"text":"Reader accounts must not create quotes.","author":"Smoke Test"}')"
+expect_status "${READER_RANDOM_STATUS}" 200 "reader_random_status"
+expect_status "${READER_CREATE_STATUS}" 403 "reader_create_status"
 
 curl -fsS -o /dev/null -w "scalar_auth=%{http_code}\n" "${AUTH_URL}/scalar/"
 curl -fsS -o /dev/null -w "openapi_auth=%{http_code}\n" "${AUTH_URL}/openapi/v1.json"

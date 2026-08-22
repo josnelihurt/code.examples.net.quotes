@@ -76,4 +76,65 @@ public abstract class QuoteRepositoryContractTests
 
         quote.ShouldBeNull();
     }
+
+    [Fact]
+    public async Task ListAsync_pages_the_catalog_without_overlap_and_reports_the_total()
+    {
+        var repository = await CreateRepositoryAsync();
+        var created = new[]
+        {
+            Quote.Create("Continuous delivery keeps software releasable.", "Jez Humble").Value,
+            Quote.Create("Talk is cheap. Show me the code.", "Linus Torvalds").Value,
+            Quote.Create("Make it work, make it right, make it fast.", "Kent Beck").Value
+        };
+        foreach (var quote in created)
+        {
+            await repository.AddAsync(quote, TestContext.Current.CancellationToken);
+        }
+
+        var firstPage = await repository.ListAsync(0, 2, TestContext.Current.CancellationToken);
+        var secondPage = await repository.ListAsync(2, 2, TestContext.Current.CancellationToken);
+
+        firstPage.Items.Count.ShouldBe(2);
+        firstPage.Total.ShouldBe(3);
+        secondPage.Items.Count.ShouldBe(1);
+        secondPage.Total.ShouldBe(3);
+        firstPage.Items.Select(quote => quote.Id)
+            .Intersect(secondPage.Items.Select(quote => quote.Id))
+            .ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ListAsync_returns_an_empty_page_beyond_the_end_instead_of_failing()
+    {
+        var repository = await CreateRepositoryAsync();
+        var created = Quote.Create("Continuous delivery keeps software releasable.", "Jez Humble").Value;
+        await repository.AddAsync(created, TestContext.Current.CancellationToken);
+
+        var page = await repository.ListAsync(10, 5, TestContext.Current.CancellationToken);
+
+        page.Items.ShouldBeEmpty();
+        page.Total.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ListAsync_is_stable_across_repeated_reads_of_the_same_page()
+    {
+        var repository = await CreateRepositoryAsync();
+        var created = new[]
+        {
+            Quote.Create("Continuous delivery keeps software releasable.", "Jez Humble").Value,
+            Quote.Create("Talk is cheap. Show me the code.", "Linus Torvalds").Value
+        };
+        foreach (var quote in created)
+        {
+            await repository.AddAsync(quote, TestContext.Current.CancellationToken);
+        }
+
+        var first = await repository.ListAsync(0, 2, TestContext.Current.CancellationToken);
+        var second = await repository.ListAsync(0, 2, TestContext.Current.CancellationToken);
+
+        first.Items.Select(quote => quote.Id)
+            .ShouldBe(second.Items.Select(quote => quote.Id));
+    }
 }

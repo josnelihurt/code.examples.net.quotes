@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="NetArchTest.Rules" />
+  </ItemGroup>
+  <ItemGroup Label="Src projects under test">
+    <ProjectReference Include="..\..\src\Quotes\Quotes.Domain\Quotes.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Quotes\Quotes.Application\Quotes.Application.csproj" />
+    <ProjectReference Include="..\..\src\Quotes\Quotes.Infrastructure\Quotes.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Quotes\Quotes.Api\Quotes.Api.csproj" />
+    <ProjectReference Include="..\..\src\Auth\Auth.Domain\Auth.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Auth\Auth.Application\Auth.Application.csproj" />
+    <ProjectReference Include="..\..\src\Auth\Auth.Infrastructure\Auth.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Auth\Auth.Api\Auth.Api.csproj" />
+    <ProjectReference Include="..\..\src\ServiceDefaults\AspireQuotesPoc.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+</Project>

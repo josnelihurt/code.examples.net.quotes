@@ -69,8 +69,8 @@ Transport vs domain validation: DTOs keep shallow guards (`[Required]`, `[MaxLen
 
 ## What it does today
 
-1. **Auth API** issues a JWT (`quotes:read` / `quotes:write` scopes) for hardcoded user `jrb` / `supersecret`, and can validate tokens via `/api/auth/validate` (optional introspection).
-2. **Quotes API** serves an in-memory catalog after JwtBearer validates the bearer token: `GET /api/v1/quotes/random`, `GET /api/v1/quotes/{id}`, and `POST /api/v1/quotes` (requires `quotes:write`; rejects invalid and near-duplicate quotes).
+1. **Auth API** issues a JWT for hardcoded local users — `jrb` / `supersecret` holds `quotes:read` + `quotes:write`, `reader` / `readsecret` holds `quotes:read` only — and can validate tokens via `/api/auth/validate` (optional introspection). Login and validate are rate-limited (fixed window per client IP, 429 as ProblemDetails), and the scaffolding credential store refuses to register in Production.
+2. **Quotes API** serves an in-memory catalog after JwtBearer validates the bearer token: `GET /api/v1/quotes/random`, `GET /api/v1/quotes/{id}`, `GET /api/v1/quotes?page=&pageSize=` (the ratified offset-pagination pattern), and `POST /api/v1/quotes` (requires `quotes:write`; rejects invalid and near-duplicate quotes).
 3. **React SPA** logs in, stores token + `X-Correlation-Id`, then fetches quotes through the Vite proxy.
 4. **Aspire AppHost** starts everything, wires service discovery, exports OpenTelemetry to the dashboard, and publishes a **YARP** gateway (no Traefik).
 
@@ -177,7 +177,7 @@ Static YAML: `docs/openapi/auth.openapi.yaml`, `docs/openapi/quotes.openapi.yaml
 
 - **Serilog** → console + OTLP (Aspire structured logs), enriched with `CorrelationId`
 - **Traces** → ASP.NET + HttpClient instrumentation
-- **Metrics** (meter `AspireQuotesPoc`): `auth.login.count` (`outcome=success|failure`), `auth.validate.count` (`outcome=success|failure`), `quotes.random.count` (`outcome=success|not_found`), `quotes.create.count` (`outcome=success|invalid|conflict|error`)
+- **Metrics** (meter `AspireQuotesPoc`): `auth.login.count` (`outcome=success|failure`), `auth.validate.count` (`outcome=success|failure`), `quotes.random.count` (`outcome=success|not_found`), `quotes.getbyid.count` (`outcome=success|not_found`), `quotes.list.count` (`outcome=success|invalid`), `quotes.create.count` (`outcome=success|invalid|conflict|error`)
 
 See [docs/observability.md](docs/observability.md).
 
@@ -193,8 +193,8 @@ See [docs/observability.md](docs/observability.md).
 
 ## Credentials and secrets
 
-- User: `jrb`
-- Password: `supersecret`
+- Maintainer (read + write): `jrb` / `supersecret`
+- Reader (read only): `reader` / `readsecret`
 - JWT signing key: **not committed**. For standalone `dotnet run` in Development, put the documented dev key in user-secrets (Aspire `run` injects the shared `jwt-signing-key` parameter automatically):
 
 ```bash

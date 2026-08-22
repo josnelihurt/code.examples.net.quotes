@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-and-test:
-    name: build & test (Release)
+    name: build & test (Release + coverage)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,13 +22,35 @@ jobs:
       # Test projects pull in the whole dependency graph (APIs, ServiceDefaults, both
       # bounded contexts) without the Vite frontend, and Release builds enforce
       # TreatWarningsAsErrors, which never runs in the local Debug flow.
-      - name: Test (Release)
+      - name: Test (Release, coverage on)
         run: |
           set -euo pipefail
-          find tests -name '*.Tests.csproj' -print0 | xargs -0 -n1 dotnet test -c Release
+          find tests -name '*.Tests.csproj' -print0 | xargs -0 -n1 dotnet test -c Release --settings ./tests/coverlet.runsettings
+
+      - name: Upload coverage (OpenCover)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-opencover
+          path: tests/**/TestResults/**/*.xml
+          if-no-files-found: error
+
+  lint:
+    name: lint (dotnet format)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # The same invocation developers run locally (scripts/lint.sh); per-project because
+      # the solution includes the VS-only frontend.esproj a clean SDK checkout cannot build.
+      - name: Format check
+        run: ./scripts/lint.sh
 
   frontend:
-    name: frontend (lint + tests)
+    name: frontend (lint + tests + build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -47,6 +69,50 @@ jobs:
       - run: npm run lint
 
       - run: npm test
+
+      # tsc -b only runs inside build; without this step type errors pass CI.
+      - run: npm run build
+
+  smoke:
+    name: smoke (api round trip)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build (Release)
+        run: |
+          set -euo pipefail
+          dotnet build src/Auth/Auth.Api/Auth.Api.csproj -c Release
+          dotnet build src/Quotes/Quotes.Api/Quotes.Api.csproj -c Release
+
+      - name: Start APIs
+        run: |
+          set -euo pipefail
+          ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://127.0.0.1:5101 Jwt__SigningKey=ci-smoke-signing-key-0123456789abcdef \
+            dotnet src/Auth/Auth.Api/bin/Release/net10.0/Auth.Api.dll &
+          ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://127.0.0.1:5102 Jwt__SigningKey=ci-smoke-signing-key-0123456789abcdef \
+            dotnet src/Quotes/Quotes.Api/bin/Release/net10.0/Quotes.Api.dll &
+
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5101/health >/dev/null 2>&1 && \
+               curl -fsS http://127.0.0.1:5102/health >/dev/null 2>&1; then
+              echo "both APIs healthy"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "APIs did not become healthy in 60s" >&2
+          exit 1
+
+      - name: Smoke test
+        env:
+          AUTH_URL: http://127.0.0.1:5101
+          QUOTES_URL: http://127.0.0.1:5102
+        run: ./scripts/test-api.sh
 
   contract-drift:
     name: openapi contract drift

@@ -3,7 +3,7 @@ using ErrorOr;
 
 namespace Quotes.Domain;
 
-public sealed class QuoteAuthor
+public sealed class QuoteAuthor : IEquatable<QuoteAuthor>
 {
     public const int MinLength = 2;
     public const int MaxLength = 80;
@@ -11,6 +11,18 @@ public sealed class QuoteAuthor
     private QuoteAuthor(string value) => Value = value;
 
     public string Value { get; }
+
+    public bool Equals(QuoteAuthor? other) =>
+        other is not null && string.Equals(Value, other.Value, StringComparison.Ordinal);
+
+    public override bool Equals(object? obj) => obj is QuoteAuthor other && Equals(other);
+
+    public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Value);
+
+    public static bool operator ==(QuoteAuthor? left, QuoteAuthor? right) =>
+        left is null ? right is null : left.Equals(right);
+
+    public static bool operator !=(QuoteAuthor? left, QuoteAuthor? right) => !(left == right);
 
     public static ErrorOr<QuoteAuthor> Create(string? raw)
     {

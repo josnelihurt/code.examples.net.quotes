@@ -13,4 +13,7 @@ public static class QuoteRules
     public const int MinAuthorLength = QuoteAuthor.MinLength;
     public const int MaxAuthorLength = QuoteAuthor.MaxLength;
     public const int MinWordCount = QuoteText.MinWordCount;
+
+    public const int DefaultPageSize = 20;
+    public const int MaxPageSize = 100;
 }

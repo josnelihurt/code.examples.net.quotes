@@ -21,8 +21,6 @@ public sealed class QuoteApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment(Environments.Development);
         builder.UseSetting("Jwt:SigningKey", SigningKey);
-        builder.UseSetting("Jwt:Issuer", "auth-api");
-        builder.UseSetting("Jwt:Audience", "aspire-quotes-poc");
     }
 
     public string CreateToken(params string[] scopes)
@@ -37,8 +35,8 @@ public sealed class QuoteApiFactory : WebApplicationFactory<Program>
         claims.AddRange(scopes.Select(scope => new Claim("scope", scope)));
 
         var token = new JwtSecurityToken(
-            issuer: "auth-api",
-            audience: "aspire-quotes-poc",
+            issuer: JwtAuthExtensions.DefaultIssuer,
+            audience: JwtAuthExtensions.DefaultAudience,
             claims: claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: credentials);

@@ -24,6 +24,7 @@ Custom meter: `AspireQuotesPoc`
 | `auth.validate.count` | `outcome=success\|failure` |
 | `quotes.random.count` | `outcome=success\|not_found\|error` |
 | `quotes.getbyid.count` | `outcome=success\|not_found\|error` |
+| `quotes.list.count` | `outcome=success\|invalid\|error` |
 | `quotes.create.count` | `outcome=success\|invalid\|conflict\|error` |
 
 Counters are incremented by the telemetry decorators that wrap each use case / the auth service (`Telemetry/` in each API host); the only endpoint-side recording is the auth validate missing-token rejection, which never reaches the service.

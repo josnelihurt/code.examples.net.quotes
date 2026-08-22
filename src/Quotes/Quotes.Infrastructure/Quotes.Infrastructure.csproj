@@ -7,7 +7,6 @@
     <InternalsVisibleTo Include="Quotes.Infrastructure.Tests" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Quotes.Application\Quotes.Application.csproj" />
     <ProjectReference Include="..\Quotes.Domain\Quotes.Domain.csproj" />
   </ItemGroup>
 

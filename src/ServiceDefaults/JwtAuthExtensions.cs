@@ -24,6 +24,14 @@ public static class JwtAuthExtensions
 
     public const string ScopeClaimType = "scope";
 
+    /// <summary>errorCode carried by the 401 problem when no token was presented.</summary>
+    public const string TokenMissingErrorCode = "auth.token_missing";
+
+    /// <summary>errorCode carried by the 401 problem when the token failed validation.</summary>
+    public const string TokenInvalidErrorCode = "auth.token_invalid";
+
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+
     /// <summary>
     /// Scope-based policies: read endpoints require <c>quotes:read</c>; the create
     /// endpoint requires <c>quotes:write</c> (any authenticated token can do nothing
@@ -78,22 +86,25 @@ public static class JwtAuthExtensions
                         var response = context.Response;
                         response.StatusCode = StatusCodes.Status401Unauthorized;
                         response.ContentType = "application/problem+json";
-                        response.Headers.WWWAuthenticate = context.AuthenticateFailure is null
-                            ? "Bearer"
-                            : "Bearer error=\"invalid_token\"";
+                        var tokenInvalid = context.AuthenticateFailure is not null;
+                        response.Headers.WWWAuthenticate = tokenInvalid
+                            ? "Bearer error=\"invalid_token\""
+                            : "Bearer";
 
                         var problem = new ProblemDetails
                         {
                             Status = StatusCodes.Status401Unauthorized,
                             Title = "Unauthorized",
                             Detail = "A valid bearer token is required.",
-                            Extensions = { ["correlationId"] = context.HttpContext.GetCorrelationId() }
+                            Extensions =
+                            {
+                                ["correlationId"] = context.HttpContext.GetCorrelationId(),
+                                ["errorCode"] = tokenInvalid ? TokenInvalidErrorCode : TokenMissingErrorCode
+                            }
                         };
 
                         await response.WriteAsync(
-                            JsonSerializer.Serialize(
-                                problem,
-                                new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+                            JsonSerializer.Serialize(problem, _jsonOptions),
                             context.HttpContext.RequestAborted);
                     }
                 };

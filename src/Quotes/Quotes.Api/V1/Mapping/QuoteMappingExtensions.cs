@@ -14,4 +14,13 @@ public static class QuoteMappingExtensions
         Text = quote.Text,
         Author = quote.Author
     };
+
+    public static QuotePageResponseDto ToResponse(this QuotePageDto page) => new()
+    {
+        Items = [.. page.Items.Select(quote => quote.ToResponse())],
+        Page = page.Page,
+        PageSize = page.PageSize,
+        TotalItems = page.TotalItems,
+        TotalPages = page.TotalPages
+    };
 }

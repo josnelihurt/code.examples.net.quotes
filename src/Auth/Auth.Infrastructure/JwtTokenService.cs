@@ -26,26 +26,29 @@ public sealed class JwtTokenService : ITokenService
             ?? throw new InvalidOperationException("Jwt:SigningKey is required");
 
         _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
+        // These fallbacks mirror JwtAuthExtensions.DefaultIssuer/DefaultAudience in ServiceDefaults;
+        // the test suite pins them together so the pair cannot drift silently.
         _issuer = jwt["Issuer"] ?? "auth-api";
         _audience = jwt["Audience"] ?? "aspire-quotes-poc";
         _expiresInSeconds = int.TryParse(jwt["ExpiresInSeconds"], out var seconds) ? seconds : 3600;
     }
 
-    public Task<IssuedToken> CreateTokenAsync(string username, CancellationToken cancellationToken)
+    public Task<IssuedToken> CreateTokenAsync(string username, IReadOnlyList<string> scopes, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var credentials = new SigningCredentials(_key, SecurityAlgorithms.HmacSha256);
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, username),
+            new(JwtRegisteredClaimNames.Sub, username)
+        };
+        claims.AddRange(scopes.Distinct().Select(scope => new Claim(AuthorizationScopes.ClaimType, scope)));
+
         var token = new JwtSecurityToken(
             issuer: _issuer,
             audience: _audience,
-            claims:
-            [
-                new Claim(ClaimTypes.Name, username),
-                new Claim(JwtRegisteredClaimNames.Sub, username),
-                new Claim(AuthorizationScopes.ClaimType, AuthorizationScopes.QuotesRead),
-                new Claim(AuthorizationScopes.ClaimType, AuthorizationScopes.QuotesWrite)
-            ],
+            claims: claims,
             expires: DateTime.UtcNow.AddSeconds(_expiresInSeconds),
             signingCredentials: credentials);
 

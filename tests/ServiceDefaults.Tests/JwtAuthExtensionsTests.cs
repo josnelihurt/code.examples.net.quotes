@@ -13,8 +13,8 @@ public class JwtAuthExtensionsTests
     {
         var builder = WebApplication.CreateSlimBuilder();
         builder.Configuration["Jwt:SigningKey"] = "unit-test-signing-key-that-is-long-enough-1234567890";
-        builder.Configuration["Jwt:Issuer"] = "auth-api";
-        builder.Configuration["Jwt:Audience"] = "aspire-quotes-poc";
+        builder.Configuration["Jwt:Issuer"] = JwtAuthExtensions.DefaultIssuer;
+        builder.Configuration["Jwt:Audience"] = JwtAuthExtensions.DefaultAudience;
 
         builder.AddStandardJwtAuthentication();
 
