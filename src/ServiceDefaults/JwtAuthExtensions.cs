@@ -25,9 +25,12 @@ public static class JwtAuthExtensions
     public const string ScopeClaimType = "scope";
 
     /// <summary>
-    /// Policy requiring the <c>quotes:write</c> scope. Read endpoints keep the default
-    /// (authenticated) policy; write endpoints require this one.
+    /// Scope-based policies: read endpoints require <c>quotes:read</c>; the create
+    /// endpoint requires <c>quotes:write</c> (any authenticated token can do nothing
+    /// beyond proving it is valid).
     /// </summary>
+    public const string ReadQuotesPolicy = "quotes:read";
+    public const string ReadQuotesScope = "quotes:read";
     public const string WriteQuotesPolicy = "quotes:write";
     public const string WriteQuotesScope = "quotes:write";
 
@@ -98,6 +101,8 @@ public static class JwtAuthExtensions
 
         builder.Services.AddAuthorization(options =>
         {
+            options.AddPolicy(ReadQuotesPolicy, policy =>
+                policy.RequireClaim(ScopeClaimType, ReadQuotesScope));
             options.AddPolicy(WriteQuotesPolicy, policy =>
                 policy.RequireClaim(ScopeClaimType, WriteQuotesScope));
         });

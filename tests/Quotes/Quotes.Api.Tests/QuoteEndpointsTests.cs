@@ -186,8 +186,10 @@ public class QuoteEndpointsTests
             // the contract-documented form /api/v1/quotes (covered by the integration tests).
             var create = endpoints.Single(e => e.RoutePattern.RawText!.TrimEnd('/') == "/api/v1/quotes");
 
-            random.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull();
-            byId.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull();
+            random.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull()
+                .Policy.ShouldBe(JwtAuthExtensions.ReadQuotesPolicy);
+            byId.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull()
+                .Policy.ShouldBe(JwtAuthExtensions.ReadQuotesPolicy);
             var createAuthorize = create.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull();
             createAuthorize.Policy.ShouldBe(JwtAuthExtensions.WriteQuotesPolicy);
         }

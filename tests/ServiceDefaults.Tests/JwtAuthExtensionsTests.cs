@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-
 namespace ServiceDefaults.Tests;
 
 public class JwtAuthExtensionsTests
@@ -55,7 +54,7 @@ public class JwtAuthExtensionsTests
     }
 
     [Fact]
-    public void AddStandardJwtAuthentication_accepts_a_real_key_in_production()
+    public async Task AddStandardJwtAuthentication_accepts_a_real_key_in_production()
     {
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
         {
@@ -65,6 +64,9 @@ public class JwtAuthExtensionsTests
 
         builder.AddStandardJwtAuthentication();
 
-        builder.Services.ShouldNotBeNull();
+        var policyProvider = builder.Services.BuildServiceProvider()
+            .GetRequiredService<IAuthorizationPolicyProvider>();
+        (await policyProvider.GetPolicyAsync(JwtAuthExtensions.ReadQuotesPolicy)).ShouldNotBeNull();
+        (await policyProvider.GetPolicyAsync(JwtAuthExtensions.WriteQuotesPolicy)).ShouldNotBeNull();
     }
 }

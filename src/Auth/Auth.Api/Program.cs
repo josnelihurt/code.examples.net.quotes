@@ -44,3 +44,6 @@ finally
 {
     await Log.CloseAndFlushAsync();
 }
+
+/// <summary>Entry-point marker for WebApplicationFactory-based integration tests.</summary>
+public partial class Program;

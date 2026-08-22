@@ -71,7 +71,10 @@ internal sealed class BearerSecuritySchemeTransformer(IServiceProvider servicePr
         [
             new OpenApiSecurityRequirement
             {
-                [new OpenApiSecuritySchemeReference(_schemeName)] = []
+                // The host document anchor is required: without it the requirement
+                // serializes as an empty entry (`security: - {}`), which consumers read
+                // as "authentication optional" instead of "bearer required".
+                [new OpenApiSecuritySchemeReference(_schemeName, document)] = []
             }
         ];
     }

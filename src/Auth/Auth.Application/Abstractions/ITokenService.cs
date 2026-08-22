@@ -2,6 +2,7 @@ namespace Auth.Application.Abstractions;
 
 public interface ITokenService
 {
-    string CreateToken(string username, out int expiresInSeconds);
-    ValidateResult ValidateToken(string accessToken);
+    Task<IssuedToken> CreateTokenAsync(string username, CancellationToken cancellationToken);
+
+    Task<ValidateResult> ValidateTokenAsync(string accessToken, CancellationToken cancellationToken);
 }

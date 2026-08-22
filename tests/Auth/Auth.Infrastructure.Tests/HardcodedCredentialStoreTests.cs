@@ -5,9 +5,10 @@ public class HardcodedCredentialStoreTests
     private readonly HardcodedCredentialStore _sut = new();
 
     [Fact]
-    public void Validate_accepts_the_local_credentials()
+    public async Task ValidateAsync_accepts_the_local_credentials()
     {
-        _sut.Validate("jrb", "supersecret").ShouldBeTrue();
+        (await _sut.ValidateAsync("jrb", "supersecret", TestContext.Current.CancellationToken))
+            .ShouldBeTrue();
     }
 
     [Theory]
@@ -16,8 +17,9 @@ public class HardcodedCredentialStoreTests
     [InlineData("JRB", "supersecret")]
     [InlineData("jrb", "SuperSecret")]
     [InlineData("", "")]
-    public void Validate_rejects_anything_else(string username, string password)
+    public async Task ValidateAsync_rejects_anything_else(string username, string password)
     {
-        _sut.Validate(username, password).ShouldBeFalse();
+        (await _sut.ValidateAsync(username, password, TestContext.Current.CancellationToken))
+            .ShouldBeFalse();
     }
 }

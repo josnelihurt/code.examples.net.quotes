@@ -3,8 +3,8 @@ using Quotes.Domain;
 namespace Quotes.Application.Abstractions;
 
 /// <summary>
-/// Read-only view of the domain's catalog limits so outer layers (e.g. transport-level
-/// request validation) can size their guards without referencing the domain project.
+/// Single source of truth for transport-level guards: outer layers size their Data
+/// Annotation limits from these constants instead of duplicating magic numbers.
 /// </summary>
 public static class QuoteRules
 {

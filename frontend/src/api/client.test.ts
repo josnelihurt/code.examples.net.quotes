@@ -100,10 +100,10 @@ describe('login', () => {
     }
   });
 
-  it('surfaces the server error message', async () => {
-    mockFetch(jsonResponse({ error: 'Invalid credentials' }, 401));
+  it('surfaces the ProblemDetails title from the server error', async () => {
+    mockFetch(jsonResponse({ title: 'Unauthorized', errorCode: 'auth.invalid_credentials' }, 401));
 
-    await expect(login('jrb', 'wrong')).rejects.toThrow('Invalid credentials');
+    await expect(login('jrb', 'wrong')).rejects.toThrow('Unauthorized (401)');
     expect(getSession().accessToken).toBeNull();
   });
 

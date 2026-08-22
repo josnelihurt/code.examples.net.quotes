@@ -66,6 +66,27 @@ public class ErrorOrHttpExtensionsTests
     }
 
     [Fact]
+    public void An_unauthorized_error_maps_to_a_401_problem()
+    {
+        var result = new List<Error> { Error.Unauthorized("auth.invalid_credentials", "Invalid credentials.") }
+            .ToProblem(CreateContext());
+
+        var problem = result.ShouldBeOfType<ProblemHttpResult>();
+        problem.ProblemDetails.Status.ShouldBe(StatusCodes.Status401Unauthorized);
+        problem.ProblemDetails.Extensions["errorCode"].ShouldBe("auth.invalid_credentials");
+    }
+
+    [Fact]
+    public void A_forbidden_error_maps_to_a_403_problem()
+    {
+        var result = new List<Error> { Error.Forbidden("auth.forbidden", "Insufficient scope.") }
+            .ToProblem(CreateContext());
+
+        var problem = result.ShouldBeOfType<ProblemHttpResult>();
+        problem.ProblemDetails.Status.ShouldBe(StatusCodes.Status403Forbidden);
+    }
+
+    [Fact]
     public void A_single_error_overload_behaves_like_the_list()
     {
         var result = Error.NotFound("quote.not_found", "Quote not found.").ToProblem();

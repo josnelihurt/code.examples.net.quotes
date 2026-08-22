@@ -16,11 +16,14 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         _factory = factory;
     }
 
-    private HttpClient CreateClient(bool withWriteScope = true)
+    private HttpClient CreateClient(bool includeScopes = true) =>
+        CreateClient(includeScopes ? ["quotes:read", "quotes:write"] : []);
+
+    private HttpClient CreateClient(string[] scopes)
     {
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _factory.CreateToken(withWriteScope));
+            new AuthenticationHeaderValue("Bearer", _factory.CreateToken(scopes));
         return client;
     }
 
@@ -155,11 +158,23 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
     [Fact]
     public async Task Create_without_the_write_scope_returns_403()
     {
-        using var client = CreateClient(withWriteScope: false);
+        using var client = CreateClient(includeScopes: false);
 
         using var response = await client.PostAsJsonAsync(
             new Uri("/api/v1/quotes", UriKind.Relative),
             new CreateQuoteRequestDto { Text = "Talk is cheap. Show me the code.", Author = "Linus Torvalds" },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task GetRandom_without_the_read_scope_returns_403()
+    {
+        using var client = CreateClient(["quotes:write"]);
+
+        using var response = await client.GetAsync(
+            new Uri("/api/v1/quotes/random", UriKind.Relative),
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);

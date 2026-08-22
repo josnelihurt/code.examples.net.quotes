@@ -14,7 +14,7 @@ namespace Auth.Api.Tests;
 
 public class AuthEndpointsTests
 {
-    private static readonly ILoggerFactory _loggerFactory = NullLoggerFactory.Instance;
+    private static readonly ILogger<AuthEndpointsLog> _logger = NullLogger<AuthEndpointsLog>.Instance;
 
     private readonly IAuthService _authService = Substitute.For<IAuthService>();
 
@@ -31,7 +31,7 @@ public class AuthEndpointsTests
             new LoginRequestDto { Username = "jrb", Password = "supersecret" },
             _authService,
             http,
-            _loggerFactory,
+            _logger,
             TestContext.Current.CancellationToken);
 
         var ok = result.ShouldBeOfType<Ok<LoginResponseDto>>();
@@ -52,7 +52,7 @@ public class AuthEndpointsTests
             new LoginRequestDto { Username = "jrb", Password = "wrong" },
             _authService,
             new DefaultHttpContext(),
-            _loggerFactory,
+            _logger,
             TestContext.Current.CancellationToken);
 
         var problem = result.ShouldBeOfType<ProblemHttpResult>();
@@ -60,15 +60,17 @@ public class AuthEndpointsTests
     }
 
     [Fact]
-    public void Validate_accepts_a_token_supplied_in_the_body()
+    public async Task Validate_accepts_a_token_supplied_in_the_body()
     {
-        _authService.Validate("body-token").Returns(new ValidateResult(true, "jrb"));
+        _authService.ValidateAsync("body-token", Arg.Any<CancellationToken>())
+            .Returns(new ValidateResult(true, "jrb"));
 
-        var result = AuthEndpoints.Validate(
+        var result = await AuthEndpoints.ValidateAsync(
             new ValidateRequestDto { AccessToken = "body-token" },
             _authService,
             new DefaultHttpContext(),
-            _loggerFactory);
+            _logger,
+            TestContext.Current.CancellationToken);
 
         var ok = result.ShouldBeOfType<Ok<ValidateResponseDto>>();
         ok.Value.ShouldNotBeNull();
@@ -77,62 +79,72 @@ public class AuthEndpointsTests
     }
 
     [Fact]
-    public void Validate_falls_back_to_the_authorization_header()
+    public async Task Validate_falls_back_to_the_authorization_header()
     {
-        _authService.Validate("header-token").Returns(new ValidateResult(true, "jrb"));
+        _authService.ValidateAsync("header-token", Arg.Any<CancellationToken>())
+            .Returns(new ValidateResult(true, "jrb"));
 
         var http = new DefaultHttpContext();
         http.Request.Headers.Authorization = "Bearer header-token";
 
-        var result = AuthEndpoints.Validate(body: null, _authService, http, _loggerFactory);
+        var result = await AuthEndpoints.ValidateAsync(
+            body: null, _authService, http, _logger, TestContext.Current.CancellationToken);
 
         result.ShouldBeOfType<Ok<ValidateResponseDto>>();
-        _authService.Received(1).Validate("header-token");
+        await _authService.Received(1).ValidateAsync("header-token", Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void Validate_prefers_the_body_token_over_the_header()
+    public async Task Validate_prefers_the_body_token_over_the_header()
     {
-        _authService.Validate(Arg.Any<string>()).Returns(new ValidateResult(true, "jrb"));
+        _authService.ValidateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ValidateResult(true, "jrb"));
 
         var http = new DefaultHttpContext();
         http.Request.Headers.Authorization = "Bearer header-token";
 
-        AuthEndpoints.Validate(
+        await AuthEndpoints.ValidateAsync(
             new ValidateRequestDto { AccessToken = "body-token" },
             _authService,
             http,
-            _loggerFactory);
+            _logger,
+            TestContext.Current.CancellationToken);
 
-        _authService.Received(1).Validate("body-token");
+        await _authService.Received(1).ValidateAsync("body-token", Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void Validate_returns_401_without_calling_the_auth_service_when_no_token_is_present()
+    public async Task Validate_returns_a_400_problem_without_calling_the_service_when_no_token_is_present()
     {
-        var result = AuthEndpoints.Validate(
-            body: null, _authService, new DefaultHttpContext(), _loggerFactory);
+        var result = await AuthEndpoints.ValidateAsync(
+            body: null,
+            _authService,
+            new DefaultHttpContext(),
+            _logger,
+            TestContext.Current.CancellationToken);
 
-        var json = result.ShouldBeOfType<JsonHttpResult<ValidateResponseDto>>();
-        json.StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
-        json.Value.ShouldNotBeNull();
-        json.Value.Valid.ShouldBeFalse();
-        _authService.DidNotReceiveWithAnyArgs().Validate(default!);
+        var problem = result.ShouldBeOfType<ProblemHttpResult>();
+        problem.ProblemDetails.Status.ShouldBe(StatusCodes.Status400BadRequest);
+        await _authService.DidNotReceiveWithAnyArgs().ValidateAsync(default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
-    public void Validate_returns_401_when_the_token_is_rejected()
+    public async Task Validate_answers_200_with_valid_false_when_the_token_is_rejected()
     {
-        _authService.Validate("stale").Returns(new ValidateResult(false, null));
+        _authService.ValidateAsync("stale", Arg.Any<CancellationToken>())
+            .Returns(new ValidateResult(false, null));
 
-        var result = AuthEndpoints.Validate(
+        var result = await AuthEndpoints.ValidateAsync(
             new ValidateRequestDto { AccessToken = "stale" },
             _authService,
             new DefaultHttpContext(),
-            _loggerFactory);
+            _logger,
+            TestContext.Current.CancellationToken);
 
-        var json = result.ShouldBeOfType<JsonHttpResult<ValidateResponseDto>>();
-        json.StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
+        var ok = result.ShouldBeOfType<Ok<ValidateResponseDto>>();
+        ok.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        ok.Value.ShouldNotBeNull();
+        ok.Value.Valid.ShouldBeFalse();
     }
 
     [Fact]

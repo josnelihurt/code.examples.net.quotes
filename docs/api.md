@@ -72,11 +72,11 @@ Every error response is RFC 9457 ProblemDetails (`application/problem+json`), in
 
 ### Auth
 
-- `POST /api/auth/login` — body `{ username, password }`; failure is 401 ProblemDetails
-- `POST /api/auth/validate` — body `{ accessToken }` or `Authorization: Bearer`
+- `POST /api/auth/login` — body `{ username, password }`; failure is 401 ProblemDetails (`auth.invalid_credentials`)
+- `POST /api/auth/validate` — body `{ accessToken }` or `Authorization: Bearer`; RFC 7662-style introspection: valid and invalid tokens both answer 200 with `{ valid, username }`, only a missing token is 400 ProblemDetails (`auth.token_missing`)
 
 ### Quotes
 
-- `GET /api/quotes/random` — requires Bearer JWT (JwtBearer) + optional `X-Correlation-Id`; 404 ProblemDetails when the catalog is empty
-- `GET /api/quotes/{id}` — requires Bearer JWT; 404 ProblemDetails for unknown ids
-- `POST /api/quotes` — requires Bearer JWT **with the `quotes:write` scope** (403 otherwise); 400 for invalid catalog rules, 409 for near-duplicate fingerprints; 201 returns the `Location` header of the created quote
+- `GET /api/v1/quotes/random` — requires Bearer JWT **with the `quotes:read` scope** (403 otherwise) + optional `X-Correlation-Id`; 404 ProblemDetails when the catalog is empty
+- `GET /api/v1/quotes/{id}` — requires Bearer JWT with `quotes:read`; 404 ProblemDetails for unknown ids
+- `POST /api/v1/quotes` — requires Bearer JWT **with the `quotes:write` scope** (403 otherwise); 400 for invalid catalog rules, 409 for near-duplicate fingerprints; 201 returns the `Location` header of the created quote

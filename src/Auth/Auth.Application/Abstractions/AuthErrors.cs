@@ -10,4 +10,7 @@ public static class AuthErrors
 {
     public static Error InvalidCredentials =>
         Error.Unauthorized("auth.invalid_credentials", "Invalid credentials.");
+
+    public static Error MissingToken =>
+        Error.Validation("auth.token_missing", "An access token is required.");
 }

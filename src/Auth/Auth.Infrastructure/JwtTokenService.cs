@@ -10,13 +10,7 @@ namespace Auth.Infrastructure;
 
 public sealed class JwtTokenService : ITokenService
 {
-    // Scopes granted to the demo user; the Quotes API requires quotes:write to create.
-    private const string _quotesReadScope = "quotes:read";
-    private const string _quotesWriteScope = "quotes:write";
-
-    // Must match JwtAuthExtensions.ScopeClaimType in ServiceDefaults, which owns the
-    // policy that consumes these claims.
-    private const string _scopeClaimType = "scope";
+    private static readonly JwtSecurityTokenHandler _handler = new();
 
     private readonly string _audience;
     private readonly int _expiresInSeconds;
@@ -37,9 +31,10 @@ public sealed class JwtTokenService : ITokenService
         _expiresInSeconds = int.TryParse(jwt["ExpiresInSeconds"], out var seconds) ? seconds : 3600;
     }
 
-    public string CreateToken(string username, out int expiresInSeconds)
+    public Task<IssuedToken> CreateTokenAsync(string username, CancellationToken cancellationToken)
     {
-        expiresInSeconds = _expiresInSeconds;
+        cancellationToken.ThrowIfCancellationRequested();
+
         var credentials = new SigningCredentials(_key, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
             issuer: _issuer,
@@ -48,26 +43,27 @@ public sealed class JwtTokenService : ITokenService
             [
                 new Claim(ClaimTypes.Name, username),
                 new Claim(JwtRegisteredClaimNames.Sub, username),
-                new Claim(_scopeClaimType, _quotesReadScope),
-                new Claim(_scopeClaimType, _quotesWriteScope)
+                new Claim(AuthorizationScopes.ClaimType, AuthorizationScopes.QuotesRead),
+                new Claim(AuthorizationScopes.ClaimType, AuthorizationScopes.QuotesWrite)
             ],
             expires: DateTime.UtcNow.AddSeconds(_expiresInSeconds),
             signingCredentials: credentials);
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return Task.FromResult(new IssuedToken(_handler.WriteToken(token), _expiresInSeconds));
     }
 
-    public ValidateResult ValidateToken(string accessToken)
+    public Task<ValidateResult> ValidateTokenAsync(string accessToken, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (string.IsNullOrWhiteSpace(accessToken))
         {
-            return new ValidateResult(false, null);
+            return Task.FromResult(new ValidateResult(false, null));
         }
 
-        var handler = new JwtSecurityTokenHandler();
         try
         {
-            var principal = handler.ValidateToken(accessToken, new TokenValidationParameters
+            var principal = _handler.ValidateToken(accessToken, new TokenValidationParameters
             {
                 ValidateIssuer = true,
                 ValidIssuer = _issuer,
@@ -83,14 +79,14 @@ public sealed class JwtTokenService : ITokenService
                 ?? principal.FindFirst(ClaimTypes.Name)?.Value
                 ?? principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
 
-            return string.IsNullOrWhiteSpace(username)
+            return Task.FromResult(string.IsNullOrWhiteSpace(username)
                 ? new ValidateResult(false, null)
-                : new ValidateResult(true, username);
+                : new ValidateResult(true, username));
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "JWT validation failed");
-            return new ValidateResult(false, null);
+            return Task.FromResult(new ValidateResult(false, null));
         }
     }
 }

@@ -58,8 +58,10 @@ export async function login(username: string, password: string): Promise<LoginRe
   });
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({ error: 'Invalid credentials' }));
-    throw new Error(payload.error ?? `Login failed (${response.status})`);
+    // The API's single error envelope is RFC 9457 ProblemDetails.
+    const problem = await response.json().catch(() => null) as { title?: string; errorCode?: string } | null;
+    const reason = problem?.title ?? problem?.errorCode ?? 'Invalid credentials';
+    throw new Error(`${reason} (${response.status})`);
   }
 
   const data = (await response.json()) as LoginResponse;

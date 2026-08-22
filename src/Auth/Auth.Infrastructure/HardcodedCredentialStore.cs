@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Security.Cryptography;
+using System.Text;
 using Auth.Domain.Abstractions;
 
 namespace Auth.Infrastructure;
@@ -16,7 +18,19 @@ public sealed class HardcodedCredentialStore : ICredentialStore
     private const string _expectedPassword = "supersecret";
     private const string _expectedUsername = "jrb";
 
-    public bool Validate(string username, string password) =>
-        string.Equals(username, _expectedUsername, StringComparison.Ordinal)
-        && string.Equals(password, _expectedPassword, StringComparison.Ordinal);
+    public Task<bool> ValidateAsync(string username, string password, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Fixed-time comparison over SHA-256 digests: no early exit, so nothing about the
+        // expected values (not even their lengths) leaks through response timing.
+        var usernameMatches = CryptographicOperations.FixedTimeEquals(
+            SHA256.HashData(Encoding.UTF8.GetBytes(username ?? string.Empty)),
+            SHA256.HashData(Encoding.UTF8.GetBytes(_expectedUsername)));
+        var passwordMatches = CryptographicOperations.FixedTimeEquals(
+            SHA256.HashData(Encoding.UTF8.GetBytes(password ?? string.Empty)),
+            SHA256.HashData(Encoding.UTF8.GetBytes(_expectedPassword)));
+
+        return Task.FromResult(usernameMatches && passwordMatches);
+    }
 }

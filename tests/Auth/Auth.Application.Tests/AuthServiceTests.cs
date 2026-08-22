@@ -8,8 +8,8 @@ namespace Auth.Application.Tests;
 public class AuthServiceTests
 {
     private readonly ICredentialStore _credentials = Substitute.For<ICredentialStore>();
-    private readonly AuthService _sut;
     private readonly ITokenService _tokens = Substitute.For<ITokenService>();
+    private readonly AuthService _sut;
 
     public AuthServiceTests()
     {
@@ -19,12 +19,9 @@ public class AuthServiceTests
     [Fact]
     public async Task LoginAsync_returns_a_result_when_credentials_are_accepted()
     {
-        _credentials.Validate("jrb", "secret").Returns(true);
-        _tokens.CreateToken("jrb", out int _).Returns(call =>
-        {
-            call[1] = 900;
-            return "issued-token";
-        });
+        _credentials.ValidateAsync("jrb", "secret", Arg.Any<CancellationToken>()).Returns(true);
+        _tokens.CreateTokenAsync("jrb", Arg.Any<CancellationToken>())
+            .Returns(new IssuedToken("issued-token", 900));
 
         var result = await _sut.LoginAsync(
             new LoginRequest("jrb", "secret"),
@@ -39,7 +36,7 @@ public class AuthServiceTests
     [Fact]
     public async Task LoginAsync_returns_invalid_credentials_when_the_store_rejects()
     {
-        _credentials.Validate("jrb", "wrong").Returns(false);
+        _credentials.ValidateAsync("jrb", "wrong", Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await _sut.LoginAsync(
             new LoginRequest("jrb", "wrong"),
@@ -48,7 +45,7 @@ public class AuthServiceTests
         result.IsError.ShouldBeTrue();
         result.FirstError.Code.ShouldBe("auth.invalid_credentials");
         result.FirstError.Type.ShouldBe(ErrorType.Unauthorized);
-        _tokens.DidNotReceiveWithAnyArgs().CreateToken(default!, out int _);
+        await _tokens.DidNotReceiveWithAnyArgs().CreateTokenAsync(default!, TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -65,26 +62,28 @@ public class AuthServiceTests
 
         result.IsError.ShouldBeTrue();
         result.FirstError.Code.ShouldBe("auth.invalid_credentials");
-        _credentials.DidNotReceiveWithAnyArgs().Validate(default!, default!);
+        await _credentials.DidNotReceiveWithAnyArgs().ValidateAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
-    public void Validate_delegates_to_the_token_service()
+    public async Task ValidateAsync_delegates_to_the_token_service()
     {
-        _tokens.ValidateToken("token").Returns(new ValidateResult(true, "jrb"));
+        _tokens.ValidateTokenAsync("token", Arg.Any<CancellationToken>())
+            .Returns(new ValidateResult(true, "jrb"));
 
-        var result = _sut.Validate("token");
+        var result = await _sut.ValidateAsync("token", TestContext.Current.CancellationToken);
 
         result.Valid.ShouldBeTrue();
         result.Username.ShouldBe("jrb");
     }
 
     [Fact]
-    public void Validate_propagates_a_negative_result()
+    public async Task ValidateAsync_propagates_a_negative_result()
     {
-        _tokens.ValidateToken("bad").Returns(new ValidateResult(false, null));
+        _tokens.ValidateTokenAsync("bad", Arg.Any<CancellationToken>())
+            .Returns(new ValidateResult(false, null));
 
-        var result = _sut.Validate("bad");
+        var result = await _sut.ValidateAsync("bad", TestContext.Current.CancellationToken);
 
         result.Valid.ShouldBeFalse();
         result.Username.ShouldBeNull();

@@ -71,7 +71,7 @@ public class QuoteAuthIntegrationTests
         await using var app = await StartAsync();
         using var client = app.GetTestClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", CreateToken("jrb", withWriteScope: true));
+            new AuthenticationHeaderValue("Bearer", CreateToken("jrb", "quotes:read", "quotes:write"));
 
         using var response = await client.GetAsync(
             new Uri("/api/v1/quotes/random", UriKind.Relative),
@@ -107,7 +107,7 @@ public class QuoteAuthIntegrationTests
         await using var app = await StartAsync();
         using var client = app.GetTestClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", CreateToken("jrb", withWriteScope: false));
+            new AuthenticationHeaderValue("Bearer", CreateToken("jrb"));
 
         using var response = await client.PostAsJsonAsync(
             new Uri("/api/v1/quotes", UriKind.Relative),
@@ -132,7 +132,7 @@ public class QuoteAuthIntegrationTests
         await using var app = await StartAsync(create);
         using var client = app.GetTestClient();
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", CreateToken("jrb", withWriteScope: true));
+            new AuthenticationHeaderValue("Bearer", CreateToken("jrb", "quotes:read", "quotes:write"));
 
         using var response = await client.PostAsJsonAsync(
             new Uri("/api/v1/quotes", UriKind.Relative),
@@ -182,7 +182,7 @@ public class QuoteAuthIntegrationTests
         return app;
     }
 
-    private static string CreateToken(string username, bool withWriteScope)
+    private static string CreateToken(string username, params string[] scopes)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_signingKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -191,11 +191,7 @@ public class QuoteAuthIntegrationTests
             new(ClaimTypes.Name, username),
             new(JwtRegisteredClaimNames.Sub, username)
         };
-        if (withWriteScope)
-        {
-            claims.Add(new Claim("scope", "quotes:read"));
-            claims.Add(new Claim("scope", "quotes:write"));
-        }
+        claims.AddRange(scopes.Select(scope => new Claim("scope", scope)));
 
         var token = new JwtSecurityToken(
             issuer: _issuer,

@@ -25,7 +25,7 @@ public sealed class QuoteApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Audience", "aspire-quotes-poc");
     }
 
-    public string CreateToken(bool withWriteScope)
+    public string CreateToken(params string[] scopes)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -34,11 +34,7 @@ public sealed class QuoteApiFactory : WebApplicationFactory<Program>
             new(ClaimTypes.Name, "jrb"),
             new(JwtRegisteredClaimNames.Sub, "jrb")
         };
-        if (withWriteScope)
-        {
-            claims.Add(new Claim("scope", "quotes:read"));
-            claims.Add(new Claim("scope", "quotes:write"));
-        }
+        claims.AddRange(scopes.Select(scope => new Claim("scope", scope)));
 
         var token = new JwtSecurityToken(
             issuer: "auth-api",

@@ -2,5 +2,6 @@ namespace Auth.Domain.Abstractions;
 
 public interface ICredentialStore
 {
-    bool Validate(string username, string password);
+    /// <summary>Checks credentials asynchronously; hashing or remote stores must not block callers.</summary>
+    Task<bool> ValidateAsync(string username, string password, CancellationToken cancellationToken);
 }

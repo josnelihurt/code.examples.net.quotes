@@ -8,24 +8,24 @@ public sealed class AuthService(
     ICredentialStore credentials,
     ITokenService tokens) : IAuthService
 {
-    public Task<ErrorOr<LoginResult>> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
+    public async Task<ErrorOr<LoginResult>> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return Task.FromResult<ErrorOr<LoginResult>>(AuthErrors.InvalidCredentials);
+            return AuthErrors.InvalidCredentials;
         }
 
-        if (!credentials.Validate(request.Username, request.Password))
+        if (!await credentials.ValidateAsync(request.Username, request.Password, cancellationToken))
         {
-            return Task.FromResult<ErrorOr<LoginResult>>(AuthErrors.InvalidCredentials);
+            return AuthErrors.InvalidCredentials;
         }
 
-        var token = tokens.CreateToken(request.Username, out var expiresInSeconds);
-        return Task.FromResult<ErrorOr<LoginResult>>(
-            new LoginResult(token, request.Username, expiresInSeconds));
+        var issued = await tokens.CreateTokenAsync(request.Username, cancellationToken);
+        return new LoginResult(issued.AccessToken, request.Username, issued.ExpiresInSeconds);
     }
 
-    public ValidateResult Validate(string accessToken) => tokens.ValidateToken(accessToken);
+    public Task<ValidateResult> ValidateAsync(string accessToken, CancellationToken cancellationToken) =>
+        tokens.ValidateTokenAsync(accessToken, cancellationToken);
 }

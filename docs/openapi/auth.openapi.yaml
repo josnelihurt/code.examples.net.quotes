@@ -54,12 +54,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidateResponseDto'
-        '401':
-          description: Unauthorized
+        '400':
+          description: Bad Request
           content:
-            application/json:
+            application/problem+json:
               schema:
-                $ref: '#/components/schemas/ValidateResponseDto'
+                $ref: '#/components/schemas/ProblemDetails'
 components:
   schemas:
     HttpValidationProblemDetails:
@@ -95,12 +95,17 @@ components:
             items:
               type: string
     LoginRequestDto:
+      required:
+      - username
+      - password
       type: object
       properties:
         username:
+          maxLength: 100
           type: string
           description: Account username.
         password:
+          maxLength: 200
           type: string
           description: Account password.
       description: Credentials submitted to obtain an access token.
@@ -160,6 +165,7 @@ components:
       type: object
       properties:
         accessToken:
+          maxLength: 4096
           type:
           - 'null'
           - string

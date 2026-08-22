@@ -20,13 +20,17 @@ public static class QuoteEndpoints
 
         quotes.MapGet("/random", GetRandomAsync)
             .WithName("GetRandomQuote")
+            .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
             .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         quotes.MapGet("/{id}", GetByIdAsync)
             .WithName("GetQuoteById")
+            .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
             .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         quotes.MapPost("", CreateAsync)
             .WithName("CreateQuote")
