@@ -27,7 +27,7 @@ export function LoginPage() {
   return (
     <section className="panel">
       <h1>Sign in</h1>
-      <p className="muted">POC credentials: jrb / supersecret</p>
+      <p className="muted">Local credentials: jrb / supersecret</p>
       <form onSubmit={onSubmit} className="form">
         <label>
           <span>Username</span>

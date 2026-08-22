@@ -4,7 +4,7 @@
 Browser -> Vite (web) --proxy--> Auth.Api (/api/auth/*)
                               -> Quotes.Api (/api/quotes/*)
 Quotes.Api validates JWT locally (JwtBearer middleware)
-Auth.Api POST /api/auth/validate remains for introspection demos
+Auth.Api POST /api/auth/validate remains for optional introspection
 Aspire AppHost orchestrates processes + YARP gateway (publish) + Docsify
 ```
 
@@ -34,4 +34,4 @@ Expected failures are `ErrorOr` results from Domain/Application, mapped once at 
 
 ## Resilience
 
-Global HttpClient defaults enable Aspire service discovery only. Outbound clients that need Polly should add `Microsoft.Extensions.Http.Resilience` explicitly per client when the first real service-to-service call appears (the seed deliberately ships no speculative helper).
+Global HttpClient defaults enable Aspire service discovery only. Outbound clients that need Polly should add `Microsoft.Extensions.Http.Resilience` explicitly per client when the first service-to-service call appears — this base does not ship a speculative helper.

@@ -26,7 +26,7 @@ function renderPage() {
 }
 
 describe('LoginPage', () => {
-  it('prefills the POC credentials', () => {
+  it('prefills the local credentials', () => {
     const { username, password } = renderPage();
 
     expect(username.value).toBe('jrb');

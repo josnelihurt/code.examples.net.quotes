@@ -26,17 +26,19 @@ What it does:
 2. Starts container `aspirequotes-sonarqube` on port **9000**
 3. Waits until `/api/system/status` is `UP`
 4. Rotates the default `admin` password
-5. Creates project `aspire-quotes-poc` and writes an analysis token to `.sonar/token`
+5. Creates project `aspire-quotes` and writes an analysis token to `.sonar/token`
 
 Defaults (override via env; see `scripts/sonar-env.sh`):
 
 | Variable | Default |
 |----------|---------|
 | `SONAR_HOST_URL` | `http://localhost:9000` |
-| `SONAR_ADMIN_PASSWORD` | `AspireQuotes-Poc1!` |
-| `SONAR_PROJECT_KEY` | `aspire-quotes-poc` |
+| `SONAR_ADMIN_PASSWORD` | `AspireQuotes-Local1!` |
+| `SONAR_PROJECT_KEY` | `aspire-quotes` |
 
 UI: [http://localhost:9000](http://localhost:9000) — login `admin` / password above.
+
+If you already have a local Sonar volume from the previous `aspire-quotes-poc` key, either keep overriding `SONAR_PROJECT_KEY` or run `./scripts/sonar-down.sh --purge` and recreate.
 
 ## Run an analysis
 
@@ -54,7 +56,7 @@ SONAR_SKIP_FRONTEND=1 ./scripts/sonar-scan.sh
 
 Dashboard after upload:
 
-`http://localhost:9000/dashboard?id=aspire-quotes-poc`
+`http://localhost:9000/dashboard?id=aspire-quotes`
 
 ## Stop / reset
 
@@ -63,9 +65,9 @@ Dashboard after upload:
 ./scripts/sonar-down.sh --purge  # also drop volumes + `.sonar/token`
 ```
 
-## Intentional POC findings
+## Intentional local findings
 
-These stay in code with documented suppressions (not production secrets):
+These stay in code with documented suppressions (local scaffolding, not production secrets):
 
 - Hardcoded `jrb` / `supersecret` in `HardcodedCredentialStore`
 - Aspire service-discovery base address `http://auth-api` (rewritten at runtime)

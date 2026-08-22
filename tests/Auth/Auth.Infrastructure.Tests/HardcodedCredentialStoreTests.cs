@@ -5,7 +5,7 @@ public class HardcodedCredentialStoreTests
     private readonly HardcodedCredentialStore _sut = new();
 
     [Fact]
-    public void Validate_accepts_the_poc_credentials()
+    public void Validate_accepts_the_local_credentials()
     {
         _sut.Validate("jrb", "supersecret").ShouldBeTrue();
     }

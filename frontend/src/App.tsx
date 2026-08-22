@@ -17,7 +17,7 @@ function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <span className="brand">Aspire Quotes POC</span>
+        <span className="brand">Aspire Quotes</span>
       </header>
       <main>
         <Routes>

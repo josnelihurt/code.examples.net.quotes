@@ -1,8 +1,8 @@
 # Aspire Quotes
 
-.NET 10 + Aspire foundation for production-oriented microservices: Clean Architecture services (**Auth** and **Quotes**), shared `ServiceDefaults` platform kit, React UI, OpenTelemetry, Serilog, Polly, OpenAPI/Scalar, and Docsify docs.
+Microservice seed on **.NET 10** + **Aspire**: Clean Architecture services (**Auth**, **Quotes**), shared `ServiceDefaults`, React UI, OpenTelemetry, Serilog, OpenAPI/Scalar, and Docsify docs.
 
-See the [repository README](../README.md) for purpose, layering rules, and foundation direction of travel.
+See the [repository README](../README.md) for intention, layering rules, and conventions.
 
 ## Quick links
 
