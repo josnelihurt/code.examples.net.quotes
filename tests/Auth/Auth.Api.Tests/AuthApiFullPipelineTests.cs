@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Auth.Api.Contracts;
 using Auth.Application.Abstractions;
 using Microsoft.Extensions.Hosting;
@@ -21,7 +22,7 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
     public async Task Login_returns_a_token_and_echoes_the_correlation_id()
     {
         using var client = _factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login")
         {
             Content = JsonContent.Create(new LoginRequestDto { Username = "jrb", Password = "supersecret" })
         };
@@ -43,7 +44,7 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
         using var client = _factory.CreateClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/auth/login", UriKind.Relative),
+            new Uri("/api/v1/auth/login", UriKind.Relative),
             new LoginRequestDto { Username = "jrb", Password = "wrong" },
             TestContext.Current.CancellationToken);
 
@@ -59,7 +60,7 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
         using var client = _factory.CreateClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/auth/login", UriKind.Relative),
+            new Uri("/api/v1/auth/login", UriKind.Relative),
             new LoginRequestDto { Username = "", Password = "" },
             TestContext.Current.CancellationToken);
 
@@ -78,7 +79,7 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
         var token = await _factory.IssueTokenAsync();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/auth/validate", UriKind.Relative),
+            new Uri("/api/v1/auth/validate", UriKind.Relative),
             new ValidateRequestDto { AccessToken = token },
             TestContext.Current.CancellationToken);
 
@@ -97,7 +98,7 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", await _factory.IssueTokenAsync());
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/auth/validate", UriKind.Relative),
+            new Uri("/api/v1/auth/validate", UriKind.Relative),
             new ValidateRequestDto(),
             TestContext.Current.CancellationToken);
 
@@ -113,7 +114,7 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
         using var client = _factory.CreateClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/auth/validate", UriKind.Relative),
+            new Uri("/api/v1/auth/validate", UriKind.Relative),
             new ValidateRequestDto { AccessToken = "not-a-jwt" },
             TestContext.Current.CancellationToken);
 
@@ -129,7 +130,7 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
         using var client = _factory.CreateClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/auth/validate", UriKind.Relative),
+            new Uri("/api/v1/auth/validate", UriKind.Relative),
             new ValidateRequestDto { AccessToken = _factory.IssueForeignToken() },
             TestContext.Current.CancellationToken);
 
@@ -145,13 +146,45 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
         using var client = _factory.CreateClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/auth/validate", UriKind.Relative),
+            new Uri("/api/v1/auth/validate", UriKind.Relative),
             new ValidateRequestDto(),
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         problem.GetProperty("errorCode").GetString().ShouldBe("auth.token_missing");
+    }
+
+    [Fact]
+    public async Task The_openapi_document_documents_both_operations()
+    {
+        using var client = _factory.CreateClient();
+
+        var document = JsonNode.Parse(await client.GetStringAsync(
+            "/openapi/v1.json", TestContext.Current.CancellationToken))!;
+
+        document["info"]!["description"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
+
+        var login = document["paths"]!["/api/v1/auth/login"]!["post"]!;
+        login["summary"].ShouldNotBeNull();
+        login["description"].ShouldNotBeNull();
+        // The XML-comment generator maps the LAST <param> tag to the request body, so the
+        // body parameter must be documented last; this pins that the mapping stays correct.
+        login["requestBody"]!["description"]!.GetValue<string>().ShouldContain("Credentials");
+        login["responses"]!["401"]!["description"]!.GetValue<string>()
+            .ShouldContain("auth.invalid_credentials");
+
+        var validate = document["paths"]!["/api/v1/auth/validate"]!["post"]!;
+        validate["summary"].ShouldNotBeNull();
+        validate["responses"]!["400"]!["description"]!.GetValue<string>()
+            .ShouldContain("auth.token_missing");
+
+        var schemas = document["components"]!["schemas"]!.AsObject();
+        schemas["LoginRequestDto"]!["example"].ShouldNotBeNull();
+        schemas["LoginResponseDto"]!["example"].ShouldNotBeNull();
+
+        var unauthorized = login["responses"]!["401"]!["content"]!["application/problem+json"]!;
+        unauthorized["example"]!["errorCode"]!.GetValue<string>().ShouldBe("auth.invalid_credentials");
     }
 
     [Fact]
@@ -191,7 +224,7 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
         using var client = _factory.CreateClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/auth/login", UriKind.Relative),
+            new Uri("/api/v1/auth/login", UriKind.Relative),
             new LoginRequestDto { Username = "reader", Password = "readsecret" },
             TestContext.Current.CancellationToken);
 

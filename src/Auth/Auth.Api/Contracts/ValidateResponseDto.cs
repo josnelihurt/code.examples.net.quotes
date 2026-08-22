@@ -2,6 +2,7 @@ using System.ComponentModel;
 
 namespace Auth.Api.Contracts;
 
+/// <example>{"valid":true,"username":"jrb"}</example>
 [Description("Result of validating an access token; returned for both success and failure.")]
 public sealed class ValidateResponseDto
 {

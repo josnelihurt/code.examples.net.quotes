@@ -64,7 +64,7 @@ internal sealed class BearerSecuritySchemeTransformer(IServiceProvider servicePr
             Type = SecuritySchemeType.Http,
             Scheme = "bearer",
             BearerFormat = "JWT",
-            Description = "Enter the bearer token issued by the Auth API."
+            Description = "Enter the bearer token issued by the Auth API (POST /api/v1/auth/login)."
         });
 
         operation.Security =

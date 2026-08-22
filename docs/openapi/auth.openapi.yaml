@@ -1,16 +1,47 @@
 openapi: 3.1.1
 info:
   title: Auth.Api | v1
+  description: "Issues and introspects the JWT access tokens the Quotes API authorizes\
+    \ against.\n\n**Single supported version: v1** — served under `/api/v1/auth` and\
+    \ implemented with\nminimal APIs only. The MVC controller transport demonstrated\
+    \ by the Quotes API (v0)\nis intentionally not replicated here.\n\nTypical use:\n\
+    \n1. `POST /api/v1/auth/login` with username/password — the response carries the\n\
+    \   `accessToken` (development users: `jrb`/`supersecret` with both scopes,\n\
+    \   `reader`/`readsecret` read-only).\n2. Send `Authorization: Bearer {accessToken}`\
+    \ to the Quotes API (`/api/v1/quotes`).\n3. Optionally `POST /api/v1/auth/validate`\
+    \ to introspect a token; valid and invalid\n   tokens both answer `200 { valid,\
+    \ username }`.\n\nCross-cutting behavior:\n\n- Every error response is RFC 9457\
+    \ `application/problem+json` with `errorCode` and\n  `correlationId` extensions.\n\
+    - Both endpoints are rate limited per client IP (fixed window, 10 requests / 30\n\
+    \  seconds by default); over-limit answers `429` with `auth.rate_limited`.\n-\
+    \ Send `X-Correlation-Id` to correlate calls; it is echoed on every response."
   version: 1.0.0
 servers:
 - url: /
 paths:
-  /api/auth/login:
+  /api/v1/auth/login:
     post:
       tags:
       - Auth
+      summary: Exchanges credentials for a JWT access token.
+      description: 'Typical use: call this first, then send the returned `accessToken`
+        as
+
+        `Authorization: Bearer` to the Quotes API, which authorizes against the
+
+        `quotes:read` and `quotes:write` scope claims carried by the token.
+
+        Login is rate limited per client IP (fixed window, 10 requests per 30 seconds
+        by
+
+        default); send `X-Correlation-Id` to reuse one correlation id across calls
+        — it
+
+        is echoed on every response and embedded in problem details.'
       operationId: Login
       requestBody:
+        description: 'Credentials. Development users: `jrb/supersecret` (read + write
+          scopes), `reader/readsecret` (read only).'
         content:
           application/json:
             schema:
@@ -18,35 +49,72 @@ paths:
         required: true
       responses:
         '200':
-          description: OK
+          description: Credentials accepted; the body carries the access token, its
+            lifetime in seconds and the correlation id.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponseDto'
         '400':
-          description: Bad Request
+          description: Malformed payload; transport validation errors are keyed by
+            property name (Username, Password).
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/HttpValidationProblemDetails'
+              example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.1
+                title: One or more validation errors occurred.
+                status: 400
+                errors:
+                  Username:
+                  - The Username field is required.
         '401':
-          description: Unauthorized
+          description: Unknown credentials (errorCode `auth.invalid_credentials`).
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.2
+                title: Unauthorized
+                status: 401
+                detail: Invalid credentials.
+                errorCode: auth.invalid_credentials
+                correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
         '429':
-          description: Too Many Requests
+          description: Rate limit exceeded (errorCode `auth.rate_limited`); retry
+            after the window elapses.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-  /api/auth/validate:
+              example:
+                title: Too many requests
+                status: 429
+                detail: The auth endpoint rate limit was exceeded; retry after the
+                  window elapses.
+                errorCode: auth.rate_limited
+                correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
+  /api/v1/auth/validate:
     post:
       tags:
       - Auth
+      summary: Introspects an access token (RFC 7662 style).
+      description: 'Both a valid and an invalid token are successful answers: the
+        response is always
+
+        `200 { valid, username }` and only a missing token is a request error. The
+        token
+
+        is read from the JSON body when present, otherwise from the
+
+        `Authorization: Bearer` header. Rate limited per client IP exactly like login
+
+        (fixed window, 10 requests per 30 seconds by default).'
       operationId: ValidateToken
       requestBody:
+        description: Cooperative cancellation, not part of the HTTP contract.
         content:
           application/json:
             schema:
@@ -55,23 +123,42 @@ paths:
               - $ref: '#/components/schemas/ValidateRequestDto'
       responses:
         '200':
-          description: OK
+          description: Introspection result. `valid` is false for unknown or expired
+            tokens; `username` is only set for valid ones.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidateResponseDto'
         '400':
-          description: Bad Request
+          description: No token in the body or the Authorization header (errorCode
+            `auth.token_missing`).
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.1
+                title: One or more validation errors occurred.
+                status: 400
+                errorCode: auth.token_missing
+                correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
+                errors:
+                  auth.token_missing:
+                  - An access token is required.
         '429':
-          description: Too Many Requests
+          description: Rate limit exceeded (errorCode `auth.rate_limited`); retry
+            after the window elapses.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+              example:
+                title: Too many requests
+                status: 429
+                detail: The auth endpoint rate limit was exceeded; retry after the
+                  window elapses.
+                errorCode: auth.rate_limited
+                correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
 components:
   schemas:
     HttpValidationProblemDetails:
@@ -120,7 +207,9 @@ components:
           maxLength: 200
           type: string
           description: Account password.
-      description: Credentials submitted to obtain an access token.
+      example:
+        username: jrb
+        password: supersecret
     LoginResponseDto:
       required:
       - accessToken
@@ -146,7 +235,11 @@ components:
         username:
           type: string
           description: Authenticated username.
-      description: Successful login result including the issued access token.
+      example:
+        accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZWFkZXIifQ.x
+        correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
+        expiresIn: 3600
+        username: jrb
     ProblemDetails:
       type: object
       properties:
@@ -183,8 +276,8 @@ components:
           - string
           description: Access token to validate when not supplied via Authorization
             header.
-      description: Optional body for token validation; Authorization Bearer may be
-        used instead.
+      example:
+        accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZWFkZXIifQ.x
     ValidateResponseDto:
       required:
       - valid
@@ -198,7 +291,10 @@ components:
           - 'null'
           - string
           description: Username from a valid token; omitted or null when invalid.
-      description: Result of validating an access token; returned for both success
-        and failure.
+      example:
+        valid: true
+        username: jrb
 tags:
 - name: Auth
+  description: Login and RFC 7662-style token introspection; rate limited per client
+    IP.

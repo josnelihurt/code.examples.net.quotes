@@ -1,10 +1,10 @@
 # Architecture
 
 ```text
-Browser -> Vite (web) --proxy--> Auth.Api (/api/auth/*)
+Browser -> Vite (web) --proxy--> Auth.Api (/api/v1/auth/*)
                               -> Quotes.Api (/api/v1/quotes/*)
 Quotes.Api validates JWT locally (JwtBearer middleware)
-Auth.Api POST /api/auth/validate remains for optional introspection
+Auth.Api POST /api/v1/auth/validate remains for optional introspection
 Aspire AppHost orchestrates processes + YARP gateway (publish) + Docsify
 ```
 
@@ -17,7 +17,7 @@ Aspire AppHost orchestrates processes + YARP gateway (publish) + Docsify
 | `src/Auth` → `auth-api` | Login + JWT issue/validate (DDD layers) |
 | `src/Quotes` → `quotes-api` | Random quote; JwtBearer protects `/api/v1/quotes` |
 | `web` | React + TypeScript Vite SPA |
-| `gateway` | YARP routes `/api/auth` and `/api/v1/quotes`; serves static SPA on publish |
+| `gateway` | YARP routes `/api/v1/auth` and `/api/v1/quotes`; serves static SPA on publish |
 | `docs` | Docsify + combined Scalar reference |
 
 ## Correlation
@@ -32,7 +32,7 @@ The two contexts must answer every structural question the same way; these rules
 2. **Port placement**: repository-style ports (persistence, external state) live in `*.Domain.Abstractions`; technical ports (token minting, machine concerns) live in `*.Application.Abstractions`. Adapters implement them in Infrastructure.
 3. **Dependency direction**: Domain depends on nothing; Application depends on its own Domain; Infrastructure on Domain + Application; the Api host composes Application + Infrastructure and never references Domain types. Bounded contexts never reference each other; ServiceDefaults references no context.
 4. **Service lifetimes**: register use cases and their decorator chains as **Scoped** by default; Singleton only for adapters proven stateless (credential store, token service). One lifetime rule per seed, not per context.
-5. **API versioning**: every context versions its surface from its first endpoint (`/api/v1/...`). Auth's unversioned `/api/auth` predates the rule and moves to `/api/v1/auth` at its first breaking change, not before.
+5. **API versioning**: every context versions its surface from its first endpoint (`/api/v1/...`). Auth's original unversioned `/api/auth` moved to `/api/v1/auth` with the OpenAPI documentation work — its first breaking change.
 6. **Value objects** implement `IEquatable<T>` with ordinal value equality — the glossary's "equality by value" is code, not aspiration.
 
 ## Collections and pagination
@@ -75,13 +75,15 @@ host and compares status, media type and body. Two details are load-bearing ther
 Adding a version means: a folder under the API host with its own contracts, mappers and entry
 points; a group name tagging it into its own OpenAPI document (`.WithGroupName` for minimal APIs,
 `[ApiExplorerSettings(GroupName = ...)]` for controllers); the name passed to
-`AddStandardApiServices`; a gateway route in `AppHost.cs`; and a frozen contract under
+`AddStandardApiServices` plus a literal `AddOpenApi("...", o => o.ConfigureStandardOpenApi("..."))`
+call in Program.cs (literals are what the XML-comment source generator intercepts); a gateway
+route in `AppHost.cs`; and a frozen contract under
 `docs/openapi/`. No Application, Domain or Infrastructure change is involved — if one turns out to
 be needed, the layering has sprung a leak.
 
 ## Authentication
 
-Quotes uses `AddStandardJwtAuthentication` / `UseStandardAuthentication` from ServiceDefaults (JwtBearer + `RequireAuthorization` on the `/api/v1/quotes` group; reads require the `quotes:read` scope policy and writes the `quotes:write` policy, so a valid token alone grants nothing). Auth and Quotes share the same `Jwt` issuer, audience, and signing key — in Development it comes from user-secrets (or the Aspire `jwt-signing-key` parameter), never from committed files, and Production startup rejects the public development key. Auth `POST /api/auth/validate` is an RFC 7662-style introspection endpoint (invalid tokens answer `200 {valid: false}`; only a missing token is a 400); Quotes no longer calls it per request.
+Quotes uses `AddStandardJwtAuthentication` / `UseStandardAuthentication` from ServiceDefaults (JwtBearer + `RequireAuthorization` on the `/api/v1/quotes` group; reads require the `quotes:read` scope policy and writes the `quotes:write` policy, so a valid token alone grants nothing). Auth and Quotes share the same `Jwt` issuer, audience, and signing key — in Development it comes from user-secrets (or the Aspire `jwt-signing-key` parameter), never from committed files, and Production startup rejects the public development key. Auth `POST /api/v1/auth/validate` is an RFC 7662-style introspection endpoint (invalid tokens answer `200 {valid: false}`; only a missing token is a 400); Quotes no longer calls it per request.
 
 Scope differentiation is real, not decorative: the credential store returns the granted scopes with every successful validation (`CredentialValidationResult`), and the token service mints exactly those claims — `jrb` holds read+write, `reader` holds read-only, so a 403 is reachable by any client of the seed, not only by hand-minted test tokens. The scaffolding credential store refuses to register in Production (startup-time, same stance as the dev signing key), and the public auth endpoints sit behind a fixed-window rate limiter (per client IP; over-limit answers `429` as ProblemDetails with `errorCode auth.rate_limited`).
 

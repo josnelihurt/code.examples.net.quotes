@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Auth.Api.Contracts;
 
+/// <example>{"accessToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZWFkZXIifQ.x"}</example>
 [Description("Optional body for token validation; Authorization Bearer may be used instead.")]
 public sealed class ValidateRequestDto
 {

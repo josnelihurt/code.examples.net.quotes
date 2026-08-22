@@ -25,6 +25,9 @@ public class ServiceDefaultsWiringTests
 
         builder.AddServiceDefaults();
         builder.AddStandardApiServices();
+        // Same convention as the real hosts: literal document names so the XML-comment
+        // source generator intercepts the AddOpenApi call.
+        builder.Services.AddOpenApi("v1", options => options.ConfigureStandardOpenApi("v1"));
 
         var app = builder.Build();
         app.UseSerilogDefaults();

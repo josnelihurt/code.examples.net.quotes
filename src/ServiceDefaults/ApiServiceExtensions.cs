@@ -1,5 +1,6 @@
 using AspireQuotesPoc.ServiceDefaults.OpenApi;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
 using Scalar.AspNetCore;
 
@@ -11,16 +12,16 @@ public static class ApiServiceExtensions
     private const string _defaultDocumentName = "v1";
 
     /// <summary>
-    /// Registers ProblemDetails and one OpenAPI document per name in <paramref name="documentNames"/>.
-    /// Hosts that serve a single API version pass nothing and keep the framework default document
-    /// name (<c>v1</c>, served at <c>/openapi/v1.json</c>); hosts that serve several versions name
-    /// them explicitly, for example <c>AddStandardApiServices("v0", "v1")</c>.
+    /// Registers ProblemDetails and the document names Scalar offers in its version picker.
+    /// Hosts that serve a single API version pass nothing and keep the framework default
+    /// document name (<c>v1</c>, served at <c>/openapi/v1.json</c>); hosts that serve several
+    /// versions name them explicitly, for example <c>AddStandardApiServices("v0", "v1")</c>.
     /// </summary>
     /// <remarks>
-    /// An endpoint lands in a document when its ApiExplorer group name matches, so each version
-    /// tags its own routes (<c>.WithGroupName(...)</c> for minimal APIs,
-    /// <c>[ApiExplorerSettings(GroupName = ...)]</c> for controllers). Untagged endpoints appear in
-    /// every document, which is what keeps single-version hosts working without any tagging.
+    /// This method deliberately does not call <c>AddOpenApi</c>: the XML-comment source
+    /// generator only intercepts <c>AddOpenApi</c> calls whose document name is a string
+    /// literal, so each host registers its own documents next to this call, for example
+    /// <c>builder.Services.AddOpenApi("v1", o => o.ConfigureStandardOpenApi("v1"))</c>.
     /// </remarks>
     public static TBuilder AddStandardApiServices<TBuilder>(this TBuilder builder, params string[] documentNames)
         where TBuilder : IHostApplicationBuilder
@@ -30,18 +31,24 @@ public static class ApiServiceExtensions
         builder.Services.AddProblemDetails();
         builder.Services.AddSingleton(new ApiDocumentNames(names));
 
-        foreach (var documentName in names)
-        {
-            var name = documentName;
-            builder.Services.AddOpenApi(name, options =>
-            {
-                options.AddOperationTransformer<BearerSecuritySchemeTransformer>();
-                options.ShouldInclude = description =>
-                    description.GroupName is null || description.GroupName == name;
-            });
-        }
-
         return builder;
+    }
+
+    /// <summary>
+    /// Applies the standard document wiring to one OpenAPI document: the bearer security
+    /// scheme, the problem+json response samples, the host narrative
+    /// (<see cref="OpenApiDocumentInfo"/>) and the per-version endpoint filter. The
+    /// <paramref name="documentName"/> must equal the literal passed to
+    /// <c>AddOpenApi</c> at the call site.
+    /// </summary>
+    public static OpenApiOptions ConfigureStandardOpenApi(this OpenApiOptions options, string documentName)
+    {
+        options.AddOperationTransformer<BearerSecuritySchemeTransformer>();
+        options.AddOperationTransformer<ProblemResponseExampleTransformer>();
+        options.AddDocumentTransformer<DocumentInfoTransformer>();
+        options.ShouldInclude = description =>
+            description.GroupName is null || description.GroupName == documentName;
+        return options;
     }
 
     /// <summary>

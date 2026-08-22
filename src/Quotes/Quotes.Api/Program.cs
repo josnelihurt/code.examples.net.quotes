@@ -1,3 +1,5 @@
+using AspireQuotesPoc.ServiceDefaults.OpenApi;
+using Quotes.Api;
 using Quotes.Api.Telemetry;
 using Quotes.Api.V0.Controllers;
 using Quotes.Api.V1.Endpoints;
@@ -16,6 +18,14 @@ try
     builder.AddServiceDefaults();
     // Two transports, two OpenAPI documents: v0 is controller-based, v1 is minimal APIs.
     builder.AddStandardApiServices(QuotesController.DocumentName, QuoteEndpoints.DocumentName);
+    builder.Services.AddSingleton(new OpenApiDocumentInfo(
+        Description: OpenApiDocs.Description,
+        TagDescriptions: OpenApiDocs.TagDescriptions));
+    // Literal document names are mandatory: the XML-comment source generator only intercepts
+    // AddOpenApi calls whose document name is a string literal, so a loop or a constant field
+    // would silently drop every /// summary and response description from the documents.
+    builder.Services.AddOpenApi("v0", options => options.ConfigureStandardOpenApi("v0"));
+    builder.Services.AddOpenApi("v1", options => options.ConfigureStandardOpenApi("v1"));
     builder.AddStandardJwtAuthentication();
 
     // The API host is the composition root: each layer contributes its own registrations.

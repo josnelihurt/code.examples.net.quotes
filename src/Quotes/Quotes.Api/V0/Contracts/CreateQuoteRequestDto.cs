@@ -4,6 +4,7 @@ using Quotes.Application.Abstractions;
 
 namespace Quotes.Api.V0.Contracts;
 
+/// <example>{"text":"Talk is cheap. Show me the code.","author":"Linus Torvalds"}</example>
 /// <remarks>
 /// Deliberately a separate type from its v1 twin. Versions own their contracts so one can change
 /// without dragging the other along; sharing the DTO would couple the two versions permanently.

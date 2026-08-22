@@ -39,7 +39,7 @@ echo "AUTH_URL=${AUTH_URL}"
 echo "QUOTES_URL=${QUOTES_URL}"
 echo "X-Correlation-Id=${CORR}"
 
-LOGIN="$(curl -fsS -X POST "${AUTH_URL}/api/auth/login" \
+LOGIN="$(curl -fsS -X POST "${AUTH_URL}/api/v1/auth/login" \
   -H "Content-Type: application/json" \
   -H "X-Correlation-Id: ${CORR}" \
   -d '{"username":"jrb","password":"supersecret"}')"
@@ -104,7 +104,7 @@ PAGE="$(curl -fsS "${QUOTES_URL}/api/v1/quotes?page=1&pageSize=3" \
 echo "list=${PAGE}"
 
 # The reader account holds only quotes:read, so its tokens cannot write.
-READER_LOGIN="$(curl -fsS -X POST "${AUTH_URL}/api/auth/login" \
+READER_LOGIN="$(curl -fsS -X POST "${AUTH_URL}/api/v1/auth/login" \
   -H "Content-Type: application/json" \
   -H "X-Correlation-Id: ${CORR}" \
   -d '{"username":"reader","password":"readsecret"}')"

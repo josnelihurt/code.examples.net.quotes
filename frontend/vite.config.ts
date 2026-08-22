@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api/auth': {
+      '/api/v1/auth': {
         target: authTarget,
         changeOrigin: true,
         secure: false,

@@ -1,3 +1,4 @@
+using AspireQuotesPoc.ServiceDefaults.OpenApi;
 using Auth.Api;
 using Auth.Api.Endpoints;
 using Auth.Api.Telemetry;
@@ -15,6 +16,12 @@ try
 
     builder.AddServiceDefaults();
     builder.AddStandardApiServices();
+    builder.Services.AddSingleton(new OpenApiDocumentInfo(
+        Description: OpenApiDocs.Description,
+        TagDescriptions: OpenApiDocs.TagDescriptions));
+    // Literal document name: the XML-comment source generator only intercepts AddOpenApi
+    // calls whose document name is a string literal (see AddStandardApiServices remarks).
+    builder.Services.AddOpenApi("v1", options => options.ConfigureStandardOpenApi("v1"));
 
     // The API host is the composition root: each layer contributes its own registrations.
     builder.Services.AddAuthApplication();

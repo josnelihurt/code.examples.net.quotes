@@ -2,6 +2,7 @@ using System.ComponentModel;
 
 namespace Quotes.Api.V0.Contracts;
 
+/// <example>{"items":[{"id":"3f2b8a9c1d4e5f6a7b8c9d0e1f2a3b4c","text":"Talk is cheap. Show me the code.","author":"Linus Torvalds"}],"page":1,"pageSize":20,"totalItems":1,"totalPages":1}</example>
 [Description("One page of the quote catalog.")]
 public sealed class QuotePageResponseDto
 {

@@ -4,6 +4,7 @@ using Quotes.Application.Abstractions;
 
 namespace Quotes.Api.V1.Contracts;
 
+/// <example>{"text":"Talk is cheap. Show me the code.","author":"Linus Torvalds"}</example>
 [Description("Payload to add a quote to the in-memory catalog.")]
 public sealed class CreateQuoteRequestDto
 {

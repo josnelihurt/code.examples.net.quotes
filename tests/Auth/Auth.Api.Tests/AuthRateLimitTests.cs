@@ -57,19 +57,19 @@ public class AuthRateLimitTests
         using var client = app.GetTestClient();
 
         using var first = await client.PostAsJsonAsync(
-            new Uri("/api/auth/login", UriKind.Relative),
+            new Uri("/api/v1/auth/login", UriKind.Relative),
             new LoginRequestDto { Username = "jrb", Password = "supersecret" },
             TestContext.Current.CancellationToken);
         first.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         using var second = await client.PostAsJsonAsync(
-            new Uri("/api/auth/login", UriKind.Relative),
+            new Uri("/api/v1/auth/login", UriKind.Relative),
             new LoginRequestDto { Username = "jrb", Password = "wrong" },
             TestContext.Current.CancellationToken);
         second.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
 
         using var third = await client.PostAsJsonAsync(
-            new Uri("/api/auth/login", UriKind.Relative),
+            new Uri("/api/v1/auth/login", UriKind.Relative),
             new LoginRequestDto { Username = "jrb", Password = "supersecret" },
             TestContext.Current.CancellationToken);
 
@@ -89,7 +89,7 @@ public class AuthRateLimitTests
         using var client = app.GetTestClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri("/api/auth/login", UriKind.Relative),
+            new Uri("/api/v1/auth/login", UriKind.Relative),
             new LoginRequestDto { Username = "jrb", Password = "supersecret" },
             TestContext.Current.CancellationToken);
 

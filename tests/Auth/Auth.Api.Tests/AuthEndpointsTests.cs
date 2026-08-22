@@ -152,6 +152,6 @@ public class AuthEndpointsTests
             AuthEndpoints.Map,
             services => services.AddSingleton(Substitute.For<IAuthService>()));
 
-        routes.ShouldBe(["/api/auth/login", "/api/auth/validate"], ignoreOrder: true);
+        routes.ShouldBe(["/api/v1/auth/login", "/api/v1/auth/validate"], ignoreOrder: true);
     }
 }

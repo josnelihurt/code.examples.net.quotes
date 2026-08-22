@@ -73,7 +73,7 @@ describe('login', () => {
     expect(getSession().accessToken).toBe('issued-token');
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('/api/auth/login');
+    expect(url).toBe('/api/v1/auth/login');
     expect(init?.method).toBe('POST');
     expect(JSON.parse(String(init?.body))).toEqual({ username: 'jrb', password: 'supersecret' });
   });

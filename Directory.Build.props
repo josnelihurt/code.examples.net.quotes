@@ -11,6 +11,10 @@
          "missing XML comment" noise that comes with it and is not wanted here. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- The Microsoft.AspNetCore.OpenApi XML-comment source generator rewrites AddOpenApi calls
+         through interceptors in this namespace. The package setting does not flow transitively,
+         so it is enabled once here; projects the generator does not run in are unaffected. -->
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

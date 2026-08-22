@@ -1,8 +1,21 @@
 # API
 
-Transport DTOs live under each service's `*.Api/Contracts` folder. Document them with `[Description]` on types and properties so `Microsoft.AspNetCore.OpenApi` emits schema text into runtime `/openapi/v1.json`.
+Transport DTOs live under each service's `*.Api/Contracts` folder. Document them with `[Description]` on types and properties so `Microsoft.AspNetCore.OpenApi` emits schema text, and add a class-level `/// <example>{...}</example>` for the sample payload Scalar shows next to the schema.
 
 Do not document Application or Domain types for OpenAPI.
+
+## Documenting operations
+
+Operations (both transports) are documented with XML `///` comments on the handler method / controller action; .NET 10's built-in source generator flows them into the documents:
+
+- `<summary>` → operation summary; `<remarks>` → operation description (use cases, scopes, rate limits, pagination rules).
+- `<param name="...">` → parameter description; add `example="..."` for the value Scalar pre-fills. Document **every** parameter (CS1573 otherwise) — infrastructure parameters get a one-line "not part of the HTTP contract".
+- `<response code="...">` → response description; carry the public `errorCode` values there.
+- The **last** `<param>` tag lands on the request body description, so document the body parameter last (pinned by `OpenApiDocumentationTests`).
+
+Everything textual must be mirrored between `V0/` and `V1/` — `OpenApiParityTests` fails on drift. Error-response `example` bodies come from `ProblemResponseExampleTransformer` (ServiceDefaults) and the document narrative (info description, tag descriptions) from each host's `OpenApiDocs` via `OpenApiDocumentInfo`; both apply identically to every document.
+
+One wiring rule: the generator only intercepts `AddOpenApi` calls whose document name is a **string literal**. Hosts therefore register documents themselves (`builder.Services.AddOpenApi("v0", o => o.ConfigureStandardOpenApi("v0"))`), never through a loop or a constant — `OpenApiDocumentationTests` is the tripwire, because a looped name silently empties every summary while wire tests stay green.
 
 ## Frozen OpenAPI (Docsify)
 
@@ -73,8 +86,8 @@ Every error response is RFC 9457 ProblemDetails (`application/problem+json`), in
 
 ### Auth
 
-- `POST /api/auth/login` — body `{ username, password }`; failure is 401 ProblemDetails (`auth.invalid_credentials`). Both auth endpoints are rate-limited per client IP (fixed window); over-limit answers 429 ProblemDetails (`auth.rate_limited`)
-- `POST /api/auth/validate` — body `{ accessToken }` or `Authorization: Bearer`; RFC 7662-style introspection: valid and invalid tokens both answer 200 with `{ valid, username }`, only a missing token is 400 ProblemDetails (`auth.token_missing`)
+- `POST /api/v1/auth/login` — body `{ username, password }`; failure is 401 ProblemDetails (`auth.invalid_credentials`). Both auth endpoints are rate-limited per client IP (fixed window); over-limit answers 429 ProblemDetails (`auth.rate_limited`)
+- `POST /api/v1/auth/validate` — body `{ accessToken }` or `Authorization: Bearer`; RFC 7662-style introspection: valid and invalid tokens both answer 200 with `{ valid, username }`, only a missing token is 400 ProblemDetails (`auth.token_missing`)
 
 ### Quotes
 

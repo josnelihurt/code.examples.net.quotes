@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Auth.Api.Contracts;
 
+/// <example>{"username":"jrb","password":"supersecret"}</example>
 [Description("Credentials submitted to obtain an access token.")]
 public sealed class LoginRequestDto
 {
