@@ -63,7 +63,12 @@ LOCATION="$(printf '%s' "$HEADERS" | awk 'tolower($1)=="location:" {print $2}' |
 echo "created=${LOCATION}"
 
 if [[ -n "$LOCATION" ]]; then
-  curl -fsS -o /dev/null -w "location_status=%{http_code}\n" "${QUOTES_URL}${LOCATION}" \
+  # CreatedAtRoute emits an absolute URL; only prefix when a relative path comes back.
+  case "${LOCATION}" in
+    http://*|https://*) LOCATION_URL="${LOCATION}" ;;
+    *) LOCATION_URL="${QUOTES_URL}${LOCATION}" ;;
+  esac
+  curl -fsS -o /dev/null -w "location_status=%{http_code}\n" "${LOCATION_URL}" \
     -H "Authorization: Bearer ${TOKEN}" \
     -H "X-Correlation-Id: ${CORR}"
 fi
