@@ -132,6 +132,12 @@ Unit tests (.NET + Coverlet OpenCover):
 ./scripts/test.sh
 ```
 
+C# lint — warning-level style rules incl. unused usings (IDE0005); `--fix` rewrites:
+
+```bash
+./scripts/lint.sh
+```
+
 Frontend tests (Vitest):
 
 ```bash
@@ -142,6 +148,7 @@ Local SonarQube (Podman) + scan:
 
 ```bash
 ./scripts/sonar-up.sh
+SONAR_ADMIN_PASSWORD='...' ./scripts/sonar-quality-profile.sh  # once: adds S1128 (unused usings)
 ./scripts/sonar-scan.sh
 ```
 

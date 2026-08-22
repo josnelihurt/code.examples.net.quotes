@@ -111,7 +111,7 @@ public class QuoteEndpointsTests
             TestContext.Current.CancellationToken);
 
         var created = response.ShouldBeOfType<CreatedAtRoute<QuoteResponseDto>>();
-        created.RouteName.ShouldBe("GetQuoteById");
+        created.RouteName.ShouldBe(QuoteEndpoints.GetByIdRouteName);
         created.RouteValues.ShouldNotBeNull();
         created.RouteValues["id"].ShouldBe(_sampleQuote.Id);
         created.Value.ShouldNotBeNull();

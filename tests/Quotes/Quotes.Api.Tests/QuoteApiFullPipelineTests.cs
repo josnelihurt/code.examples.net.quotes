@@ -73,6 +73,21 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
     }
 
     [Fact]
+    public async Task GetById_returns_a_404_problem_for_a_whitespace_id()
+    {
+        using var client = CreateClient();
+
+        using var response = await client.GetAsync(
+            new Uri("/api/v1/quotes/%20", UriKind.Relative),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.GetProperty("errorCode").GetString().ShouldBe("quote.not_found");
+    }
+
+    [Fact]
     public async Task Create_returns_201_and_the_location_header_resolves()
     {
         using var client = CreateClient();

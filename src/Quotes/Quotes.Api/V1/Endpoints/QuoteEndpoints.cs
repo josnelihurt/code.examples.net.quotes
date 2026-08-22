@@ -11,6 +11,8 @@ internal sealed class QuoteEndpointsLog;
 
 public static class QuoteEndpoints
 {
+    internal const string GetByIdRouteName = "GetQuoteById";
+
     public static IEndpointRouteBuilder Map(IEndpointRouteBuilder endpoints)
     {
         var quotes = endpoints.MapGroup("/api/v1/quotes")
@@ -26,7 +28,7 @@ public static class QuoteEndpoints
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
         quotes.MapGet("/{id}", GetByIdAsync)
-            .WithName("GetQuoteById")
+            .WithName(GetByIdRouteName)
             .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
             .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound)
@@ -55,7 +57,8 @@ public static class QuoteEndpoints
         var result = await useCase.ExecuteAsync(cancellationToken);
         if (result.IsError)
         {
-            AppMetrics.Record(AppMetrics.QuotesRandomCount, "not_found");
+            AppMetrics.Record(AppMetrics.QuotesRandomCount, Outcome(result.FirstError.Type));
+            logger.LogWarning("Random quote rejected: {ErrorCode}", result.FirstError.Code);
             return result.Errors.ToProblem(http);
         }
 
@@ -74,10 +77,12 @@ public static class QuoteEndpoints
         var result = await useCase.ExecuteAsync(id, cancellationToken);
         if (result.IsError)
         {
-            logger.LogInformation("Quote {QuoteId} was not found", id);
+            AppMetrics.Record(AppMetrics.QuotesGetByIdCount, Outcome(result.FirstError.Type));
+            logger.LogWarning("Quote lookup rejected: {ErrorCode}", result.FirstError.Code);
             return result.Errors.ToProblem(http);
         }
 
+        AppMetrics.Record(AppMetrics.QuotesGetByIdCount, "success");
         logger.LogInformation("Returning quote {QuoteId}", result.Value.Id);
         return Results.Ok(result.Value.ToResponse());
     }
@@ -95,13 +100,7 @@ public static class QuoteEndpoints
         var result = await useCase.ExecuteAsync(body.ToCommand(), cancellationToken);
         if (result.IsError)
         {
-            var outcome = result.FirstError.Type switch
-            {
-                ErrorType.Validation => "invalid",
-                ErrorType.Conflict => "conflict",
-                _ => "error"
-            };
-            AppMetrics.Record(AppMetrics.QuotesCreateCount, outcome);
+            AppMetrics.Record(AppMetrics.QuotesCreateCount, Outcome(result.FirstError.Type));
             logger.LogWarning("Quote create rejected: {ErrorCode}", result.FirstError.Code);
             return result.Errors.ToProblem(http);
         }
@@ -109,8 +108,16 @@ public static class QuoteEndpoints
         AppMetrics.Record(AppMetrics.QuotesCreateCount, "success");
         logger.LogInformation("Created quote {QuoteId}", result.Value.Id);
         return Results.CreatedAtRoute(
-            "GetQuoteById",
+            GetByIdRouteName,
             new { id = result.Value.Id },
             result.Value.ToResponse());
     }
+
+    private static string Outcome(ErrorType type) => type switch
+    {
+        ErrorType.Validation => "invalid",
+        ErrorType.Conflict => "conflict",
+        ErrorType.NotFound => "not_found",
+        _ => "error"
+    };
 }

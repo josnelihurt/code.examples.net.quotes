@@ -22,7 +22,8 @@ Custom meter: `AspireQuotesPoc`
 |--------|------|
 | `auth.login.count` | `outcome=success\|failure` |
 | `auth.validate.count` | `outcome=success\|failure` |
-| `quotes.random.count` | `outcome=success\|not_found` |
+| `quotes.random.count` | `outcome=success\|not_found\|error` |
+| `quotes.getbyid.count` | `outcome=success\|not_found\|error` |
 | `quotes.create.count` | `outcome=success\|invalid\|conflict\|error` |
 
 Generate traffic, then open **Metrics** and select these instruments to explore values in Aspire.

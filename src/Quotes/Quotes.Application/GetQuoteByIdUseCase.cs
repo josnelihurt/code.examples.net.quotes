@@ -10,8 +10,12 @@ public sealed class GetQuoteByIdUseCase(IQuoteRepository quotes) : IGetQuoteById
 {
     public async Task<ErrorOr<QuoteDto>> ExecuteAsync(string id, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return QuoteErrors.NotFound;
+        }
 
         var quote = await quotes.GetByIdAsync(id, cancellationToken);
         if (quote is null)

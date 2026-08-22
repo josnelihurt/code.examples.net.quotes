@@ -17,6 +17,9 @@ public static class AppMetrics
     public static readonly Counter<long> QuotesRandomCount =
         Meter.CreateCounter<long>("quotes.random.count", description: "Random quote requests");
 
+    public static readonly Counter<long> QuotesGetByIdCount =
+        Meter.CreateCounter<long>("quotes.getbyid.count", description: "Get-quote-by-id requests");
+
     public static readonly Counter<long> QuotesCreateCount =
         Meter.CreateCounter<long>("quotes.create.count", description: "Create quote requests");
 

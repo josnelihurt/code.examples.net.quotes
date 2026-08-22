@@ -61,11 +61,13 @@ public class GetQuoteByIdUseCaseTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public async Task Rejects_a_blank_id_before_touching_the_repository(string id)
+    public async Task Returns_not_found_for_a_blank_id_without_touching_the_repository(string id)
     {
-        await Should.ThrowAsync<ArgumentException>(
-            () => _sut.ExecuteAsync(id, TestContext.Current.CancellationToken));
+        var result = await _sut.ExecuteAsync(id, TestContext.Current.CancellationToken);
 
+        result.IsError.ShouldBeTrue();
+        result.FirstError.Code.ShouldBe("quote.not_found");
+        result.FirstError.Type.ShouldBe(ErrorType.NotFound);
         await _quotes.DidNotReceiveWithAnyArgs().GetByIdAsync(default!, TestContext.Current.CancellationToken);
     }
 }

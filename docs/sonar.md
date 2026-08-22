@@ -33,7 +33,7 @@ Defaults (override via env; see `scripts/sonar-env.sh`):
 | Variable | Default |
 |----------|---------|
 | `SONAR_HOST_URL` | `http://localhost:9000` |
-| `SONAR_ADMIN_PASSWORD` | `AspireQuotes-Local1!` |
+| `SONAR_ADMIN_PASSWORD` | `AspireQuotes-Local2!` |
 | `SONAR_PROJECT_KEY` | `aspire-quotes` |
 
 UI: [http://localhost:9000](http://localhost:9000) — login `admin` / password above.
@@ -57,6 +57,16 @@ SONAR_SKIP_FRONTEND=1 ./scripts/sonar-scan.sh
 Dashboard after upload:
 
 `http://localhost:9000/dashboard?id=aspire-quotes`
+
+## Quality profile (S1128 — unused usings)
+
+The built-in `Sonar way` profile is read-only and does **not** include [S1128 "Unused 'usings' should be removed"](https://sonarcloud.io/organizations/default/rules?open=csharpsquid%3AS1128&rule_languages=cs) — Sonar's counterpart of IDE0005 (ReSharper: *Using directive is unnecessary*). The scanner also only uploads SonarAnalyzer (`S…`) rules, so the IDE0005 warnings the compiler raises during the scan build never reach the dashboard; S1128 has to be active for usings to show up as findings.
+
+`scripts/sonar-quality-profile.sh` creates the child profile `Aspire Quotes way` (extends `Sonar way`, activates S1128, links the project). It is idempotent — run it once after `sonar-up.sh` with the admin password:
+
+```bash
+SONAR_ADMIN_PASSWORD='...' ./scripts/sonar-quality-profile.sh
+```
 
 ## Stop / reset
 

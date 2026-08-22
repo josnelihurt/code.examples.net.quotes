@@ -16,6 +16,7 @@ public class AppMetricsTests
     [InlineData("auth.login.count")]
     [InlineData("auth.validate.count")]
     [InlineData("quotes.random.count")]
+    [InlineData("quotes.getbyid.count")]
     [InlineData("quotes.create.count")]
     public void Every_counter_is_named_and_described(string expectedName)
     {
@@ -24,6 +25,7 @@ public class AppMetricsTests
                 AppMetrics.AuthLoginCount,
                 AppMetrics.AuthValidateCount,
                 AppMetrics.QuotesRandomCount,
+                AppMetrics.QuotesGetByIdCount,
                 AppMetrics.QuotesCreateCount
             }
             .Single(c => c.Name == expectedName);
