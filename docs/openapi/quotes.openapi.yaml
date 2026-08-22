@@ -1,46 +1,46 @@
-openapi: 3.0.3
+---
+openapi: 3.1.1
 info:
-  title: Quotes API
+  title: Quotes.Api | v1
   version: 1.0.0
-  description: Quotes microservice in the Aspire Quotes foundation
 servers:
-  - url: /
+- url: "/"
 paths:
-  /api/quotes/random:
+  "/api/quotes/random":
     get:
+      tags:
+      - Quotes
       operationId: GetRandomQuote
-      tags: [Quotes]
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-          description: Bearer access token
-        - name: X-Correlation-Id
-          in: header
-          required: false
-          schema:
-            type: string
       responses:
         '200':
-          description: Random quote
+          description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteResponse'
+                "$ref": "#/components/schemas/QuoteResponseDto"
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                "$ref": "#/components/schemas/ErrorResponseDto"
 components:
   schemas:
-    QuoteResponse:
+    ErrorResponseDto:
+      required:
+      - error
       type: object
-      description: Random quote returned to an authenticated client.
-      required: [id, text, author]
+      properties:
+        error:
+          type: string
+          description: Human-readable reason the request was rejected.
+      description: Error payload returned when the request is not authorized.
+    QuoteResponseDto:
+      required:
+      - id
+      - text
+      - author
+      type: object
       properties:
         id:
           type: string
@@ -51,11 +51,6 @@ components:
         author:
           type: string
           description: Attributed author of the quote.
-    ErrorResponse:
-      type: object
-      description: Error payload returned when the request is not authorized.
-      required: [error]
-      properties:
-        error:
-          type: string
-          description: Human-readable reason the request was rejected.
+      description: Random quote returned to an authenticated client.
+tags:
+- name: Quotes

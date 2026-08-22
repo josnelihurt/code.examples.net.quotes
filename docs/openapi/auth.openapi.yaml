@@ -1,82 +1,111 @@
-openapi: 3.0.3
+---
+openapi: 3.1.1
 info:
-  title: Auth API
+  title: Auth.Api | v1
   version: 1.0.0
-  description: Authentication microservice in the Aspire Quotes foundation
 servers:
-  - url: /
+- url: "/"
 paths:
-  /api/auth/login:
+  "/api/auth/login":
     post:
+      tags:
+      - Auth
       operationId: Login
-      tags: [Auth]
-      parameters:
-        - name: X-Correlation-Id
-          in: header
-          required: false
-          schema:
-            type: string
       requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/LoginRequestDto"
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Authenticated
+          description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                "$ref": "#/components/schemas/LoginResponseDto"
         '401':
-          description: Invalid credentials
+          description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                "$ref": "#/components/schemas/ErrorResponseDto"
         '400':
-          description: Validation error
-  /api/auth/validate:
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                "$ref": "#/components/schemas/HttpValidationProblemDetails"
+  "/api/auth/validate":
     post:
+      tags:
+      - Auth
       operationId: ValidateToken
-      tags: [Auth]
-      parameters:
-        - name: X-Correlation-Id
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
       requestBody:
-        required: false
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ValidateRequest'
+              oneOf:
+              - type: 'null'
+              - "$ref": "#/components/schemas/ValidateRequestDto"
       responses:
         '200':
-          description: Token valid
+          description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidateResponse'
+                "$ref": "#/components/schemas/ValidateResponseDto"
         '401':
-          description: Token invalid
+          description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidateResponse'
+                "$ref": "#/components/schemas/ValidateResponseDto"
 components:
   schemas:
-    LoginRequest:
+    ErrorResponseDto:
+      required:
+      - error
       type: object
-      description: Credentials submitted to obtain an access token.
-      required: [username, password]
+      properties:
+        error:
+          type: string
+          description: Human-readable reason authentication failed.
+      description: Error payload returned when authentication fails.
+    HttpValidationProblemDetails:
+      type: object
+      properties:
+        type:
+          type:
+          - 'null'
+          - string
+        title:
+          type:
+          - 'null'
+          - string
+        status:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+          - 'null'
+          - integer
+          - string
+          format: int32
+        detail:
+          type:
+          - 'null'
+          - string
+        instance:
+          type:
+          - 'null'
+          - string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    LoginRequestDto:
+      type: object
       properties:
         username:
           type: string
@@ -84,48 +113,58 @@ components:
         password:
           type: string
           description: Account password.
-    LoginResponse:
+      description: Credentials submitted to obtain an access token.
+    LoginResponseDto:
+      required:
+      - accessToken
+      - correlationId
+      - expiresIn
+      - username
       type: object
-      description: Successful login result including the issued access token.
-      required: [accessToken, correlationId, expiresIn, username]
       properties:
         accessToken:
           type: string
           description: JWT access token for authenticated API calls.
         correlationId:
           type: string
-          description: Correlation id for this login; clients should send it as X-Correlation-Id on later calls.
+          description: Correlation id for this login; clients should send it as X-Correlation-Id
+            on later calls.
         expiresIn:
-          type: integer
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+          - integer
+          - string
           description: Access token lifetime in seconds.
+          format: int32
         username:
           type: string
           description: Authenticated username.
-    ErrorResponse:
+      description: Successful login result including the issued access token.
+    ValidateRequestDto:
       type: object
-      description: Error payload returned when authentication fails.
-      required: [error]
-      properties:
-        error:
-          type: string
-          description: Human-readable reason authentication failed.
-    ValidateRequest:
-      type: object
-      description: Optional body for token validation; Authorization Bearer may be used instead.
       properties:
         accessToken:
-          type: string
-          nullable: true
-          description: Access token to validate when not supplied via Authorization header.
-    ValidateResponse:
+          type:
+          - 'null'
+          - string
+          description: Access token to validate when not supplied via Authorization
+            header.
+      description: Optional body for token validation; Authorization Bearer may be
+        used instead.
+    ValidateResponseDto:
+      required:
+      - valid
       type: object
-      description: Result of validating an access token; returned for both success and failure.
-      required: [valid]
       properties:
         valid:
           type: boolean
           description: True when the token is valid; false on unauthorized responses.
         username:
-          type: string
-          nullable: true
+          type:
+          - 'null'
+          - string
           description: Username from a valid token; omitted or null when invalid.
+      description: Result of validating an access token; returned for both success
+        and failure.
+tags:
+- name: Auth

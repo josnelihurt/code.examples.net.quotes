@@ -1,0 +1,79 @@
+# syntax=docker/dockerfile:1
+
+# Hermetic OpenAPI freeze: build Auth/Quotes APIs, export /openapi/v1.json to YAML.
+# Extract with: ./scripts/update-contracts.sh  (podman|docker build + cp from scratch stage)
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY Directory.Build.props nuget.config ./
+COPY src/ServiceDefaults ./src/ServiceDefaults
+COPY src/Auth ./src/Auth
+COPY src/Quotes ./src/Quotes
+
+RUN dotnet restore src/Auth/Auth.Api/Auth.Api.csproj \
+ && dotnet restore src/Quotes/Quotes.Api/Quotes.Api.csproj \
+ && dotnet build src/Auth/Auth.Api/Auth.Api.csproj -c Release --no-restore \
+ && dotnet build src/Quotes/Quotes.Api/Quotes.Api.csproj -c Release --no-restore
+
+FROM build AS export
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl python3-yaml \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN bash -euo pipefail <<'EOF'
+mkdir -p /out /tmp/logs
+
+ASPNETCORE_ENVIRONMENT=Development \
+ASPNETCORE_URLS=http://127.0.0.1:18081 \
+  dotnet run --project src/Auth/Auth.Api/Auth.Api.csproj -c Release --no-build --no-launch-profile \
+  >/tmp/logs/auth.log 2>&1 &
+AUTH_PID=$!
+
+ASPNETCORE_ENVIRONMENT=Development \
+ASPNETCORE_URLS=http://127.0.0.1:18082 \
+  dotnet run --project src/Quotes/Quotes.Api/Quotes.Api.csproj -c Release --no-build --no-launch-profile \
+  >/tmp/logs/quotes.log 2>&1 &
+QUOTES_PID=$!
+
+wait_for() {
+  local url="$1"
+  local i
+  for i in $(seq 1 60); do
+    if curl -fsS "$url" -o /dev/null; then
+      return 0
+    fi
+    sleep 0.5
+  done
+  echo "Timed out waiting for ${url}" >&2
+  cat /tmp/logs/auth.log /tmp/logs/quotes.log >&2 || true
+  return 1
+}
+
+wait_for http://127.0.0.1:18081/openapi/v1.json
+wait_for http://127.0.0.1:18082/openapi/v1.json
+
+curl -fsS http://127.0.0.1:18081/openapi/v1.json -o /tmp/auth.json
+curl -fsS http://127.0.0.1:18082/openapi/v1.json -o /tmp/quotes.json
+
+python3 <<'PY'
+import json
+from pathlib import Path
+
+import yaml
+
+for name in ("auth", "quotes"):
+    doc = json.loads(Path(f"/tmp/{name}.json").read_text())
+    doc["servers"] = [{"url": "/"}]
+    Path(f"/out/{name}.openapi.yaml").write_text(
+        yaml.safe_dump(doc, sort_keys=False, allow_unicode=True)
+    )
+PY
+
+kill "${AUTH_PID}" "${QUOTES_PID}" 2>/dev/null || true
+wait "${AUTH_PID}" "${QUOTES_PID}" 2>/dev/null || true
+EOF
+
+FROM scratch AS contracts
+COPY --from=export /out/auth.openapi.yaml /auth.openapi.yaml
+COPY --from=export /out/quotes.openapi.yaml /quotes.openapi.yaml

@@ -1,0 +1,14 @@
+.git
+.sonarqube
+**/bin
+**/obj
+**/node_modules
+frontend
+docs
+tests
+src/AppHost
+scripts
+*.bundle
+.claude
+.cursor
+agent-transcripts
