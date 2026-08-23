@@ -2,6 +2,7 @@
 * [System design](system-design.md)
 * [Architecture](architecture.md)
 * [API](api.md)
+* [Data storage](data-storage.md)
 * [Scalar (combined)](scalar/)
 * [Local development](local-dev.md)
 * [Testing](testing.md)

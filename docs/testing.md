@@ -67,8 +67,11 @@ frontend/
 ```
 
 Uses `tests/coverlet.runsettings` (OpenCover) and the same per-project `*.Tests.csproj`
-glob CI uses — which is why the spec suite is *not* swept in: it needs a container
-runtime and takes minutes. Extra `dotnet test` args can be appended:
+glob CI uses — which is why the spec suite is *not* swept in: it boots the whole Aspire
+model and takes minutes. The Quotes Infrastructure/Api suites now need a container
+runtime too (Testcontainers starts a throwaway PostgreSQL per run; `scripts/env.sh`
+points the Docker API at the podman machine socket when needed). Extra `dotnet test`
+args can be appended:
 
 ```bash
 ./scripts/test.sh --filter FullyQualifiedName~AuthService
@@ -112,9 +115,9 @@ auth rate limit is raised for the E2E environment exactly as the spec suite does
 spec suite's business vocabulary (`I have published a quote with unique text
 attributed to …` mirrors `tests/Bdd/Features/Quotes/PublishingQuotes.feature`): one
 language for the API journeys in Reqnroll, one for the browser journeys in
-playwright-bdd. The suite runs with `workers: 1` — the quote catalog is an in-memory
-singleton shared by every scenario of a run, and browsing scenarios assert exact page
-counts over the seeded catalog.
+playwright-bdd. The suite runs with `workers: 1` — every scenario of a run shares the
+throwaway PostgreSQL catalog that `scripts/e2e.sh` starts (the API migrates + seeds it
+at boot), and browsing scenarios assert exact page counts over the seeded catalog.
 
 ## What is covered
 
@@ -123,7 +126,7 @@ counts over the seeded catalog.
 - **Auth.Api** — login/validate handlers incl. the 401 ProblemDetails shape
 - **Quotes.Domain** — `QuoteText` / `QuoteAuthor` / `QuoteFingerprint` value objects, `Quote.Create` composition (incl. `AuthorEqualsText`), `Reconstitute` / `FromTrusted` guards
 - **Quotes.Application** — random (incl. empty-catalog 404 path), get-by-id, list paging arithmetic and range validation, create success/invalid/conflict
-- **Quotes.Infrastructure** — repository contract suite (`QuoteRepositoryContractTests`, inherited by any future adapter; covers list paging, no-overlap, beyond-end), seeded catalog behavior, deterministic `IQuoteSelector`, DI wiring
+- **Quotes.Infrastructure** — repository contract suite (`QuoteRepositoryContractTests`, inherited by any future adapter; covers list paging, no-overlap, beyond-end) run against real PostgreSQL via Testcontainers (one database per test), the migration-shipped seed catalog (ids `"1"`–`"8"`), DI wiring
 - **Quotes.Api** — handler-level units (200/201/400/404/409), JWT integration (401 problem + `WWW-Authenticate`, 403 without `quotes:write`), and a **full-pipeline `WebApplicationFactory<Program>` suite** booting the real composition root (list pages + defaults, create → Location → GET round trip, duplicate 409, validation 400, domain 400)
 - **ServiceDefaults** — correlation middleware, metrics (all six counters), ErrorOr→ProblemDetails mapping, dev-key Production guard, host wiring (health/OpenAPI/Scalar in every environment)
 - **Architecture** — NetArchTest suite (`tests/Architecture.Tests`) enforcing the layering table: dependency direction per layer, no Api→Domain, no cross-context references, ServiceDefaults isolated

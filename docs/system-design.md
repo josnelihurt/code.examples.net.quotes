@@ -53,7 +53,7 @@ dashboard.
 | Quotes context | Bounded context, 4 projects | [`src/Quotes/`](../src/Quotes/) | [README](../src/Quotes/README.md) |
 | — `Quotes.Domain` | Aggregate, value objects, ports | [`src/Quotes/Quotes.Domain/`](../src/Quotes/Quotes.Domain/) | [README](../src/Quotes/Quotes.Domain/README.md) |
 | — `Quotes.Application` | Four use cases | [`src/Quotes/Quotes.Application/`](../src/Quotes/Quotes.Application/) | [README](../src/Quotes/Quotes.Application/README.md) |
-| — `Quotes.Infrastructure` | In-memory catalog adapter | [`src/Quotes/Quotes.Infrastructure/`](../src/Quotes/Quotes.Infrastructure/) | [README](../src/Quotes/Quotes.Infrastructure/README.md) |
+| — `Quotes.Infrastructure` | EF Core + PostgreSQL catalog adapter | [`src/Quotes/Quotes.Infrastructure/`](../src/Quotes/Quotes.Infrastructure/) | [README](../src/Quotes/Quotes.Infrastructure/README.md) |
 | — `Quotes.Api` (`quotes-api`) | Host, MVC `v0` + minimal `v1` | [`src/Quotes/Quotes.Api/`](../src/Quotes/Quotes.Api/) | [README](../src/Quotes/Quotes.Api/README.md) |
 | `web` | React + TypeScript SPA | [`frontend/`](../frontend/) | [README](../frontend/README.md) |
 | `gateway` | YARP reverse proxy (publish) | declared in [`src/AppHost/AppHost.cs`](../src/AppHost/AppHost.cs) | [README](../src/AppHost/README.md) |
@@ -67,6 +67,8 @@ dashboard.
 ```mermaid
 flowchart LR
   key["jwt-signing-key - secret parameter"]
+  pg["postgres - PostgreSQL container"]
+  pgweb["pgweb - catalog browser"]
   auth["auth-api - Auth.Api process"]
   quotes["quotes-api - Quotes.Api process"]
   web["web - Vite dev server"]
@@ -76,6 +78,8 @@ flowchart LR
 
   key -->|"Jwt__SigningKey"| auth
   key -->|"Jwt__SigningKey"| quotes
+  pgweb --- pg
+  quotes -->|"WithReference + WaitFor: ConnectionStrings__quotesdb"| pg
   web -->|"WithReference + WaitFor"| auth
   web -->|"WithReference + WaitFor"| quotes
   gw --> auth
@@ -89,11 +93,19 @@ Three things carry the wiring:
 - **One secret, two services.** `builder.AddParameter("jwt-signing-key", secret: true)` is passed to
   both APIs as `Jwt__SigningKey`. Auth signs with it, Quotes verifies with it. Locally the dashboard
   supplies a generated value; nothing is committed.
+- **The catalog is a sibling container.** `AddPostgres("postgres").WithPgWeb()` plus
+  `AddDatabase("quotesdb")` declare the engine inside the deployment; `WithReference(quotesDb)` on
+  quotes-api injects `ConnectionStrings__quotesdb`, which the Aspire Npgsql EF Core integration
+  resolves by that connection name. The API migrates and seeds the database at boot, and the
+  database is deliberately ephemeral — every run starts from the same eight shipped quotes.
+  [Data storage](data-storage.md) unpacks the whole flow, including what a non-.NET service would
+  consume to reach the same database.
 - **`WithReference` is what makes the SPA work.** It injects `AUTH_API_HTTP` / `AUTH_API_HTTPS` and
   `QUOTES_API_HTTP` / `QUOTES_API_HTTPS` into the `web` resource, and
   [`frontend/vite.config.ts`](../frontend/vite.config.ts) reads exactly those variables to build its
   dev proxy. Running `pnpm run dev` outside Aspire leaves the proxy targets undefined.
-- **`WaitFor`** holds the SPA back until both APIs report healthy on `/health`.
+- **`WaitFor`** holds the SPA back until both APIs report healthy on `/health` — and holds quotes-api
+  back until the database resource is healthy.
 
 In run mode the browser talks to the Vite dev server, which proxies to the APIs. The gateway also
 runs, but it is the publish-mode entry point rather than the development path.
@@ -312,6 +324,7 @@ understanding rather than just running:
 | Why the layers are shaped this way, and the rules for adding to them | [Architecture](architecture.md) |
 | A specific project's types, invariants and call flows | that project's `README.md` (see [Components](#components)) |
 | Endpoint contracts, error codes, OpenAPI authoring | [API](api.md) |
+| Databases in the deployment: connections, schema-as-code, migrations, the polyglot door | [Data storage](data-storage.md) |
 | Running the stack, docs, Sonar, bundles | [Local development](local-dev.md) |
 | What is tested and where | [Testing](testing.md) |
 | Traces, structured logs and the metric catalogue | [Observability](observability.md) |
