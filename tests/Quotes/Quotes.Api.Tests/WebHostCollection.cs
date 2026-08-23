@@ -8,7 +8,8 @@ namespace Quotes.Api.Tests;
 /// after another. They must: <c>Program</c> assigns Serilog's bootstrap logger to the static
 /// <c>Log.Logger</c>, and two hosts starting at once race to freeze it — the second loses with
 /// "The logger is already frozen". Each class still gets its own factory, and therefore its own
-/// in-memory catalog, so serializing them costs isolation nothing.
+/// migrated database on the shared PostgreSQL container, so serializing them costs isolation
+/// nothing.
 /// </remarks>
 [CollectionDefinition(Name)]
 public sealed class WebHostCollection

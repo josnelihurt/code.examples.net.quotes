@@ -1,10 +1,12 @@
 using AspireQuotesPoc.ServiceDefaults.OpenApi;
+using Microsoft.EntityFrameworkCore;
 using Quotes.Api;
 using Quotes.Api.Telemetry;
 using Quotes.Api.V0.Controllers;
 using Quotes.Api.V1.Endpoints;
 using Quotes.Application;
 using Quotes.Infrastructure;
+using Quotes.Infrastructure.Persistence;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -30,12 +32,22 @@ try
 
     // The API host is the composition root: each layer contributes its own registrations.
     builder.Services.AddQuotesApplication();
-    builder.Services.AddQuotesInfrastructure();
+    builder.AddQuotesInfrastructure();
     builder.Services.AddQuotesUseCaseTelemetry();
     builder.Services.AddValidation();
     builder.Services.AddStandardControllers();
 
     var app = builder.Build();
+
+    // The catalog database is created/migrated before serving, under Aspire and in a
+    // standalone boot alike. MigrateAsync is idempotent and EF Core 9+ takes a
+    // database-wide migration lock, so replicas starting together cannot corrupt it.
+    await using (var scope = app.Services.CreateAsyncScope())
+    {
+        await scope.ServiceProvider
+            .GetRequiredService<QuotesDbContext>()
+            .Database.MigrateAsync();
+    }
 
     app.UseExceptionHandler();
     app.UseSerilogDefaults();

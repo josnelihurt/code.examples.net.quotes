@@ -8,10 +8,12 @@ namespace AspireQuotesPoc.Specs.Support;
 /// <summary>
 /// Boots the real AppHost once per test run and tears it down at the end. Unlike the
 /// WebApplicationFactory suites, this exercises the actual orchestration: separate OS
-/// processes for auth-api and quotes-api, YARP routing through the gateway container,
-/// service discovery between them. That also means the Serilog frozen-logger constraint
-/// that forced WebHostCollection in the in-process suites does not apply — each API owns
-/// its process, so nothing races on the static Log.Logger.
+/// processes for auth-api and quotes-api, the PostgreSQL + pgweb containers, YARP
+/// routing through the gateway container, service discovery between them, and the
+/// WithReference wiring that hands quotes-api its database connection. That also means
+/// the Serilog frozen-logger constraint that forced WebHostCollection in the in-process
+/// suites does not apply — each API owns its process, so nothing races on the static
+/// Log.Logger.
 /// </summary>
 [Binding]
 public static class AspireStack

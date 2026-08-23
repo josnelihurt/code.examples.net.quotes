@@ -29,7 +29,7 @@ public sealed class ApiWorld
     /// <summary>Id of the quote the last successful publish created; lets scenarios fetch it back.</summary>
     public string? LastCreatedId { get; set; }
 
-    /// <summary>The catalog is in-memory and POST mutates it, so every scenario mints its own text.</summary>
+    /// <summary>The catalog is shared (one PostgreSQL database per run) and POST mutates it, so every scenario mints its own text.</summary>
     public string UniqueText { get; } = $"Specification quote {Guid.NewGuid():N}.";
 
     public ApiWorld() => Client.DefaultRequestHeaders.Add(_correlationHeader, CorrelationId);

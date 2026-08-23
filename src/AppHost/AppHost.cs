@@ -29,6 +29,8 @@ var auth = builder.AddProject<Projects.Auth_Api>("auth-api")
 
 var quotes = builder.AddProject<Projects.Quotes_Api>("quotes-api")
     .WithEnvironment("Jwt__SigningKey", jwtSigningKey)
+    .WithReference(quotesDb)
+    .WaitFor(quotesDb)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints()
     .WithUrlForEndpoint("https", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText })
