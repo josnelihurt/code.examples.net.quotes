@@ -46,7 +46,7 @@ here so much as mentions it.
 ## Why this layer exists
 
 The composition root is the only place that is allowed to know everything. It knows that
-`IQuoteRepository` is served by an in-memory list, that `ICreateQuoteUseCase` is really three objects
+`IQuoteRepository` is served by EF Core over PostgreSQL, that `ICreateQuoteUseCase` is really three objects
 stacked, that a bearer token is how identity arrives, and that the catalog is published twice under
 two route prefixes. Every other project stays ignorant of at least one of those facts, and that
 ignorance is what makes them substitutable.

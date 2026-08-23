@@ -11,22 +11,25 @@ CLI, which either runs every resource locally (`aspire run`, via
 [`../../scripts/start.sh`](../../scripts/start.sh)) or turns the model into deployment artifacts
 (`aspire publish`, via [`../../scripts/publish.sh`](../../scripts/publish.sh)).
 
-Three things live here and nowhere else:
+Four things live here and nowhere else:
 
 - the list of resources and the dependency edges between them
 - the shared JWT signing key parameter
+- the catalog database: the PostgreSQL container and the `quotesdb` database on it
 - the gateway's routing table
 
 Everything else — endpoint contracts, auth policy, telemetry wiring — belongs to the services.
 `AppHost.csproj` references only `Auth.Api` and `Quotes.Api` (so Aspire can generate the strongly
-typed `Projects.*` handles) plus the `Aspire.Hosting.JavaScript`, `Aspire.Hosting.Docker` and
-`Aspire.Hosting.Yarp` packages.
+typed `Projects.*` handles) plus the `Aspire.Hosting.JavaScript`, `Aspire.Hosting.Docker`,
+`Aspire.Hosting.PostgreSQL` and `Aspire.Hosting.Yarp` packages.
 
 ## The resource graph
 
 ```mermaid
 flowchart LR
   key["jwt-signing-key"]
+  pg["postgres - PostgreSQL"]
+  pgweb["pgweb - catalog browser"]
   auth["auth-api"]
   quotes["quotes-api"]
   web["web - Vite SPA"]
@@ -35,6 +38,8 @@ flowchart LR
 
   key -->|"Jwt__SigningKey"| auth
   key -->|"Jwt__SigningKey"| quotes
+  pgweb --- pg
+  quotes -->|"WithReference + WaitFor: ConnectionStrings__quotesdb"| pg
   web -->|"WithReference + WaitFor"| auth
   web -->|"WithReference + WaitFor"| quotes
   gw -->|"/api/v1/auth"| auth
@@ -49,15 +54,21 @@ flowchart LR
 they inject `AUTH_API_HTTP` / `AUTH_API_HTTPS` and `QUOTES_API_HTTP` / `QUOTES_API_HTTPS` into the
 Vite process, which is exactly what [`../../frontend/vite.config.ts`](../../frontend/vite.config.ts)
 reads to build its dev proxy. `WaitFor` holds the SPA back until both APIs pass their health check.
+The same mechanics wire the catalog: `WithReference(quotesDb)` injects
+`ConnectionStrings__quotesdb` into quotes-api (see
+[docs/data-storage.md](../../docs/data-storage.md) for the full connection flow), and `WaitFor`
+starts the API only after the database is healthy.
 
 ## Resources
 
-All five are declared in [`AppHost.cs`](AppHost.cs).
+All seven are declared in [`AppHost.cs`](AppHost.cs).
 
 | Name | Kind | Declared at | Endpoints | Notes |
 |---|---|---|---|---|
+| `postgres` | PostgreSQL container (`AddPostgres`) | before both APIs | internal to the deployment network | the catalog engine; image and generated credentials managed by Aspire; deliberately **no data volume** — every run migrates + seeds from scratch, which is what the BDD/e2e suites assert on |
+| `pgweb` | pgweb container (`WithPgWeb`) | with `postgres` | external HTTP | lightweight catalog browser, preconfigured with the server's connection |
 | `auth-api` | .NET project (`Projects.Auth_Api`) | `builder.AddProject<...>("auth-api")` | `http`, `https`, both external | `Jwt__SigningKey` from the parameter; HTTP health check on `/health`; a **Scalar** dashboard link pointing at `/scalar` on each endpoint |
-| `quotes-api` | .NET project (`Projects.Quotes_Api`) | `builder.AddProject<...>("quotes-api")` | `http`, `https`, both external | identical wiring to `auth-api` |
+| `quotes-api` | .NET project (`Projects.Quotes_Api`) | `builder.AddProject<...>("quotes-api")` | `http`, `https`, both external | like `auth-api`, plus `WithReference(quotesDb)` + `WaitFor(quotesDb)`; migrates and seeds the database at boot |
 | `web` | Vite app (`AddViteApp("web", "../../frontend")`) | after both APIs | external HTTP | `WithReference` + `WaitFor` on both APIs |
 | `docs` | Executable (`AddExecutable`) | `pnpm dlx docsify-cli serve docs -p 3001 -H 0.0.0.0`, working directory `../..` | `http` on target port 3001, external | adds a **Scalar** link to `/scalar/` (the combined Auth + Quotes reference); logs a warning and skips that link if the `http` endpoint is missing |
 | `gateway` | YARP (`AddYarp("gateway")`) | last | external HTTP | three routes; `PublishWithStaticFiles(web)` |
@@ -102,6 +113,7 @@ The same model produces two different shapes.
 | | Run (`aspire run`) | Publish (`aspire publish`) |
 |---|---|---|
 | `auth-api`, `quotes-api` | local processes | containers |
+| `postgres`, `pgweb` | containers (ephemeral catalog) | containers (ephemeral catalog) |
 | `web` | Vite dev server, proxying to both APIs | **no service** — built and baked into the gateway image |
 | `docs` | `docsify-cli` on port 3001 | **no service** |
 | `gateway` | runs, but is not the development path | the only front door |
@@ -144,8 +156,9 @@ never reviewed. Nothing in the repository reads it.
 
 What a publish emits today:
 
-- a compose file with four services — a dashboard container that receives OTLP, `auth-api`,
-  `quotes-api`, and `gateway` — on a single `aspire` bridge network
+- a compose file with six services — a dashboard container that receives OTLP, `auth-api`,
+  `quotes-api`, `gateway`, and the catalog's `postgres` + `pgweb` — on a single `aspire` bridge
+  network
 - a Dockerfile for the gateway that starts from the YARP base image and copies the SPA build's
   `dist` directory into `wwwroot`, which is how `PublishWithStaticFiles` is realised
 - an environment file listing the values an operator must supply: the container image name and port

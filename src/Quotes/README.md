@@ -48,7 +48,7 @@ flowchart LR
 |---|---|---|
 | `Quotes.Domain` | The aggregate, the value objects, the error catalog, the repository port. Zero project references | [Quotes.Domain/README.md](Quotes.Domain/README.md) |
 | `Quotes.Application` | Four use cases behind four interfaces, the command/query/DTO types, `QuoteRules`, `AddQuotesApplication()` | [Quotes.Application/README.md](Quotes.Application/README.md) |
-| `Quotes.Infrastructure` | `InMemoryQuoteRepository`, the `QuoteRecord` persistence model and its mapper, the selector seam, `AddQuotesInfrastructure()` | [Quotes.Infrastructure/README.md](Quotes.Infrastructure/README.md) |
+| `Quotes.Infrastructure` | `PostgresQuoteRepository` over EF Core: the `QuotesDbContext` schema, the migration-shipped seed, `QuoteRecord` and its mapper, `AddQuotesInfrastructure()` | [Quotes.Infrastructure/README.md](Quotes.Infrastructure/README.md) |
 | `Quotes.Api` | Composition root, both transports, transport DTOs and mappers, telemetry decorators, OpenAPI narrative | [Quotes.Api/README.md](Quotes.Api/README.md) |
 
 Two arrows are absent from the diagram on purpose. `Quotes.Api` does not reference `Quotes.Domain` —
@@ -79,8 +79,9 @@ what it is *not allowed* to know, and each restriction is doing work:
   request, a container or a schema — and the catalog rules stay stated once, for both API versions.
 - The application layer knows nothing about HTTP, so the same use case serves an MVC controller and a
   minimal API without either style leaking into it.
-- Infrastructure is reachable only through a port, so "the catalog is a list in memory" is a fact one
-  registration can change, and a contract test suite already exists to prove the replacement behaves.
+- Infrastructure is reachable only through a port, so the storage engine is a fact one registration
+  can change — the swap from an in-memory list to PostgreSQL replaced the adapter and nothing above
+  it moved, and the contract suite that proved it was written before either engine existed.
 - The host is the only thing that knows all of the above, which is why it is also the only thing that
   has to change when a version, a transport or an adapter is added.
 
