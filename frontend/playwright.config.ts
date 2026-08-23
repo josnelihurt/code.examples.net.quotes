@@ -10,15 +10,20 @@ const testDir = defineBddConfig({
 // bash script used; any 32+ char value the Production guard would accept works.
 const JWT_KEY = 'e2e-signing-key-0123456789abcdef';
 
+// The quotes catalog database scripts/e2e.sh (locally) / ci.yml (in CI) starts before the
+// run: fixed loopback port, throwaway credentials. The API migrates + seeds it at boot.
+const QUOTES_DB =
+  'Host=127.0.0.1;Port=55432;Username=postgres;Password=postgres;Database=quotesdb';
+
 export default defineConfig({
   testDir,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'html',
   use: { baseURL: 'http://127.0.0.1:5173', trace: 'on-first-retry' },
   projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }],
-  // The quote catalog lives in an in-memory singleton shared by every scenario of the
-  // run, and browsing scenarios assert exact page counts over the seeded catalog — so
-  // scenarios must not interleave. One worker keeps publishing-quotes from growing the
-  // catalog while browsing-quotes is asserting on it.
+  // The catalog lives in the throwaway PostgreSQL started before the run, shared by every
+  // scenario of the run, and browsing scenarios assert exact page counts over the seeded
+  // catalog — so scenarios must not interleave. One worker keeps publishing-quotes from
+  // growing the catalog while browsing-quotes is asserting on it.
   workers: 1,
   // The topology the old CI smoke job already proved: both APIs on fixed loopback ports
   // plus the Vite dev server, wired by env vars (vite.config.ts proxies /api/* to them).
@@ -48,8 +53,10 @@ export default defineConfig({
         ASPNETCORE_URLS: 'http://127.0.0.1:5202',
         ASPNETCORE_ENVIRONMENT: 'Development',
         Jwt__SigningKey: JWT_KEY,
+        ConnectionStrings__quotesdb: QUOTES_DB,
       },
       url: 'http://127.0.0.1:5202/health',
+      timeout: 120_000, // includes the at-boot migration + seed of the throwaway database
       reuseExistingServer: !process.env.CI,
     },
     {

@@ -142,6 +142,21 @@ jobs:
           dotnet build src/Auth/Auth.Api/Auth.Api.csproj -c Release
           dotnet build src/Quotes/Quotes.Api/Quotes.Api.csproj -c Release
 
+      # The quotes catalog is real in e2e too: throwaway PostgreSQL on the fixed port the
+      # webServer config expects (mirrors scripts/e2e.sh locally). The API migrates +
+      # seeds it at boot, so pg_isready is the only readiness gate needed here.
+      - name: Start quotes catalog PostgreSQL
+        run: |
+          docker run -d --name e2e-pg \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=quotesdb \
+            -p 127.0.0.1:55432:5432 \
+            docker.io/library/postgres:18.3
+          for i in $(seq 1 60); do
+            docker exec e2e-pg pg_isready -U postgres -d quotesdb && break
+            sleep 1
+          done
+
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
 
