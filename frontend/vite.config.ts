@@ -19,6 +19,13 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // Both quote versions live in the same service and the SPA can switch at request
+      // time; the v0 rule was missing, which broke the controllers radio under dev.
+      '/api/v0/quotes': {
+        target: quotesTarget,
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
   test: {
