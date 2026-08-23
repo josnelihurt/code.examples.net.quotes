@@ -73,8 +73,8 @@ jobs:
       # tsc -b only runs inside build; without this step type errors pass CI.
       - run: npm run build
 
-  smoke:
-    name: smoke (api round trip)
+  specs:
+    name: specs (BDD against the Aspire stack)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -83,36 +83,19 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Build (Release)
-        run: |
-          set -euo pipefail
-          dotnet build src/Auth/Auth.Api/Auth.Api.csproj -c Release
-          dotnet build src/Quotes/Quotes.Api/Quotes.Api.csproj -c Release
+      # The gateway resource is a container; pre-pulling keeps the readiness wait honest.
+      - run: docker pull mcr.microsoft.com/dotnet/nightly/yarp:2.3-preview
 
-      - name: Start APIs
-        run: |
-          set -euo pipefail
-          ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://127.0.0.1:5101 Jwt__SigningKey=ci-smoke-signing-key-0123456789abcdef \
-            dotnet src/Auth/Auth.Api/bin/Release/net10.0/Auth.Api.dll &
-          ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://127.0.0.1:5102 Jwt__SigningKey=ci-smoke-signing-key-0123456789abcdef \
-            dotnet src/Quotes/Quotes.Api/bin/Release/net10.0/Quotes.Api.dll &
+      # No Aspire CLI needed: DistributedApplicationTestingBuilder drives the AppHost
+      # in-process via the Aspire.AppHost.Sdk. Slower than build-and-test by design —
+      # it proves cross-service journeys, so it runs as its own parallel gate.
+      - run: dotnet test tests/Bdd/AspireQuotesPoc.Specs.csproj -c Release --logger "trx;LogFileName=specs.trx"
 
-          for _ in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:5101/health >/dev/null 2>&1 && \
-               curl -fsS http://127.0.0.1:5102/health >/dev/null 2>&1; then
-              echo "both APIs healthy"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "APIs did not become healthy in 60s" >&2
-          exit 1
-
-      - name: Smoke test
-        env:
-          AUTH_URL: http://127.0.0.1:5101
-          QUOTES_URL: http://127.0.0.1:5102
-        run: ./scripts/test-api.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: specs-results
+          path: '**/TestResults/*.trx'
 
   contract-drift:
     name: openapi contract drift
