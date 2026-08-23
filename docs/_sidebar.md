@@ -7,4 +7,5 @@
 * [Testing](testing.md)
 * [SonarQube](sonar.md)
 * [Observability](observability.md)
+* [ServiceDefaults as a NuGet building block](servicedefaults-nuget-extraction.md)
 * [Panel Review](panel-review.md)

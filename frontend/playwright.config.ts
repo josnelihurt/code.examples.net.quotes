@@ -15,6 +15,11 @@ export default defineConfig({
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'html',
   use: { baseURL: 'http://127.0.0.1:5173', trace: 'on-first-retry' },
   projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }],
+  // The quote catalog lives in an in-memory singleton shared by every scenario of the
+  // run, and browsing scenarios assert exact page counts over the seeded catalog — so
+  // scenarios must not interleave. One worker keeps publishing-quotes from growing the
+  // catalog while browsing-quotes is asserting on it.
+  workers: 1,
   // The topology the old CI smoke job already proved: both APIs on fixed loopback ports
   // plus the Vite dev server, wired by env vars (vite.config.ts proxies /api/* to them).
   // The Aspire test host is deliberately not used here — its dynamic ports are invisible
@@ -28,6 +33,11 @@ export default defineConfig({
         ASPNETCORE_URLS: 'http://127.0.0.1:5201',
         ASPNETCORE_ENVIRONMENT: 'Development',
         Jwt__SigningKey: JWT_KEY,
+        // Every scenario signs in through the UI (per-tab sessionStorage); with 13+
+        // scenarios the default 10 requests / 30 s per IP would start returning 429s.
+        // Mirrors what tests/Bdd/Support/AspireStack.cs does for the spec environment;
+        // the 429 shape itself is proven in-process by AuthRateLimitTests.
+        RateLimiting__Auth__PermitLimit: '100',
       },
       url: 'http://127.0.0.1:5201/health',
       reuseExistingServer: !process.env.CI,

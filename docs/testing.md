@@ -104,8 +104,17 @@ npm run test:coverage    # + LCOV under frontend/coverage/
 The E2E suite boots both APIs on fixed loopback ports plus the Vite dev server via
 Playwright's `webServer`, then drives the real UI in Chromium: sign in, wrong
 credentials, the unauthenticated redirect, random quote, switching transport version,
-sign-out. Scenarios sign in through the UI every time — signing in is one of the flows
-under test.
+sign-out; browsing and paging the catalog; publishing a quote — including the
+rule-breaking 400, the near-duplicate 409 and the read-only account's 403. Scenarios
+sign in through the UI every time — signing in is one of the flows under test. The
+auth rate limit is raised for the E2E environment exactly as the spec suite does
+(many scenarios sign in inside one fixed window). Feature files deliberately reuse the
+spec suite's business vocabulary (`I have published a quote with unique text
+attributed to …` mirrors `tests/Bdd/Features/Quotes/PublishingQuotes.feature`): one
+language for the API journeys in Reqnroll, one for the browser journeys in
+playwright-bdd. The suite runs with `workers: 1` — the quote catalog is an in-memory
+singleton shared by every scenario of a run, and browsing scenarios assert exact page
+counts over the seeded catalog.
 
 ## What is covered
 
@@ -120,16 +129,18 @@ under test.
 - **Architecture** — NetArchTest suite (`tests/Architecture.Tests`) enforcing the layering table: dependency direction per layer, no Api→Domain, no cross-context references, ServiceDefaults isolated
 - **Auth rate limiting** — slim-pipeline suite with a two-request window proving the 429 ProblemDetails shape (`auth.rate_limited`), plus the Production refusal of the scaffolding credential store at the DI boundary
 - **Specs (tests/Bdd)** — cross-service journeys through the gateway: sign in → token → random quote, create → `Location` round trip, near-duplicate 409, rejected text 400, reader-scope 403, v0/v1 transport parity, token introspection, OpenAPI/Scalar surfaces
-- **Frontend** — `api/client`, `LoginPage`, `QuotePage`, routing/`RequireAuth` (Vitest); browser journeys (Playwright BDD)
+- **Frontend** — `api/client` (session, login, random, catalog paging, publish — every failure path parsed out of the RFC 9457 body into `ApiError`), `LoginPage`, `QuotePage`, `QuotesListPage` (first page, next/previous bounds, version switch refetch, empty catalog), `PublishQuotePage` (success confirmation + form reset, validation/conflict/forbidden alerts, in-flight disabling), routing/`RequireAuth` over `/quote`, `/quotes` and `/publish` (Vitest); browser journeys across signing-in, reading-quotes, browsing-quotes and publishing-quotes (Playwright BDD); Storybook interaction stories for the extracted presentational components, smoke-built in CI
 
 ## CI
 
 `.github/workflows/ci.yml` enforces six gates: the test suite in **Release** (where
 `TreatWarningsAsErrors` applies) with coverage collection; the repo's own lint script
 (`dotnet format --verify-no-changes`); the frontend job (lint + tests + build so type
-errors cannot pass); the **specs** job (Reqnroll against the Aspire-orchestrated stack,
-Docker on `ubuntu-latest`); the **e2e** job (Playwright + playwright-bdd in Chromium);
-and the hermetic OpenAPI contract regeneration failing on any drift vs `docs/openapi/`.
+errors cannot pass, plus the Storybook build and a regeneration of the SPA's
+OpenAPI-derived types in `src/api/schema.d.ts` failing on drift); the **specs** job
+(Reqnroll against the Aspire-orchestrated stack, Docker on `ubuntu-latest`); the
+**e2e** job (Playwright + playwright-bdd in Chromium); and the hermetic OpenAPI
+contract regeneration failing on any drift vs `docs/openapi/`.
 CI Release is the canonical gate; the local `./scripts/test.sh` (Debug + coverage) is
 the fast inner loop, and `./scripts/bdd.sh` / `./scripts/e2e.sh` run the slow outer
 loops on demand. The old curl-based `smoke` job (and `scripts/test-api.sh`) was replaced

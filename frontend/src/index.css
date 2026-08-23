@@ -1,3 +1,47 @@
+/*
+  Base layer: reset and document defaults.
+  Every design value lives as a token in App.css :root — components style
+  themselves with classes from that sheet; inline styles are banned by ESLint.
+*/
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: var(--color-bg);
+  /* A faint wash of light from the top of the page — paper under a lamp. */
+  background-image: radial-gradient(
+    120% 70% at 50% 0%,
+    oklch(99.4% 0.003 95 / 0.55),
+    transparent 55%
+  );
+  background-repeat: no-repeat;
+}
+
 body {
   margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle paper grain over the background, below all content. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='0.4'/%3E%3C/svg%3E");
+}
+
+#root {
+  min-height: 100dvh;
 }

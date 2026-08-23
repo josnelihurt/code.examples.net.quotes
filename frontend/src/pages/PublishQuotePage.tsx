@@ -1,26 +1,29 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   clearSession,
-  getRandomQuote,
-  getSession,
+  createQuote,
   getApiVersion,
+  getSession,
   setApiVersion,
   type ApiVersion,
   type QuoteResponse,
 } from '../api/client';
 import { ErrorAlert } from '../components/ErrorAlert';
+import { PublishForm } from '../components/PublishForm';
 import { QuoteCard } from '../components/QuoteCard';
 import { VersionSwitcher } from '../components/VersionSwitcher';
 
-export function QuotePage() {
+export function PublishQuotePage() {
   const navigate = useNavigate();
   const session = getSession();
-  const [quote, setQuote] = useState<QuoteResponse | null>(null);
+  const [version, setVersion] = useState<ApiVersion>(getApiVersion);
+  const [text, setText] = useState('');
+  const [author, setAuthor] = useState('');
+  const [published, setPublished] = useState<QuoteResponse | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [version, setVersion] = useState<ApiVersion>(getApiVersion);
   const [servedBy, setServedBy] = useState<ApiVersion | null>(null);
 
   const chooseVersion = (next: ApiVersion) => {
@@ -28,20 +31,22 @@ export function QuotePage() {
     setApiVersion(next);
   };
 
-  const fetchQuote = async () => {
+  const submit = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getRandomQuote(version);
-      setQuote(data);
-      setStatus('200');
+      const quote = await createQuote({ text: text.trim(), author: author.trim() }, version);
+      setPublished(quote);
+      setStatus('201');
       setServedBy(version);
+      setText('');
+      setAuthor('');
     } catch (err) {
-      setQuote(null);
+      setPublished(null);
       setStatus(null);
       setServedBy(null);
-      setError(err instanceof Error ? err.message : 'Failed to load quote');
-      console.error('Quote request failed', err);
+      setError(err instanceof Error ? err.message : 'Failed to publish quote');
+      console.error('Publish request failed', err);
     } finally {
       setLoading(false);
     }
@@ -56,7 +61,7 @@ export function QuotePage() {
     <section className="panel">
       <div className="row">
         <div>
-          <h1>Random quote</h1>
+          <h1>Publish a quote</h1>
           <p className="muted">Signed in as {session.username}</p>
         </div>
         <button type="button" className="secondary" onClick={signOut}>
@@ -70,15 +75,26 @@ export function QuotePage() {
 
       <VersionSwitcher version={version} onChange={chooseVersion} />
 
-      <button type="button" onClick={fetchQuote} disabled={loading}>
-        {loading ? 'Loading...' : 'Get random quote'}
-      </button>
+      <PublishForm
+        text={text}
+        author={author}
+        loading={loading}
+        onTextChange={setText}
+        onAuthorChange={setAuthor}
+        onSubmit={submit}
+      />
 
       {error && <ErrorAlert message={error} />}
       {status && <p className="muted">Last status: {status}</p>}
       {servedBy && <p className="muted">Served by: {servedBy}</p>}
 
-      {quote && <QuoteCard quote={quote} />}
+      {published && (
+        <div className="published" role="status">
+          <p className="muted">Published to the catalog.</p>
+          <QuoteCard quote={published} />
+          <Link to="/quotes">Browse the catalog</Link>
+        </div>
+      )}
     </section>
   );
 }

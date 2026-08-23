@@ -73,6 +73,14 @@ jobs:
       # tsc -b only runs inside build; without this step type errors pass CI.
       - run: npm run build
 
+      # The SPA's API types are generated from the frozen OpenAPI document; regenerate
+      # and fail if the committed schema drifted from docs/openapi.
+      - run: npm run gen:api
+      - run: git diff --exit-code src/api/schema.d.ts
+
+      # Storybook smoke: stories typecheck and build like any other frontend artifact.
+      - run: npm run build-storybook
+
   specs:
     name: specs (BDD against the Aspire stack)
     runs-on: ubuntu-latest

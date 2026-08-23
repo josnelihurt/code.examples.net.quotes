@@ -71,7 +71,7 @@ Transport vs domain validation: DTOs keep shallow guards (`[Required]`, `[MaxLen
 
 1. **Auth API** issues a JWT for hardcoded local users — `jrb` / `supersecret` holds `quotes:read` + `quotes:write`, `reader` / `readsecret` holds `quotes:read` only — and can validate tokens via `/api/v1/auth/validate` (optional introspection). Login and validate are rate-limited (fixed window per client IP, 429 as ProblemDetails), and the scaffolding credential store refuses to register in Production.
 2. **Quotes API** serves an in-memory catalog after JwtBearer validates the bearer token: `GET /api/v1/quotes/random`, `GET /api/v1/quotes/{id}`, `GET /api/v1/quotes?page=&pageSize=` (the ratified offset-pagination pattern), and `POST /api/v1/quotes` (requires `quotes:write`; rejects invalid and near-duplicate quotes). The same four operations are also served at `/api/v0/quotes/...` by MVC controllers — one core, two transport styles, held to byte-level response parity by tests. See [docs/architecture.md](docs/architecture.md#api-versions-and-transport-styles).
-3. **React SPA** logs in, stores token + `X-Correlation-Id`, then fetches quotes through the Vite proxy.
+3. **React SPA** logs in, stores token + `X-Correlation-Id`, then fetches quotes through the Vite proxy: a random quote, the paginated catalog (`/quotes`), and publishing a new quote (`/publish`, maintainer scope only). Its API types are generated from the frozen OpenAPI document, and its components have Storybook stories smoke-built in CI.
 4. **Aspire AppHost** starts everything, wires service discovery, exports OpenTelemetry to the dashboard, and publishes a **YARP** gateway (no Traefik).
 
 ```text
@@ -166,7 +166,7 @@ Export a full git bundle to `~/repo.bundle`:
 ./scripts/export-bundle.sh
 ```
 
-More detail in Docsify: [Testing](docs/testing.md), [SonarQube](docs/sonar.md), [Panel Review](docs/panel-review.md).
+More detail in Docsify: [Testing](docs/testing.md), [SonarQube](docs/sonar.md), [ServiceDefaults as a NuGet building block](docs/servicedefaults-nuget-extraction.md), [Panel Review](docs/panel-review.md).
 
 ## OpenAPI / Scalar
 

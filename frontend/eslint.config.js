@@ -6,7 +6,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  globalIgnores(['dist', 'coverage']),
+  globalIgnores(['dist', 'coverage', 'storybook-static']),
   {
     extends: [js.configs.recommended, tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -22,6 +22,14 @@ export default defineConfig(
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXAttribute[name.name='style']",
+          message:
+            'Inline styles are not allowed. Use a class and style it in App.css with design tokens.',
+        },
       ],
     },
   },
