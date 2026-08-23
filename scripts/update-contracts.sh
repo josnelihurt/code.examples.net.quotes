@@ -25,7 +25,7 @@ echo "==> Copying frozen YAML to docs/openapi"
 "${DOCKER}" cp "${cid}:/quotes-v1.openapi.yaml" "${OUT_DIR}/quotes-v1.openapi.yaml"
 
 echo "==> Regenerating the SPA API types (frontend/src/api/schema.d.ts)"
-(cd "${ROOT}/frontend" && npm run gen:api)
+(cd "${ROOT}/frontend" && pnpm run gen:api)
 
 echo "Updated:"
 echo "  ${OUT_DIR}/auth.openapi.yaml"

@@ -92,7 +92,7 @@ Three things carry the wiring:
 - **`WithReference` is what makes the SPA work.** It injects `AUTH_API_HTTP` / `AUTH_API_HTTPS` and
   `QUOTES_API_HTTP` / `QUOTES_API_HTTPS` into the `web` resource, and
   [`frontend/vite.config.ts`](../frontend/vite.config.ts) reads exactly those variables to build its
-  dev proxy. Running `npm run dev` outside Aspire leaves the proxy targets undefined.
+  dev proxy. Running `pnpm run dev` outside Aspire leaves the proxy targets undefined.
 - **`WaitFor`** holds the SPA back until both APIs report healthy on `/health`.
 
 In run mode the browser talks to the Vite dev server, which proxies to the APIs. The gateway also
@@ -281,7 +281,7 @@ flowchart TD
 
   bt --> btd["dotnet test -c Release per project, OpenCover coverage"]
   lint --> lintd["scripts/lint.sh - dotnet format --verify-no-changes"]
-  fe --> fed["npm ci, lint, test, build"]
+  fe --> fed["pnpm install, lint, test, build"]
   smoke --> smoked["boot both APIs, run scripts/test-api.sh"]
   drift --> driftd["rebuild contracts, diff against docs/openapi"]
 ```

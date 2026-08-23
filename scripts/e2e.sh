@@ -11,4 +11,4 @@ dotnet build "${ROOT}/src/Auth/Auth.Api/Auth.Api.csproj" --configuration Release
 dotnet build "${ROOT}/src/Quotes/Quotes.Api/Quotes.Api.csproj" --configuration Release
 
 cd "${ROOT}/frontend"
-exec npm run test:e2e
+exec pnpm run test:e2e

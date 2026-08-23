@@ -24,7 +24,7 @@ inline alerts.
 | Build/dev server | Vite ^8 with `@vitejs/plugin-react` |
 | Routing | `react-router-dom` ^7 |
 | State | **none** — `useState` in components, `sessionStorage` for the session |
-| API types | generated from the frozen OpenAPI document (`openapi-typescript`, `npm run gen:api`) |
+| API types | generated from the frozen OpenAPI document (`openapi-typescript`, `pnpm run gen:api`) |
 | Tests | Vitest ^4, Testing Library, jsdom |
 | Browser tests | Playwright + playwright-bdd (see `e2e/`) |
 | Component workshop | Storybook 10 (`@storybook/react-vite`), smoke-built in CI |
@@ -127,7 +127,7 @@ behaviour.
 `createQuote` each default their version to `getApiVersion()`, which reads the stored value and
 falls back to `DEFAULT_API_VERSION` (`v1`) when it is missing or not a known version.
 
-**The contract types are generated, not hand-written.** `npm run gen:api` runs
+**The contract types are generated, not hand-written.** `pnpm run gen:api` runs
 `openapi-typescript` over the frozen [`../docs/openapi/quotes-v1.openapi.yaml`](../docs/openapi/quotes-v1.openapi.yaml)
 into [`src/api/schema.d.ts`](src/api/schema.d.ts), and `client.ts` derives `QuoteResponse` and
 `CreateQuoteRequest` from it (the paging fields are narrowed back to `number` — the generator
@@ -184,7 +184,7 @@ const quotesTarget = process.env.QUOTES_API_HTTPS || process.env.QUOTES_API_HTTP
 
 Those four variables are injected by Aspire's `WithReference(auth)` / `WithReference(quotes)` on the
 `web` resource in [`../src/AppHost/AppHost.cs`](../src/AppHost/AppHost.cs). The practical consequence:
-running `npm run dev` **outside** Aspire leaves both targets `undefined`, so API calls do not reach a
+running `pnpm run dev` **outside** Aspire leaves both targets `undefined`, so API calls do not reach a
 service. Start the stack with `./scripts/start.sh` and open the `web` endpoint from the dashboard.
 
 Both proxy rules use `changeOrigin: true` and `secure: false`, the latter so the local development
@@ -196,24 +196,26 @@ gateway mirrors the same three routes in publish mode.
 
 ## Scripts
 
-From [`package.json`](package.json), run inside `frontend/`:
+From [`package.json`](package.json), run inside `frontend/` with [pnpm](../docs/package-manager-security.md)
+(the exact version is pinned by the `packageManager` field):
 
 | Command | Does |
 |---|---|
-| `npm run dev` | Vite dev server (needs the Aspire-injected proxy targets, above) |
-| `npm run build` | `tsc -b` then `vite build` — the type check only happens here |
-| `npm run preview` | serves the production build |
-| `npm run lint` | `eslint .` |
-| `npm test` | `vitest run` |
-| `npm run test:watch` | `vitest` in watch mode |
-| `npm run test:coverage` | `vitest run --coverage` |
-| `npm run test:e2e` | `bddgen && playwright test` — the browser suite (or `./scripts/e2e.sh` from the repo root, which builds the APIs first) |
-| `npm run gen:api` | regenerates `src/api/schema.d.ts` from the frozen OpenAPI YAML |
-| `npm run storybook` | Storybook dev server on port 6006 |
-| `npm run build-storybook` | static Storybook build (the CI smoke) |
+| `pnpm run dev` | Vite dev server (needs the Aspire-injected proxy targets, above) |
+| `pnpm run build` | `tsc -b` then `vite build` — the type check only happens here |
+| `pnpm run preview` | serves the production build |
+| `pnpm run lint` | `eslint .` |
+| `pnpm test` | `vitest run` |
+| `pnpm run test:watch` | `vitest` in watch mode |
+| `pnpm run test:coverage` | `vitest run --coverage` |
+| `pnpm run test:e2e` | `bddgen && playwright test` — the browser suite (or `./scripts/e2e.sh` from the repo root, which builds the APIs first) |
+| `pnpm run gen:api` | regenerates `src/api/schema.d.ts` from the frozen OpenAPI YAML |
+| `pnpm run storybook` | Storybook dev server on port 6006 |
+| `pnpm run build-storybook` | static Storybook build (the CI smoke) |
 
-Node `^20.19.0 || >=22.12.0` is required (`engines`). `postcss` is pinned to `8.5.10` through
-`overrides`.
+Node `^20.19.0 || >=22.12.0` is required (`engines`); CI runs Node 24. `postcss` is pinned to `8.5.10`
+through `overrides` in [`pnpm-workspace.yaml`](pnpm-workspace.yaml), which also carries the install
+hardening (blocked build scripts, 24 h release quarantine).
 
 ## Tests
 
@@ -291,15 +293,16 @@ uses the VS JavaScript SDK and disables both npm hooks:
 <ShouldRunBuildScript>false</ShouldRunBuildScript>
 ```
 
-So the project builds nothing. It is a solution-explorer entry, and npm remains the only way the
-frontend is installed, linted, tested or built — Aspire's `AddViteApp` in run mode, `npm` in CI.
+So the project builds nothing. It is a solution-explorer entry, and pnpm remains the only way the
+frontend is installed, linted, tested or built — Aspire's `AddViteApp` (via `WithPnpm()`) in run
+mode, `pnpm` in CI.
 
 That inert project is also why the tooling never targets the solution file:
 [`../scripts/lint.sh`](../scripts/lint.sh) enumerates `*.csproj` under `src` and `tests` and runs
 `dotnet format` per project, and CI's test job does the same per `*.Tests.csproj`. A clean .NET SDK
 checkout cannot build `frontend.esproj`, so `dotnet format AspireQuotesPoc.sln` would fail on a
-project that has nothing to format. CI runs the frontend as its own job: `npm ci`, `npm run lint`,
-`npm test`, `npm run build`.
+project that has nothing to format. CI runs the frontend as its own job: `pnpm install
+--frozen-lockfile`, `pnpm run lint`, `pnpm test`, `pnpm run build`.
 
 ## See also
 

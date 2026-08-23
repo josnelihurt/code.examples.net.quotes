@@ -5,7 +5,11 @@
 - .NET 10 SDK
 - Aspire CLI 13.x
 - Podman (`ASPIRE_CONTAINER_RUNTIME=podman`)
-- Node.js 20.19+ / 22.13+ / 24+
+- Node.js 20.19+ / 22.12+ / 24+ (CI runs Node 24, the active LTS)
+- pnpm — install standalone (`brew install pnpm` or `npm i -g pnpm`); Corepack no longer
+  ships with Node 25+. The exact version is pinned by `packageManager` in
+  `frontend/package.json` and pnpm honors it automatically. Rationale:
+  [pnpm as the package manager](package-manager-security.md)
 
 ## Start the app
 
@@ -55,8 +59,9 @@ Output: `src/AppHost/aspire-output/`
 Frontend:
 
 ```bash
-cd frontend && npm test
-# or: npm run test:coverage
+cd frontend && pnpm install   # first time only
+pnpm test
+# or: pnpm run test:coverage
 ```
 
 Details: [Testing](testing.md).

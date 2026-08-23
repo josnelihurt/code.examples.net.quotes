@@ -59,7 +59,7 @@ All five are declared in [`AppHost.cs`](AppHost.cs).
 | `auth-api` | .NET project (`Projects.Auth_Api`) | `builder.AddProject<...>("auth-api")` | `http`, `https`, both external | `Jwt__SigningKey` from the parameter; HTTP health check on `/health`; a **Scalar** dashboard link pointing at `/scalar` on each endpoint |
 | `quotes-api` | .NET project (`Projects.Quotes_Api`) | `builder.AddProject<...>("quotes-api")` | `http`, `https`, both external | identical wiring to `auth-api` |
 | `web` | Vite app (`AddViteApp("web", "../../frontend")`) | after both APIs | external HTTP | `WithReference` + `WaitFor` on both APIs |
-| `docs` | Executable (`AddExecutable`) | `npx --yes docsify-cli serve docs -p 3001 -H 0.0.0.0`, working directory `../..` | `http` on target port 3001, external | adds a **Scalar** link to `/scalar/` (the combined Auth + Quotes reference); logs a warning and skips that link if the `http` endpoint is missing |
+| `docs` | Executable (`AddExecutable`) | `pnpm dlx docsify-cli serve docs -p 3001 -H 0.0.0.0`, working directory `../..` | `http` on target port 3001, external | adds a **Scalar** link to `/scalar/` (the combined Auth + Quotes reference); logs a warning and skips that link if the `http` endpoint is missing |
 | `gateway` | YARP (`AddYarp("gateway")`) | last | external HTTP | three routes; `PublishWithStaticFiles(web)` |
 
 One environment is declared alongside them: `builder.AddDockerComposeEnvironment("compose")`, which
@@ -108,8 +108,8 @@ The same model produces two different shapes.
 | Telemetry sink | the Aspire dashboard the CLI starts | a dashboard container in the generated compose file |
 | Signing key | generated locally | a blank variable for the operator |
 
-The two absences are the point worth remembering. `docs` is a developer convenience — an `npx`
-executable that serves the repository's own Markdown — and has no place in a deployment. `web` is
+The two absences are the point worth remembering. `docs` is a developer convenience — a
+`pnpm dlx` executable that serves the repository's own Markdown — and has no place in a deployment. `web` is
 absent for a different reason: `PublishWithStaticFiles(web)` turns the SPA from a resource into
 *content*, building it and copying the Vite `dist` output into the gateway image's `wwwroot`. In
 publish mode the browser loads the SPA from the gateway and calls the APIs through the same origin,

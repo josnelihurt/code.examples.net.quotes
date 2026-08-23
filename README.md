@@ -149,7 +149,7 @@ C# lint — warning-level style rules incl. unused usings (IDE0005); `--fix` rew
 Frontend tests (Vitest):
 
 ```bash
-cd frontend && npm test
+cd frontend && pnpm test
 ```
 
 Local SonarQube (Podman) + scan:

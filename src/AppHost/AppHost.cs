@@ -27,7 +27,10 @@ var quotes = builder.AddProject<Projects.Quotes_Api>("quotes-api")
     .WithUrlForEndpoint("https", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText })
     .WithUrlForEndpoint("http", ep => new() { Url = ScalarPath, DisplayText = ScalarDisplayText });
 
+// WithPnpm: Aspire defaults to npm; the explicit call makes run mode use
+// `pnpm install` + `pnpm run dev` and publish mode `pnpm install --frozen-lockfile`.
 var web = builder.AddViteApp("web", "../../frontend")
+    .WithPnpm()
     .WithReference(auth)
     .WithReference(quotes)
     .WaitFor(auth)
@@ -35,7 +38,7 @@ var web = builder.AddViteApp("web", "../../frontend")
     .WithExternalHttpEndpoints();
 
 // Docsify documentation site (appears in Aspire dashboard).
-builder.AddExecutable("docs", "npx", "../..", "--yes", "docsify-cli", "serve", "docs", "-p", "3001", "-H", "0.0.0.0")
+builder.AddExecutable("docs", "pnpm", "../..", "dlx", "docsify-cli", "serve", "docs", "-p", "3001", "-H", "0.0.0.0")
     .WithHttpEndpoint(targetPort: 3001, name: "http")
     .WithExternalHttpEndpoints()
     .WithUrls(context =>

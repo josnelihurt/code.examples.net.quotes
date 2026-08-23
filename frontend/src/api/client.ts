@@ -35,7 +35,7 @@ export interface LoginResponse {
   username: string;
 }
 
-// Contract types come from the frozen OpenAPI document (npm run gen:api) so the client
+// Contract types come from the frozen OpenAPI document (pnpm run gen:api) so the client
 // cannot drift from the ratified API. The paging numbers are widened to `number | string`
 // by the generator; the contract is numeric, so they are narrowed back here.
 type QuoteSchemas = components['schemas'];

@@ -95,8 +95,8 @@ to take a few minutes (container start dominates).
 
 ```bash
 cd frontend
-npm test                 # vitest run
-npm run test:coverage    # + LCOV under frontend/coverage/
+pnpm test                 # vitest run
+pnpm run test:coverage    # + LCOV under frontend/coverage/
 
 ./scripts/e2e.sh         # from the repo root: builds APIs (Release), runs Playwright BDD
 ```

@@ -43,7 +43,7 @@ public static class AspireStack
             .CreateAsync<Projects.AspireQuotesPoc_AppHost>();
 
         // The SPA and the docsify site are not part of any API scenario, and `docs` shells
-        // out to `npx --yes docsify-cli`, which downloads on every start. Browser coverage
+        // out to `pnpm dlx docsify-cli`, which downloads on every start. Browser coverage
         // lives in frontend/e2e instead. IResourceCollection is IList<IResource> — no
         // RemoveAll, so materialise then remove.
         foreach (var resource in builder.Resources.Where(r => r.Name is "web" or "docs").ToList())

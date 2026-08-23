@@ -6,7 +6,7 @@ Static analysis runs against a **Podman** SonarQube Community Build. The scanner
 
 - Podman machine with enough RAM (script bumps to **6 GB** if below 4 GB, with a prompt)
 - `curl`, `python3`
-- Node modules under `frontend/` for TypeScript coverage (`npm install`)
+- Node modules under `frontend/` for TypeScript coverage (`pnpm install`)
 
 ## Start the server
 

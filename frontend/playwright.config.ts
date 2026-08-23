@@ -55,7 +55,7 @@ export default defineConfig({
     {
       // --host pins IPv4 loopback: Vite binds ::1 only by default, which leaves the
       // 127.0.0.1 readiness probe refused even though the server is up.
-      command: 'npm run dev -- --host 127.0.0.1 --port 5173 --strictPort',
+      command: 'pnpm run dev --host 127.0.0.1 --port 5173 --strictPort',
       env: {
         AUTH_API_HTTP: 'http://127.0.0.1:5201',
         QUOTES_API_HTTP: 'http://127.0.0.1:5202',

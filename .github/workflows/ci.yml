@@ -58,28 +58,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # pnpm/action-setup reads the pinned version from packageManager in
+      # frontend/package.json; it must run before setup-node (which needs the
+      # pnpm binary on PATH to locate the store for caching).
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      - run: npm run lint
+      - run: pnpm run lint
 
-      - run: npm test
+      - run: pnpm test
 
       # tsc -b only runs inside build; without this step type errors pass CI.
-      - run: npm run build
+      - run: pnpm run build
 
       # The SPA's API types are generated from the frozen OpenAPI document; regenerate
       # and fail if the committed schema drifted from docs/openapi.
-      - run: npm run gen:api
+      - run: pnpm run gen:api
       - run: git diff --exit-code src/api/schema.d.ts
 
       # Storybook smoke: stories typecheck and build like any other frontend artifact.
-      - run: npm run build-storybook
+      - run: pnpm run build-storybook
 
   specs:
     name: specs (BDD against the Aspire stack)
@@ -115,24 +122,28 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       # playwright.config.ts points its webServer at the Release DLLs.
       - run: |
           dotnet build src/Auth/Auth.Api/Auth.Api.csproj -c Release
           dotnet build src/Quotes/Quotes.Api/Quotes.Api.csproj -c Release
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
         working-directory: frontend
 
-      - run: npx playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps chromium
         working-directory: frontend
 
-      - run: npm run test:e2e
+      - run: pnpm run test:e2e
         working-directory: frontend
 
       - uses: actions/upload-artifact@v4

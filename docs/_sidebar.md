@@ -8,4 +8,5 @@
 * [SonarQube](sonar.md)
 * [Observability](observability.md)
 * [ServiceDefaults as a NuGet building block](servicedefaults-nuget-extraction.md)
+* [pnpm as the package manager](package-manager-security.md)
 * [Panel Review](panel-review.md)

@@ -1,0 +1,15 @@
+# Explicit allowlist of dependencies allowed to run install/build scripts.
+# esbuild: verifies/installs its platform binary; required by the Vite build.
+allowBuilds:
+  esbuild: true
+
+# pnpm settings (this is a single-package root; no `packages:` entries).
+# Security posture — see docs/package-manager-security.md:
+# - install/build scripts of dependencies do not run unless approved below
+# - releases younger than 24h are refused (`minimumReleaseAge`, in minutes)
+minimumReleaseAge: 1440
+
+# Carried over from the npm `overrides` block: pin every transitive postcss
+# to 8.5.10 (the version the npm lockfile already resolved to).
+overrides:
+  postcss: 8.5.10

@@ -37,9 +37,9 @@ if [[ "${SONAR_SKIP_FRONTEND:-}" == "1" ]]; then
   echo "SONAR_SKIP_FRONTEND=1; leaving the frontend coverage report untouched."
 elif [[ -d "${ROOT}/frontend/node_modules" ]]; then
   echo "Running frontend tests with coverage..."
-  (cd "${ROOT}/frontend" && npm run test:coverage)
+  (cd "${ROOT}/frontend" && pnpm run test:coverage)
 else
-  echo "frontend/node_modules is missing; run 'npm install' there for TypeScript coverage." >&2
+  echo "frontend/node_modules is missing; run 'pnpm install' there for TypeScript coverage." >&2
 fi
 
 SONAR_EXCLUSIONS="**/bin/**,**/obj/**,frontend/dist/**,frontend/node_modules/**,frontend/coverage/**,frontend/public/**,docs/**,src/AppHost/aspire-output/**,**/*.g.cs"
