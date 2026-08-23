@@ -71,3 +71,7 @@ TestResults/
 
 # ZCode agent session artifacts
 .zcode/
+
+# Python bytecode from the docs verification scripts
+__pycache__/
+*.pyc

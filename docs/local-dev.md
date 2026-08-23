@@ -27,6 +27,17 @@ This sources `scripts/env.sh` and runs `aspire run` (AppHost at `src/AppHost/` v
 
 Opens Docsify on port **3001** (combined Scalar at `/scalar/`).
 
+## Verify the documentation
+
+```bash
+./scripts/verify-docs.sh                 # links, code references, mermaid
+./scripts/verify-docs.sh --skip-mermaid  # skip the pnpm/Chromium render pass
+```
+
+Checks that every markdown link and anchor resolves, that every repo path, route and identifier the
+component pages cite exists in the code, and that every mermaid diagram renders. Details:
+[Documentation process](documentation-process.md).
+
 ## API specs (against the running stack)
 
 ```bash

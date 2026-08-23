@@ -270,23 +270,29 @@ flowchart TD
   bt["build-and-test"]
   lint["lint"]
   fe["frontend"]
-  smoke["smoke"]
+  specs["specs"]
+  e2e["e2e"]
   drift["contract-drift"]
 
   push --> bt
   push --> lint
   push --> fe
-  push --> smoke
+  push --> specs
+  push --> e2e
   push --> drift
 
   bt --> btd["dotnet test -c Release per project, OpenCover coverage"]
   lint --> lintd["scripts/lint.sh - dotnet format --verify-no-changes"]
   fe --> fed["pnpm install, lint, test, build"]
-  smoke --> smoked["boot both APIs, run scripts/test-api.sh"]
+  specs --> specsd["Reqnroll against the real Aspire stack"]
+  e2e --> e2ed["Playwright BDD in Chromium"]
   drift --> driftd["rebuild contracts, diff against docs/openapi"]
 ```
 
-Five independent gates in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). Two are worth
+Six independent gates in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). The two BDD
+gates run out of process — `specs` boots the AppHost through `Aspire.Hosting.Testing` and drives the
+real gateway, `e2e` drives the SPA in Chromium — which is why they are separate jobs rather than part
+of `build-and-test`; see [Testing](testing.md) for the layer split. Two further points are worth
 understanding rather than just running:
 
 - **Release is the real gate.** `TreatWarningsAsErrors` is set only for `Configuration == Release`

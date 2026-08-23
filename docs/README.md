@@ -13,6 +13,7 @@ See the [repository README](../README.md) for intention, layering rules, and con
 - [Testing](testing.md)
 - [SonarQube](sonar.md)
 - [Observability in Aspire](observability.md)
+- [Documentation process](documentation-process.md)
 
 ## Credentials (local scaffolding)
 

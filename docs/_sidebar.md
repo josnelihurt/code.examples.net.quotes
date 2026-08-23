@@ -9,4 +9,5 @@
 * [Observability](observability.md)
 * [ServiceDefaults as a NuGet building block](servicedefaults-nuget-extraction.md)
 * [pnpm as the package manager](package-manager-security.md)
+* [Documentation process](documentation-process.md)
 * [Panel Review](panel-review.md)
