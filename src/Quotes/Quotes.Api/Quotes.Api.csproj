@@ -8,6 +8,11 @@
     <InternalsVisibleTo Include="Quotes.Api.Tests" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Design-time only: lets `dotnet ef migrations` author migrations with this project
+         as the startup host. Never shipped. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- The API host is the composition root: it references Application (contracts) and
          Infrastructure (adapters), never the Domain directly. -->
     <ProjectReference Include="..\..\ServiceDefaults\AspireQuotesPoc.ServiceDefaults.csproj" />
