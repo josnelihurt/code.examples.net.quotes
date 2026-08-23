@@ -18,7 +18,7 @@ RUN dotnet restore src/Auth/Auth.Api/Auth.Api.csproj \
 
 FROM build AS export
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl python3-yaml \
+ && apt-get install -y --no-install-recommends curl python3-yaml postgresql \
  && rm -rf /var/lib/apt/lists/*
 
 RUN bash -euo pipefail <<'EOF'
@@ -28,6 +28,21 @@ mkdir -p /out /tmp/logs
 # match the committed development key (the Production guard would reject it, and
 # this throwaway never leaves the build container).
 export Jwt__SigningKey="openapi-export-throwaway-key-0123456789abcdef"
+
+# The Quotes API needs its catalog database even to serve the OpenAPI documents (it
+# migrates at boot), so start the cluster Debian just installed and hand it a throwaway
+# catalog. No docker-in-docker: this stays a hermetic single-image build.
+PG_VERSION="$(ls /etc/postgresql | head -n1)"
+pg_ctlcluster "${PG_VERSION}" main start
+su postgres -c "psql -c \"ALTER USER postgres PASSWORD 'postgres';\"" >/dev/null
+su postgres -c "createdb quotesdb"
+for i in $(seq 1 60); do
+  if pg_isready -U postgres -d quotesdb >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+export ConnectionStrings__quotesdb="Host=127.0.0.1;Port=5432;Username=postgres;Password=postgres;Database=quotesdb"
 
 ASPNETCORE_ENVIRONMENT=Development \
 ASPNETCORE_URLS=http://127.0.0.1:18081 \
