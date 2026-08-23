@@ -48,4 +48,14 @@
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
   </ItemGroup>
 
+  <!-- Spec suite (tests/Bdd): Reqnroll 3.3.4 with the xunit.v3 adapter (Reqnroll.xUnit is
+       xUnit 2.x only); Aspire.Hosting.Testing is pinned to the same 13.4.6 line as the
+       AppHost SDK. The MSBuild generation package arrives transitively but is pinned and
+       referenced explicitly so its .feature -> test-class targets are guaranteed to apply. -->
+  <ItemGroup Label="Bdd">
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.4.6" />
+    <PackageVersion Include="Reqnroll.Tools.MsBuild.Generation" Version="3.3.4" />
+    <PackageVersion Include="Reqnroll.xunit.v3" Version="3.3.4" />
+  </ItemGroup>
+
 </Project>
