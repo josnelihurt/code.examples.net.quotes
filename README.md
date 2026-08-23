@@ -213,3 +213,33 @@ dotnet user-secrets set "Jwt:SigningKey" "AspireQuotesPoc-Dev-Signing-Key-32char
 ```
 
 Production startup fails if the key is missing or equal to the public development key (`JwtAuthExtensions`). The hermetic OpenAPI export (`Dockerfile.build`) uses a build-time ephemeral key.
+
+## Stacked pull requests
+
+Large changes land as **stacks**: an ordered chain of small PRs where each branch builds on the one below, the bottom PR targets `main`, and every other PR's base is the branch of the PR below it. Each layer is one reviewable decision, and **every level must pass all CI gates on its own** — an intermediate level that doesn't compile or fails a suite is a bug in the split, not a footnote.
+
+```text
+main ← 1-schema ← 2-repository ← 3-apphost-db ← … ← 9-component-readmes
+```
+
+Rules that matter:
+
+- **Split by decision, not by file count.** Each PR should be answerable with one sentence: "what does this PR decide?" Prefer landing new code *beside* the old with a temporary bridge and deleting the old path in a later layer — then the interesting PRs are additions plus one pure deletion at the end.
+- **Every level is green.** CI runs per PR, so plumbing that a later layer makes load-bearing (a container, a config value) lands first as a harmless no-op layer.
+- **Review by delta.** GitHub diffs each PR against the branch below it. Bottom layers carry the substance; the upper layers should read as small, obvious consequences.
+- **Merge bottom-up** — or merge the top PR to land the whole stack at once. When a lower PR merges, GitHub rebases the branches above and retargets them automatically. Never rebase, force-push, delete mid-stack branches, or edit PR bases by hand once the chain is registered as a stack.
+
+Tooling (GitHub native stacks, public preview, driven by the [`gh-stack`](https://github.com/github/gh-stack) extension):
+
+```bash
+gh extension install github/gh-stack      # once
+gh stack link 13 6 7 8 9 10 11 12 14     # register already-chained PRs, bottom → top
+gh stack link 16 15                       # append a new PR to stack 16
+gh stack view / sync / rebase / merge     # inspect, update, land
+```
+
+(The numbers above are the real PostgreSQL-catalog stack this workflow was proven on.)
+
+Gotchas: server-side rebases produce unsigned commits — irrelevant today, but if the repo ever requires signed commits use `gh stack rebase` + `gh stack push` instead of the web button. A stack must keep linear history between its branches. Squash merges work at every layer; branch-protection checks apply to each PR individually.
+
+Agents working in this repo follow the same workflow — the agent-side recipe (snapshot before splitting, verify at load-bearing levels, evidence per PR) lives in [`AGENTS.md`](AGENTS.md).
