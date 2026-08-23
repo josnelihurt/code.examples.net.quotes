@@ -12,7 +12,7 @@ namespace AspireQuotesPoc.Specs.Support;
 public sealed class ApiWorld
 {
     /// <summary>Sent on every request so the echo can be asserted without per-step plumbing.</summary>
-    private const string CorrelationHeader = "X-Correlation-Id";
+    private const string _correlationHeader = "X-Correlation-Id";
 
     public HttpClient Client { get; } = AspireStack.CreateGatewayClient();
 
@@ -32,7 +32,7 @@ public sealed class ApiWorld
     /// <summary>The catalog is in-memory and POST mutates it, so every scenario mints its own text.</summary>
     public string UniqueText { get; } = $"Specification quote {Guid.NewGuid():N}.";
 
-    public ApiWorld() => Client.DefaultRequestHeaders.Add(CorrelationHeader, CorrelationId);
+    public ApiWorld() => Client.DefaultRequestHeaders.Add(_correlationHeader, CorrelationId);
 
     /// <summary>Records one HTTP call for the Then steps, parsing the body when it is JSON.</summary>
     public async Task RecordAsync(HttpResponseMessage response)
