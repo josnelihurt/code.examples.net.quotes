@@ -57,6 +57,9 @@ TestResults/
 *.coverage
 *.coveragexml
 
+# Reqnroll generates .feature.cs beside each .feature at build time
+*.feature.cs
+
 # Sonar
 .sonar/
 .sonarqube/
