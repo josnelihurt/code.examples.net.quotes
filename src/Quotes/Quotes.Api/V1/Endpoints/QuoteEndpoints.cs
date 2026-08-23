@@ -1,3 +1,4 @@
+using AspireQuotesPoc.ServiceDefaults.OpenApi;
 using Quotes.Api.V1.Contracts;
 using Quotes.Api.V1.Mapping;
 using Quotes.Application.Abstractions;
@@ -11,34 +12,51 @@ public static class QuoteEndpoints
 
     internal const string GetByIdRouteName = "GetQuoteById";
 
+    private const string _forbiddenDetail =
+        "The access token is missing the required scope (quotes:read or quotes:write).";
+
     public static IEndpointRouteBuilder Map(IEndpointRouteBuilder endpoints)
     {
         var quotes = endpoints.MapGroup("/api/v1/quotes")
             .RequireAuthorization()
             .WithGroupName(DocumentName)
             .WithTags("Quotes v1")
-            .ProducesProblem(StatusCodes.Status401Unauthorized);
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .WithProblemExample(
+                StatusCodes.Status401Unauthorized,
+                title: "Unauthorized",
+                detail: "A valid bearer token is required.",
+                errorCode: JwtAuthExtensions.TokenInvalidErrorCode);
 
         quotes.MapGet("/random", GetRandomAsync)
             .WithName("GetRandomQuote")
             .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
             .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status403Forbidden);
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .WithProblemExample(StatusCodes.Status403Forbidden, title: "Forbidden", detail: _forbiddenDetail)
+            .WithProblemExample(StatusCodes.Status404NotFound, "quote.not_found", "Quote not found.");
 
         quotes.MapGet("", ListAsync)
             .WithName("ListQuotes")
             .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
             .Produces<QuotePageResponseDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status403Forbidden);
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .WithProblemExample(
+                StatusCodes.Status400BadRequest,
+                "quote.invalid_page_request",
+                "The requested page or page size is outside the allowed range.")
+            .WithProblemExample(StatusCodes.Status403Forbidden, title: "Forbidden", detail: _forbiddenDetail);
 
         quotes.MapGet("/{id}", GetByIdAsync)
             .WithName(GetByIdRouteName)
             .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
             .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status403Forbidden);
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .WithProblemExample(StatusCodes.Status403Forbidden, title: "Forbidden", detail: _forbiddenDetail)
+            .WithProblemExample(StatusCodes.Status404NotFound, "quote.not_found", "Quote not found.");
 
         quotes.MapPost("", CreateAsync)
             .WithName("CreateQuote")
@@ -46,7 +64,16 @@ public static class QuoteEndpoints
             .Produces<QuoteResponseDto>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesProblem(StatusCodes.Status403Forbidden);
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .WithProblemExample(
+                StatusCodes.Status400BadRequest,
+                "quote.text_too_short",
+                "Quote text must be at least 12 characters.")
+            .WithProblemExample(StatusCodes.Status403Forbidden, title: "Forbidden", detail: _forbiddenDetail)
+            .WithProblemExample(
+                StatusCodes.Status409Conflict,
+                "quote.duplicate_fingerprint",
+                "A quote with the same meaning already exists.");
 
         return endpoints;
     }

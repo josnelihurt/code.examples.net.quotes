@@ -45,6 +45,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
               example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.2
                 title: Unauthorized
                 status: 401
                 detail: A valid bearer token is required.
@@ -57,6 +58,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
               example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
                 title: Forbidden
                 status: 403
                 detail: The access token is missing the required scope (quotes:read
@@ -134,6 +136,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
               example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.2
                 title: Unauthorized
                 status: 401
                 detail: A valid bearer token is required.
@@ -146,6 +149,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
               example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
                 title: Forbidden
                 status: 403
                 detail: The access token is missing the required scope (quotes:read
@@ -220,6 +224,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
               example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.2
                 title: Unauthorized
                 status: 401
                 detail: A valid bearer token is required.
@@ -232,6 +237,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
               example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
                 title: Forbidden
                 status: 403
                 detail: The access token is missing the required scope (quotes:read
@@ -307,6 +313,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
               example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.2
                 title: Unauthorized
                 status: 401
                 detail: A valid bearer token is required.
@@ -319,6 +326,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
               example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
                 title: Forbidden
                 status: 403
                 detail: The access token is missing the required scope (quotes:read

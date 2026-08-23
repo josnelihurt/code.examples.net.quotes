@@ -1,3 +1,4 @@
+using AspireQuotesPoc.ServiceDefaults.OpenApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quotes.Api.V0.Contracts;
@@ -18,6 +19,15 @@ namespace Quotes.Api.V0.Controllers;
 [ApiExplorerSettings(GroupName = DocumentName)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, _problemContentType)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, _problemContentType)]
+[OpenApiProblemExample(
+    StatusCodes.Status401Unauthorized,
+    Title = "Unauthorized",
+    Detail = "A valid bearer token is required.",
+    ErrorCode = JwtAuthExtensions.TokenInvalidErrorCode)]
+[OpenApiProblemExample(
+    StatusCodes.Status403Forbidden,
+    Title = "Forbidden",
+    Detail = "The access token is missing the required scope (quotes:read or quotes:write).")]
 public sealed class QuotesController(
     IGetRandomQuoteUseCase getRandomQuote,
     IGetQuoteByIdUseCase getQuoteById,
@@ -64,6 +74,10 @@ public sealed class QuotesController(
     [Authorize(Policy = JwtAuthExtensions.ReadQuotesPolicy)]
     [ProducesResponseType<QuoteResponseDto>(StatusCodes.Status200OK, _jsonContentType)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, _problemContentType)]
+    [OpenApiProblemExample(
+        StatusCodes.Status404NotFound,
+        ErrorCode = "quote.not_found",
+        Detail = "Quote not found.")]
     public async Task<ActionResult<QuoteResponseDto>> GetRandomAsync(CancellationToken cancellationToken)
     {
         var result = await _getRandomQuote.ExecuteAsync(cancellationToken);
@@ -93,6 +107,10 @@ public sealed class QuotesController(
     [Authorize(Policy = JwtAuthExtensions.ReadQuotesPolicy)]
     [ProducesResponseType<QuotePageResponseDto>(StatusCodes.Status200OK, _jsonContentType)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest, _problemContentType)]
+    [OpenApiProblemExample(
+        StatusCodes.Status400BadRequest,
+        ErrorCode = "quote.invalid_page_request",
+        Detail = "The requested page or page size is outside the allowed range.")]
     public async Task<ActionResult<QuotePageResponseDto>> ListAsync(
         CancellationToken cancellationToken,
         [FromQuery] int page = 1,
@@ -121,6 +139,10 @@ public sealed class QuotesController(
     [Authorize(Policy = JwtAuthExtensions.ReadQuotesPolicy)]
     [ProducesResponseType<QuoteResponseDto>(StatusCodes.Status200OK, _jsonContentType)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, _problemContentType)]
+    [OpenApiProblemExample(
+        StatusCodes.Status404NotFound,
+        ErrorCode = "quote.not_found",
+        Detail = "Quote not found.")]
     public async Task<ActionResult<QuoteResponseDto>> GetByIdAsync(
         string id,
         CancellationToken cancellationToken)
@@ -155,6 +177,14 @@ public sealed class QuotesController(
     [ProducesResponseType<QuoteResponseDto>(StatusCodes.Status201Created, _jsonContentType)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest, _problemContentType)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, _problemContentType)]
+    [OpenApiProblemExample(
+        StatusCodes.Status400BadRequest,
+        ErrorCode = "quote.text_too_short",
+        Detail = "Quote text must be at least 12 characters.")]
+    [OpenApiProblemExample(
+        StatusCodes.Status409Conflict,
+        ErrorCode = "quote.duplicate_fingerprint",
+        Detail = "A quote with the same meaning already exists.")]
     public async Task<ActionResult<QuoteResponseDto>> CreateAsync(
         CreateQuoteRequestDto body,
         CancellationToken cancellationToken)

@@ -1,4 +1,5 @@
 using AspireQuotesPoc.ServiceDefaults.Http;
+using AspireQuotesPoc.ServiceDefaults.OpenApi;
 using AspireQuotesPoc.ServiceDefaults.Telemetry;
 using Auth.Api.Contracts;
 using Auth.Application.Abstractions;
@@ -25,7 +26,14 @@ public static class AuthEndpoints
             .Produces<LoginResponseDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
+            .WithValidationProblemExample("Username", "The Username field is required.")
+            .WithProblemExample(StatusCodes.Status401Unauthorized, AuthErrors.InvalidCredentials)
+            .WithProblemExample(
+                StatusCodes.Status429TooManyRequests,
+                title: "Too many requests",
+                detail: "The auth endpoint rate limit was exceeded; retry after the window elapses.",
+                errorCode: RateLimitingExtensions.RateLimitedErrorCode);
 
         // RFC 7662-style introspection: both "valid" and "invalid" are successful answers
         // (200 with the flag); only a missing token is a request error (400).
@@ -34,7 +42,13 @@ public static class AuthEndpoints
             .Produces<ValidateResponseDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
+            .WithProblemExample(StatusCodes.Status400BadRequest, AuthErrors.MissingToken)
+            .WithProblemExample(
+                StatusCodes.Status429TooManyRequests,
+                title: "Too many requests",
+                detail: "The auth endpoint rate limit was exceeded; retry after the window elapses.",
+                errorCode: RateLimitingExtensions.RateLimitedErrorCode);
 
         return endpoints;
     }

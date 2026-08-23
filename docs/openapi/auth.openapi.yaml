@@ -94,8 +94,8 @@ paths:
                 status: 429
                 detail: The auth endpoint rate limit was exceeded; retry after the
                   window elapses.
-                errorCode: auth.rate_limited
                 correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
+                errorCode: auth.rate_limited
   /api/v1/auth/validate:
     post:
       tags:
@@ -157,8 +157,8 @@ paths:
                 status: 429
                 detail: The auth endpoint rate limit was exceeded; retry after the
                   window elapses.
-                errorCode: auth.rate_limited
                 correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
+                errorCode: auth.rate_limited
 components:
   schemas:
     HttpValidationProblemDetails:

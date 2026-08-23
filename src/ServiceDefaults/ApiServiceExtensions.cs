@@ -44,7 +44,7 @@ public static class ApiServiceExtensions
     public static OpenApiOptions ConfigureStandardOpenApi(this OpenApiOptions options, string documentName)
     {
         options.AddOperationTransformer<BearerSecuritySchemeTransformer>();
-        options.AddOperationTransformer<ProblemResponseExampleTransformer>();
+        options.AddOperationTransformer<OpenApiProblemExampleTransformer>();
         options.AddDocumentTransformer<DocumentInfoTransformer>();
         options.ShouldInclude = description =>
             description.GroupName is null || description.GroupName == documentName;

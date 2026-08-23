@@ -13,7 +13,7 @@ Operations (both transports) are documented with XML `///` comments on the handl
 - `<response code="...">` → response description; carry the public `errorCode` values there.
 - The **last** `<param>` tag lands on the request body description, so document the body parameter last (pinned by `OpenApiDocumentationTests`).
 
-Everything textual must be mirrored between `V0/` and `V1/` — `OpenApiParityTests` fails on drift. Error-response `example` bodies come from `ProblemResponseExampleTransformer` (ServiceDefaults) and the document narrative (info description, tag descriptions) from each host's `OpenApiDocs` via `OpenApiDocumentInfo`; both apply identically to every document.
+Everything textual must be mirrored between `V0/` and `V1/` — `OpenApiParityTests` fails on drift. Error-response `example` bodies come from colocated `[OpenApiProblemExample]` / `.WithProblemExample()` metadata, applied by `OpenApiProblemExampleTransformer` in ServiceDefaults; the document narrative (info description, tag descriptions) from each host's `OpenApiDocs` via `OpenApiDocumentInfo`; both apply identically to every document.
 
 One wiring rule: the generator only intercepts `AddOpenApi` calls whose document name is a **string literal**. Hosts therefore register documents themselves (`builder.Services.AddOpenApi("v0", o => o.ConfigureStandardOpenApi("v0"))`), never through a loop or a constant — `OpenApiDocumentationTests` is the tripwire, because a looped name silently empties every summary while wire tests stay green.
 
