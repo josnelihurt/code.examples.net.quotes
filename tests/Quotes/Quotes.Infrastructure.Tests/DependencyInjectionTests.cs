@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Quotes.Domain.Abstractions;
-using Quotes.Infrastructure.Abstractions;
 using Quotes.Infrastructure.Persistence;
 
 namespace Quotes.Infrastructure.Tests;
@@ -10,17 +9,6 @@ public class DependencyInjectionTests
 {
     [Fact]
     public void AddQuotesInfrastructure_resolves_the_persistence_adapters()
-    {
-        var services = new ServiceCollection();
-        services.AddQuotesInfrastructure();
-        using var provider = services.BuildServiceProvider();
-
-        provider.GetRequiredService<IQuoteSelector>().ShouldBeOfType<RandomQuoteSelector>();
-        provider.GetRequiredService<IQuoteRepository>().ShouldBeOfType<InMemoryQuoteRepository>();
-    }
-
-    [Fact]
-    public void AddQuotesInfrastructure_builder_overload_resolves_the_postgres_adapters()
     {
         var builder = Host.CreateApplicationBuilder();
         // The connection string only has to parse — nothing connects at registration time;

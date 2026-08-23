@@ -58,7 +58,7 @@ public class LayeringTests
     [Fact]
     public void Infrastructure_layers_depend_on_domain_and_application_only()
     {
-        var quotes = Types.InAssembly(typeof(InMemoryQuoteRepository).Assembly)
+        var quotes = Types.InAssembly(typeof(PostgresQuoteRepository).Assembly)
             .ShouldNot()
             .HaveDependencyOnAny(_quotesApi, _authDomain, _authApplication, _authInfrastructure, _authApi)
             .GetResult();
@@ -90,7 +90,7 @@ public class LayeringTests
     [Fact]
     public void Bounded_contexts_never_reference_each_other()
     {
-        var quotesSide = Types.InAssemblies([typeof(Quote).Assembly, typeof(CreateQuoteUseCase).Assembly, typeof(InMemoryQuoteRepository).Assembly, typeof(QuoteEndpoints).Assembly])
+        var quotesSide = Types.InAssemblies([typeof(Quote).Assembly, typeof(CreateQuoteUseCase).Assembly, typeof(PostgresQuoteRepository).Assembly, typeof(QuoteEndpoints).Assembly])
             .ShouldNot()
             .HaveDependencyOnAny(_authDomain, _authApplication, _authInfrastructure, _authApi)
             .GetResult();
