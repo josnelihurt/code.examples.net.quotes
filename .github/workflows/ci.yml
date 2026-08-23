@@ -99,7 +99,12 @@ jobs:
           dotnet-version: 10.0.x
 
       # The gateway resource is a container; pre-pulling keeps the readiness wait honest.
-      - run: docker pull mcr.microsoft.com/dotnet/nightly/yarp:2.3-preview
+      # Same for the catalog database and its pgweb companion (tags pinned by
+      # Aspire.Hosting.PostgreSQL 13.4.6).
+      - run: |
+          docker pull mcr.microsoft.com/dotnet/nightly/yarp:2.3-preview
+          docker pull docker.io/library/postgres:18.3
+          docker pull docker.io/sosedoff/pgweb:0.17.0
 
       # No Aspire CLI needed: DistributedApplicationTestingBuilder drives the AppHost
       # in-process via the Aspire.AppHost.Sdk. Slower than build-and-test by design —

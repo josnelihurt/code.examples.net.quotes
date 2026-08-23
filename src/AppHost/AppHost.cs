@@ -13,6 +13,13 @@ builder.AddDockerComposeEnvironment("compose");
 // variable that operators must fill with a real secret.
 var jwtSigningKey = builder.AddParameter("jwt-signing-key", secret: true);
 
+// The quotes catalog lives in PostgreSQL, a sibling container inside the deployment.
+// Deliberately ephemeral (no data volume): every run migrates and seeds from scratch,
+// which is exactly the catalog the BDD and e2e suites assert on. Add WithDataVolume()
+// to keep data across runs at the cost of that determinism.
+var postgres = builder.AddPostgres("postgres").WithPgWeb();
+var quotesDb = postgres.AddDatabase("quotesdb");
+
 var auth = builder.AddProject<Projects.Auth_Api>("auth-api")
     .WithEnvironment("Jwt__SigningKey", jwtSigningKey)
     .WithHttpHealthCheck("/health")
