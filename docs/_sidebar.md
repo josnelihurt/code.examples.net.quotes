@@ -1,4 +1,5 @@
 * [Home](/)
+* [System design](system-design.md)
 * [Architecture](architecture.md)
 * [API](api.md)
 * [Scalar (combined)](scalar/)

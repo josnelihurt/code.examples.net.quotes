@@ -8,6 +8,13 @@ Auth.Api POST /api/v1/auth/validate remains for optional introspection
 Aspire AppHost orchestrates processes + YARP gateway (publish) + Docsify
 ```
 
+## Detailed component docs
+
+This page states the **rules**. The diagrams and the per-project detail live elsewhere:
+
+- [System design](system-design.md) — deployment topology, component diagram, request lifecycle, CI pipeline.
+- Per-project documents next to the source: [AppHost](../src/AppHost/README.md), [ServiceDefaults](../src/ServiceDefaults/README.md), [Auth](../src/Auth/README.md), [Quotes](../src/Quotes/README.md), [frontend](../frontend/README.md). Each layer folder carries its own `README.md` with its types, invariants and DDD rationale.
+
 ## Projects
 
 | Path / resource | Role |

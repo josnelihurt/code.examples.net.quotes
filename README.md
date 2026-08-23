@@ -82,13 +82,15 @@ OTEL metrics/logs/traces -> Aspire dashboard
 
 ## Solution layout
 
+Each `src/` row links to a component document describing that project's layers, DDD concepts and call flows. For the whole picture — deployment topology, component diagram, request lifecycle — see [docs/system-design.md](docs/system-design.md).
+
 | Path | Role |
 |------|------|
-| `src/AppHost/` | Aspire orchestration (`AspireQuotesPoc.AppHost`) |
-| `src/ServiceDefaults/` | Platform kit: Serilog, OTEL, OpenAPI/Scalar helpers, JwtBearer + scope policies, ErrorOr→ProblemDetails, correlation |
-| `src/Auth/` | Auth service — Domain / Application / Infrastructure / Api |
-| `src/Quotes/` | Quotes service — Domain / Application / Infrastructure / Api |
-| `frontend/` | React + TS Vite SPA (Vitest units; `e2e/` Playwright BDD) |
+| [`src/AppHost/`](src/AppHost/README.md) | Aspire orchestration (`AspireQuotesPoc.AppHost`) |
+| [`src/ServiceDefaults/`](src/ServiceDefaults/README.md) | Platform kit: Serilog, OTEL, OpenAPI/Scalar helpers, JwtBearer + scope policies, ErrorOr→ProblemDetails, correlation |
+| [`src/Auth/`](src/Auth/README.md) | Auth service — Domain / Application / Infrastructure / Api |
+| [`src/Quotes/`](src/Quotes/README.md) | Quotes service — Domain / Application / Infrastructure / Api |
+| [`frontend/`](frontend/README.md) | React + TS Vite SPA |
 | `docs/` | Docsify + combined Scalar reference |
 | `contracts/` | Pointer to Docsify OpenAPI docs ([api-contracts.md](contracts/api-contracts.md)) |
 | `tests/` | xUnit unit/API tests (OpenCover for Sonar) + `tests/Bdd` Reqnroll specs against the running stack |
