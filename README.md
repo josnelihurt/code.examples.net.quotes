@@ -94,7 +94,7 @@ Each `src/` row links to a component document describing that project's layers, 
 | `docs/` | Docsify + combined Scalar reference |
 | `contracts/` | Pointer to Docsify OpenAPI docs ([api-contracts.md](contracts/api-contracts.md)) |
 | `tests/` | xUnit unit/API tests (OpenCover for Sonar) + `tests/Bdd` Reqnroll specs against the running stack |
-| `scripts/` | Env, start, docs, publish, test, bdd, e2e, verify-docs, update-contracts, Sonar, bundle |
+| `scripts/` | Env, start, docs, publish, test, bdd, e2e, verify-docs, audit-deps, update-contracts, Sonar, bundle |
 
 ## How to run
 
@@ -166,7 +166,7 @@ Export a full git bundle to `~/repo.bundle`:
 ./scripts/export-bundle.sh
 ```
 
-More detail in Docsify: [Testing](docs/testing.md), [SonarQube](docs/sonar.md), [ServiceDefaults as a NuGet building block](docs/servicedefaults-nuget-extraction.md), [Documentation process](docs/documentation-process.md), [Panel Review](docs/panel-review.md).
+More detail in Docsify: [Testing](docs/testing.md), [SonarQube](docs/sonar.md), [ServiceDefaults as a NuGet building block](docs/servicedefaults-nuget-extraction.md), [Documentation process](docs/documentation-process.md), [Panel Review](docs/panel-review.md), [Dependency refresh](docs/dependency-refresh.md).
 
 ## OpenAPI / Scalar
 

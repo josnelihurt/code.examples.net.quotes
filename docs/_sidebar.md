@@ -11,3 +11,4 @@
 * [pnpm as the package manager](package-manager-security.md)
 * [Documentation process](documentation-process.md)
 * [Panel Review](panel-review.md)
+* [Dependency refresh](dependency-refresh.md)
