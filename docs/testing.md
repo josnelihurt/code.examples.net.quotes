@@ -1,51 +1,111 @@
 # Testing
 
-Unit tests cover the Auth and Quotes layers plus ServiceDefaults helpers. Frontend coverage is emitted as LCOV for SonarQube.
+Four layers, each owning exactly one question. The bottom two are TDD — exhaustive and
+fast; the top two are BDD — few scenarios in business language, run against real
+processes. Frontend coverage is emitted as LCOV for SonarQube.
+
+## The testing model
+
+| Layer | Lives in | Proves | Style |
+|---|---|---|---|
+| Domain / Application units | `tests/{Auth,Quotes}/*.{Domain,Application}.Tests` | Invariants, error codes, paging arithmetic, ErrorOr branches | TDD, exhaustive, microseconds |
+| API pipeline tests | `tests/{Auth,Quotes}/*.Api.Tests` | Transport mapping, status codes, ProblemDetails shape, `Location`, `WWW-Authenticate`, v0/v1 parity, OpenAPI parity | TDD, exhaustive per endpoint, in-process |
+| Specs | `tests/Bdd` | Journeys that cross a process boundary, in business language | BDD, few, out-of-process (the real Aspire stack) |
+| E2E | `frontend/e2e` | What a human does in a browser | BDD, fewest, real Chromium |
+
+**The rule that keeps the suite from doubling in size:**
+
+> If it can be proven without leaving one process, it does not belong in Gherkin.
+
+Every one of the ~10 `quote.text_*` / `quote.author_*` validation permutations stays a
+`Quotes.Domain.Tests` fact; Gherkin gets *one* scenario proving that a rejected quote
+surfaces as a 400 problem to a caller who came through the gateway. Same for the 429
+shape, the two different 400 body shapes, and the telemetry decorators — all already
+covered in-process.
+
+## The developer loop (outside-in, TDD inside BDD)
+
+1. Write the scenario in `tests/Bdd/Features/…` with the stakeholder. It fails — no step
+   bindings yet. *(red, outer)*
+2. Drop to the inner loop: unit-test the domain rule → green; unit-test the endpoint
+   mapping → green. *(red/green, inner)*
+3. Implement the step definitions. The scenario goes green. *(green, outer)*
+4. If the HTTP surface changed, `./scripts/update-contracts.sh` and commit the
+   regenerated `docs/openapi/*.yaml`.
 
 ## Stack
 
 | Area | Tools |
 |------|--------|
-| .NET | xUnit v3, NSubstitute, Shouldly, Coverlet (OpenCover) |
-| Frontend | Vitest, Testing Library, `@vitest/coverage-v8` (LCOV) |
+| .NET units + API pipelines | xUnit v3, NSubstitute, Shouldly, Coverlet (OpenCover) |
+| Specs (tests/Bdd) | Reqnroll (Gherkin) + `Aspire.Hosting.Testing`, xUnit v3, Shouldly |
+| Frontend units | Vitest, Testing Library, `@vitest/coverage-v8` (LCOV) |
+| Frontend E2E | Playwright + playwright-bdd (Chromium) |
 
 ## Layout
 
 ```text
 tests/
-  Auth/
-    Auth.Application.Tests/
-    Auth.Infrastructure.Tests/
-    Auth.Api.Tests/
-  Quotes/
-    Quotes.Domain.Tests/
-    Quotes.Application.Tests/
-    Quotes.Infrastructure.Tests/
-    Quotes.Api.Tests/
+  Auth/            (Application, Infrastructure, Api tests)
+  Quotes/          (Domain, Application, Infrastructure, Api tests)
+  Architecture.Tests/   (NetArchTest layering rules)
   ServiceDefaults.Tests/
+  Bdd/             Reqnroll specs against the running Aspire stack
+    Features/      Authentication/ Quotes/ Platform/
+    Steps/         Step definitions, split by vocabulary
+    Support/       AspireStack (boot once per run), ApiWorld (per-scenario state)
   coverlet.runsettings
-frontend/src/**/*.test.ts(x)
+frontend/
+  src/**/*.test.ts(x)      Vitest units
+  e2e/                     Playwright BDD (features/ + steps/)
 ```
 
-## Run .NET tests
+## Run .NET tests (inner loop)
 
 ```bash
 ./scripts/test.sh
 ```
 
-Uses `tests/coverlet.runsettings` (OpenCover). Extra `dotnet test` args can be appended:
+Uses `tests/coverlet.runsettings` (OpenCover) and the same per-project `*.Tests.csproj`
+glob CI uses — which is why the spec suite is *not* swept in: it needs a container
+runtime and takes minutes. Extra `dotnet test` args can be appended:
 
 ```bash
 ./scripts/test.sh --filter FullyQualifiedName~AuthService
 ```
 
-## Run frontend tests
+## Run the specs
+
+```bash
+./scripts/bdd.sh
+```
+
+Boots the real AppHost per test run (`Aspire.Hosting.Testing`): `auth-api` and
+`quotes-api` as separate processes plus the YARP `gateway` container — YARP routing and
+service discovery are exercised, not stubbed. Requires Podman locally (via
+`scripts/env.sh`) or Docker in CI. The SPA and docsify resources are removed from the
+model before startup; browser coverage lives in `frontend/e2e`. The auth rate limit is
+raised for the spec environment (many scenarios sign in inside one fixed window); the
+429 shape itself is proven by `AuthRateLimitTests`.
+
+~20 scenarios across Authentication, Quotes and Platform features. Expect the first run
+to take a few minutes (container start dominates).
+
+## Run frontend tests and E2E
 
 ```bash
 cd frontend
 npm test                 # vitest run
 npm run test:coverage    # + LCOV under frontend/coverage/
+
+./scripts/e2e.sh         # from the repo root: builds APIs (Release), runs Playwright BDD
 ```
+
+The E2E suite boots both APIs on fixed loopback ports plus the Vite dev server via
+Playwright's `webServer`, then drives the real UI in Chromium: sign in, wrong
+credentials, the unauthenticated redirect, random quote, switching transport version,
+sign-out. Scenarios sign in through the UI every time — signing in is one of the flows
+under test.
 
 ## What is covered
 
@@ -59,16 +119,18 @@ npm run test:coverage    # + LCOV under frontend/coverage/
 - **ServiceDefaults** — correlation middleware, metrics (all six counters), ErrorOr→ProblemDetails mapping, dev-key Production guard, host wiring (health/OpenAPI/Scalar in every environment)
 - **Architecture** — NetArchTest suite (`tests/Architecture.Tests`) enforcing the layering table: dependency direction per layer, no Api→Domain, no cross-context references, ServiceDefaults isolated
 - **Auth rate limiting** — slim-pipeline suite with a two-request window proving the 429 ProblemDetails shape (`auth.rate_limited`), plus the Production refusal of the scaffolding credential store at the DI boundary
-- **Frontend** — `api/client`, `LoginPage`, `QuotePage`, routing/`RequireAuth`
+- **Specs (tests/Bdd)** — cross-service journeys through the gateway: sign in → token → random quote, create → `Location` round trip, near-duplicate 409, rejected text 400, reader-scope 403, v0/v1 transport parity, token introspection, OpenAPI/Scalar surfaces
+- **Frontend** — `api/client`, `LoginPage`, `QuotePage`, routing/`RequireAuth` (Vitest); browser journeys (Playwright BDD)
 
 ## CI
 
-`.github/workflows/ci.yml` enforces four gates: the test suite in **Release** (where `TreatWarningsAsErrors` applies) with coverage collection, the repo's own lint script (`dotnet format --verify-no-changes`), a **smoke job** that boots both APIs and runs `scripts/test-api.sh` end to end (login, create round trip, 409/400 negatives, reader-scope 403, list page, OpenAPI/Scalar), and the hermetic OpenAPI contract regeneration failing on any drift vs `docs/openapi/`. The frontend job additionally runs `npm run build` so type errors cannot pass CI. CI Release is the canonical gate; the local `./scripts/test.sh` (Debug + coverage) is the fast inner loop.
-
-## Smoke (running stack)
-
-With Aspire up:
-
-```bash
-./scripts/test-api.sh
-```
+`.github/workflows/ci.yml` enforces six gates: the test suite in **Release** (where
+`TreatWarningsAsErrors` applies) with coverage collection; the repo's own lint script
+(`dotnet format --verify-no-changes`); the frontend job (lint + tests + build so type
+errors cannot pass); the **specs** job (Reqnroll against the Aspire-orchestrated stack,
+Docker on `ubuntu-latest`); the **e2e** job (Playwright + playwright-bdd in Chromium);
+and the hermetic OpenAPI contract regeneration failing on any drift vs `docs/openapi/`.
+CI Release is the canonical gate; the local `./scripts/test.sh` (Debug + coverage) is
+the fast inner loop, and `./scripts/bdd.sh` / `./scripts/e2e.sh` run the slow outer
+loops on demand. The old curl-based `smoke` job (and `scripts/test-api.sh`) was replaced
+by `specs` and `e2e`: every assertion it made has a home in `tests/Bdd/Features/`.

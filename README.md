@@ -88,11 +88,11 @@ OTEL metrics/logs/traces -> Aspire dashboard
 | `src/ServiceDefaults/` | Platform kit: Serilog, OTEL, OpenAPI/Scalar helpers, JwtBearer + scope policies, ErrorOr→ProblemDetails, correlation |
 | `src/Auth/` | Auth service — Domain / Application / Infrastructure / Api |
 | `src/Quotes/` | Quotes service — Domain / Application / Infrastructure / Api |
-| `frontend/` | React + TS Vite SPA |
+| `frontend/` | React + TS Vite SPA (Vitest units; `e2e/` Playwright BDD) |
 | `docs/` | Docsify + combined Scalar reference |
 | `contracts/` | Pointer to Docsify OpenAPI docs ([api-contracts.md](contracts/api-contracts.md)) |
-| `tests/` | xUnit unit/API tests (OpenCover for Sonar) |
-| `scripts/` | Env, start, docs, publish, test, update-contracts, Sonar, bundle |
+| `tests/` | xUnit unit/API tests (OpenCover for Sonar) + `tests/Bdd` Reqnroll specs against the running stack |
+| `scripts/` | Env, start, docs, publish, test, bdd, e2e, update-contracts, Sonar, bundle |
 
 ## How to run
 
@@ -108,10 +108,16 @@ Documentation:
 ./scripts/serve-docs.sh
 ```
 
-API smoke (curl, no Scalar required):
+API specs (Reqnroll against the running Aspire stack — YARP gateway included; needs Podman):
 
 ```bash
-./scripts/test-api.sh
+./scripts/bdd.sh
+```
+
+SPA end-to-end (Playwright BDD in Chromium; boots the APIs and Vite itself):
+
+```bash
+./scripts/e2e.sh
 ```
 
 Scalar guidance / combined docs page:
@@ -190,6 +196,8 @@ See [docs/observability.md](docs/observability.md).
 - Microsoft.AspNetCore.Authentication.JwtBearer (host auth + scope policies)
 - OpenTelemetry (ASP.NET, HttpClient, runtime + custom meters)
 - ProblemDetails / health checks
+- Reqnroll + Aspire.Hosting.Testing (`tests/Bdd` specs against the real stack)
+- Playwright + playwright-bdd (`frontend/e2e` browser journeys)
 
 ## Credentials and secrets
 

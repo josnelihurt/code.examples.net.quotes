@@ -49,12 +49,12 @@ OpenAPI version and schema names follow what ASP.NET emits (today OpenAPI 3.1, D
 
 Runtime Scalar on each API still uses live `/openapi/v1.json`; the freeze under `docs/openapi/` is for offline Docsify/Scalar and reviewed PRs.
 
-## Testing: Scalar vs curl
+## Testing: Scalar vs specs
 
 | Tool | Use when |
 |------|----------|
 | **Scalar** | Interactive try-request / browse OpenAPI (human) |
-| **`./scripts/test-api.sh`** | Automated smoke without a browser (login, random, create + Location round trip, 409 duplicate, 400 invalid) |
+| **`./scripts/bdd.sh`** | Automated cross-service journeys without a browser (login, random, create + Location round trip, 409 duplicate, 400 invalid) |
 | xUnit (`./scripts/test.sh`) | Regression tests, incl. full-pipeline `WebApplicationFactory` suites |
 
 Scalar is **not required** to verify the APIs; it is the preferred interactive client from [scalar/scalar](https://github.com/scalar/scalar).

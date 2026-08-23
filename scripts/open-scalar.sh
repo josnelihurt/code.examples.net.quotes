@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Print guidance for opening Scalar (interactive API client).
-# Scalar is for manual exploration — use ./scripts/test-api.sh for automated smoke tests.
+# Scalar is for manual exploration — use ./scripts/bdd.sh for automated checks.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -18,8 +18,8 @@ Combined reference (Docsify / docs server):
   http://localhost:3001/scalar/
   or: ./scripts/serve-docs.sh  then open /scalar/
 
-Automated smoke (curl, no browser):
-  ./scripts/test-api.sh
+Automated specs (no browser; needs Podman):
+  ./scripts/bdd.sh
 EOF
 
 # If docsify is already listening, offer to open the combined page

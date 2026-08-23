@@ -23,13 +23,14 @@ This sources `scripts/env.sh` and runs `aspire run` (AppHost at `src/AppHost/` v
 
 Opens Docsify on port **3001** (combined Scalar at `/scalar/`).
 
-## API smoke (curl)
+## API specs (against the running stack)
 
 ```bash
-./scripts/test-api.sh
+./scripts/bdd.sh
 ```
 
-Does not require Scalar. Optional: `AUTH_URL` / `QUOTES_URL` overrides.
+Reqnroll journeys through the YARP gateway (login, random, create + Location round trip,
+409 duplicate, 400 invalid, reader-scope 403). Does not require Scalar; needs Podman.
 
 ## Scalar (interactive)
 
