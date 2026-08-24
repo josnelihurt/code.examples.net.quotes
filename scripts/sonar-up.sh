@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Starts a local SonarQube Community Build in podman and provisions an analysis token.
+# Machine-global by design: fixed container name, volumes and port 9000 hold the server
+# state — parallel per-worktree instances would each need a full copy. Serialize across
+# concurrent agents/worktrees (only one sonar-up/sonar-down at a time).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=env.sh

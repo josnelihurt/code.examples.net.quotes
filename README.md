@@ -122,6 +122,10 @@ SPA end-to-end (Playwright BDD in Chromium; boots the APIs and Vite itself):
 ./scripts/e2e.sh
 ```
 
+Safe to run from several worktrees at once — container names and ports are namespaced
+per checkout; see [docs/testing.md](docs/testing.md#concurrent-worktrees) for the
+scheme and the remaining machine-global exceptions.
+
 Scalar guidance / combined docs page:
 
 ```bash

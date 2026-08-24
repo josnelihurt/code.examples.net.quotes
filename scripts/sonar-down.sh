@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Stops and removes the local SonarQube container. Pass --purge to drop its volumes too.
+# Machine-global by design (see sonar-up.sh): this removes THE shared server regardless
+# of which worktree invoked it — serialize across concurrent agents/worktrees.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=sonar-env.sh

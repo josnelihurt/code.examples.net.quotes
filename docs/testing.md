@@ -104,7 +104,8 @@ pnpm run test:coverage    # + LCOV under frontend/coverage/
 ./scripts/e2e.sh         # from the repo root: builds APIs (Release), runs Playwright BDD
 ```
 
-The E2E suite boots both APIs on fixed loopback ports plus the Vite dev server via
+The E2E suite boots both APIs on loopback ports namespaced per worktree (see
+[Concurrent worktrees](#concurrent-worktrees)) plus the Vite dev server via
 Playwright's `webServer`, then drives the real UI in Chromium: sign in, wrong
 credentials, the unauthenticated redirect, random quote, switching transport version,
 sign-out; browsing and paging the catalog; publishing a quote — including the
@@ -118,6 +119,35 @@ language for the API journeys in Reqnroll, one for the browser journeys in
 playwright-bdd. The suite runs with `workers: 1` — every scenario of a run shares the
 throwaway PostgreSQL catalog that `scripts/e2e.sh` starts (the API migrates + seeds it
 at boot), and browsing scenarios assert exact page counts over the seeded catalog.
+
+## Concurrent worktrees
+
+Several checkouts of this repo — multiple agents on one machine sharing one container
+runtime — can run the suites at the same time. Nothing needs to be configured: names
+and ports are namespaced per worktree from an 8-hex hash of the repo root, stable
+inside a checkout and unique across checkouts.
+
+- `scripts/e2e.sh` names its throwaway PostgreSQL `aspirequotes-e2e-pg-<hash>`,
+  publishes it on a runtime-assigned ephemeral host port (read back and handed to the
+  APIs), and derives the API/Vite ports from the same hash, base 23000–23799. That
+  range sits below the OS ephemeral range (Linux 32768+, macOS 49152+ — the kernel
+  otherwise leases those ports to outgoing connections; the Notes app broke a run that
+  way once) and clear of this repo's own fixed ports (Aspire dashboard/OTLP
+  15142–22035, docs 3001, Sonar 9000, PostgreSQL 55432). Playwright receives the ports
+  through `E2E_AUTH_PORT` / `E2E_QUOTES_PORT` / `E2E_VITE_PORT` / `E2E_PG_PORT`; each
+  is overridable, and `frontend/playwright.config.ts` falls back to the historical
+  fixed ports when they are absent — which is what CI does with its own PostgreSQL.
+- `scripts/update-contracts.sh` tags its export image `…:export-<hash>`, so two
+  worktrees exporting contracts never race the same image tag.
+- `scripts/start.sh` passes `--isolated` to `aspire run`: randomized dashboard/service
+  ports and a per-run user-secrets store, so several AppHost sessions can coexist.
+- `scripts/bdd.sh` and `scripts/test.sh` needed no change: the Aspire testing builder
+  randomizes ports by default, and Testcontainers already picks random host ports and
+  per-test databases.
+
+Still machine-global by design — serialize these across worktrees: the Sonar scripts
+(`sonar-up.sh` / `sonar-down.sh`: one fixed container, volumes and port 9000 hold the
+server state) and `scripts/export-bundle.sh` (writes `~/repo.bundle`).
 
 ## What is covered
 
