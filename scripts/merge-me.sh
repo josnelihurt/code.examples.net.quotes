@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# Merges pull requests labeled `merge-me` — the label is standing intent ("merge when
+# green"), not a command. Each evaluation checks the label, the PR's checks and its
+# mergeability, then either merges, arms GitHub's server-side auto-merge, or holds
+# (red stays labeled; the next push or sweep re-evaluates). See issue #33 for the
+# investigation, the alternatives that were rejected (the classic merge API and
+# marketplace automerge actions break on this repo's stacked PRs), and the tradeoffs.
+#
+#   ./scripts/merge-me.sh <pr-number> [--wait-minutes N] [--dry-run]
+#       Evaluate one PR. Wait mode (default 15 min): pending checks are polled, so a
+#       green outcome within the window merges in the same run. Used by the workflow's
+#       pull_request trigger (labeled / synchronize / reopened).
+#
+# Exit 0 = merged, held (red/pending/conflict — re-evaluated later) or nothing to do;
+# exit 1 = a merge was attempted and failed. Requires gh with GH_TOKEN (or a logged-in
+# user) and read+write repository access.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT}"
+
+DRY_RUN=false
+WAIT_MINUTES=15
+PR=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)      DRY_RUN=true; shift ;;
+    --wait-minutes) WAIT_MINUTES="${2:?--wait-minutes needs a value}"; shift 2 ;;
+    [0-9]*)         PR="$1"; shift ;;
+    *) echo "usage: $0 <pr-number> [--wait-minutes N] [--dry-run]" >&2; exit 2 ;;
+  esac
+done
+if [[ -z "${PR}" ]]; then
+  echo "usage: $0 <pr-number> [--wait-minutes N] [--dry-run]" >&2
+  exit 2
+fi
+
+REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
+DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name)"
+
+# checks_state PR -> green | red | pending | none
+checks_state() {
+  local buckets
+  buckets="$(gh pr checks "$1" --json bucket --jq '[.[].bucket]' 2>/dev/null || true)"
+  if [[ -z "${buckets}" || "${buckets}" == "[]" ]]; then
+    printf none
+  elif jq -e 'any(. == "fail")' <<<"${buckets}" >/dev/null; then
+    printf red
+  elif jq -e 'any(. == "pending")' <<<"${buckets}" >/dev/null; then
+    printf pending
+  else
+    printf green
+  fi
+}
+
+# wait_for_checks PR MINUTES -> 0 green, 1 red, 2 still pending at the deadline
+wait_for_checks() {
+  local deadline=$((SECONDS + $2 * 60)) state announced=false
+  while :; do
+    state="$(checks_state "$1")"
+    case "${state}" in
+      green) return 0 ;;
+      red)   return 1 ;;
+      none)
+        if [[ "${announced}" == false ]]; then
+          printf '… no checks reported yet, waiting\n'
+          announced=true
+        fi
+        ;;
+    esac
+    if ((SECONDS >= deadline)); then return 2; fi
+    sleep 20
+  done
+}
+
+# arm_auto_merge PR -> 0 armed, 1 unavailable (setting off, stacked PR, already armed)
+arm_auto_merge() {
+  gh pr merge "$1" --squash --auto >/dev/null 2>&1
+}
+
+# merge PR via the asynchronous endpoint — the only merge path that works for this
+# repo's stacked PRs (it lands every stack member up to this one atomically).
+merge() {
+  local resp uuid status tries
+  if [[ "${DRY_RUN}" == true ]]; then
+    printf 'dry-run: would merge #%s (squash, merge-async)\n' "$1"
+    return 0
+  fi
+  resp="$(gh api -X PUT "repos/${REPO}/pulls/${1}/merge-async" \
+    -f merge_method=squash -f merge_action=default)"
+  status="$(jq -r .status <<<"${resp}")"
+  if [[ "${status}" == "merged" ]]; then printf '#%s merged\n' "$1"; return 0; fi
+  uuid="$(jq -r '.details.uuid // empty' <<<"${resp}")"
+  if [[ -z "${uuid}" ]]; then
+    printf '#%s: merge request not accepted: %s\n' "$1" "${resp}" >&2
+    return 1
+  fi
+  for ((tries = 0; tries < 60; tries++)); do
+    sleep 5
+    status="$(gh api "repos/${REPO}/pulls/${1}/merge-async/${uuid}" | jq -r .status)"
+    case "${status}" in
+      merged) printf '#%s merged\n' "$1"; return 0 ;;
+      failed) printf '#%s: merge failed\n' "$1" >&2; return 1 ;;
+    esac
+  done
+  printf '#%s: merge still pending after polling window (uuid %s)\n' "$1" "${uuid}" >&2
+  return 1
+}
+
+# evaluate PR WAIT_MINUTES — the per-PR decision table. Never merges anything that is
+# not green; on red it exits 0 holding the label for the next re-evaluation.
+evaluate() {
+  local pr="$1" wait_minutes="$2" view state base mergeable
+  view="$(gh pr view "${pr}" --json state,isDraft,baseRefName,mergeable,labels \
+    --jq '{state: .state, draft: .isDraft, base: .baseRefName, mergeable: .mergeable, labeled: ([.labels[].name] | index("merge-me") != null)}')"
+  state="$(jq -r .state <<<"${view}")"
+  if [[ "${state}" != "OPEN" ]]; then printf '#%s is %s — nothing to do\n' "${pr}" "${state}"; return 0; fi
+  if [[ "$(jq -r .draft <<<"${view}")" == "true" ]]; then printf '#%s is a draft — holding\n' "${pr}"; return 0; fi
+  if [[ "$(jq -r .labeled <<<"${view}")" != "true" ]]; then printf '#%s has no merge-me label — nothing to do\n' "${pr}"; return 0; fi
+  base="$(jq -r .base <<<"${view}")"
+  mergeable="$(jq -r .mergeable <<<"${view}")"
+  if [[ "${mergeable}" == "CONFLICTING" ]]; then
+    printf '#%s has conflicts — a human needs to rebase the stack\n' "${pr}"
+    return 0
+  fi
+
+  local checks
+  checks="$(checks_state "${pr}")"
+  if [[ "${checks}" == "red" ]]; then
+    printf '#%s has failing checks — holding the label for the next push/sweep\n' "${pr}"
+    return 0
+  fi
+
+  if [[ "${checks}" == "green" ]]; then
+    if [[ "${base}" != "${DEFAULT_BRANCH}" ]]; then
+      printf '#%s is green (stack layer on %s) — merging lands every member below it\n' "${pr}" "${base}"
+    fi
+    if merge "${pr}"; then return 0; else return 1; fi
+  fi
+
+  # Pending (or not yet reported): ordinary PRs let GitHub wait server-side; stack
+  # layers fall straight to the bounded wait (auto-merge does not take them).
+  if [[ "${base}" == "${DEFAULT_BRANCH}" ]] && arm_auto_merge "${pr}"; then
+    printf '#%s pending — auto-merge armed, GitHub merges when green\n' "${pr}"
+    return 0
+  fi
+  if [[ "${base}" == "${DEFAULT_BRANCH}" ]]; then
+    printf '#%s pending — auto-merge unavailable, falling back to a bounded wait\n' "${pr}"
+  fi
+
+  local rc=0
+  wait_for_checks "${pr}" "${wait_minutes}" || rc=$?
+  case "${rc}" in
+    0) if merge "${pr}"; then return 0; else return 1; fi ;;
+    1) printf '#%s went red while waiting — holding the label for the next push/sweep\n' "${pr}"; return 0 ;;
+    2) printf '#%s still pending — the next push/sweep re-evaluates\n' "${pr}"; return 0 ;;
+  esac
+}
+
+evaluate "${PR}" "${WAIT_MINUTES}"

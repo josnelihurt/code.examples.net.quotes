@@ -1,0 +1,36 @@
+name: merge-me
+
+# merge-me is standing intent, not a command: labeling a PR asks this workflow to
+# merge it once it is green, and to keep re-evaluating (label, new commits, reopen)
+# until then. Red PRs are held — the decision table and the alternatives that were
+# rejected (classic merge API and marketplace automerge actions both break on stacked
+# PRs) are documented in scripts/merge-me.sh and issue #33.
+on:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+# Ephemeral per-run token: no stored credentials, and it cannot bypass branch
+# protection — if that is ever added, revisit with a merge queue (see issue #33).
+permissions:
+  contents: write
+  pull-requests: write
+
+# One evaluation per PR; a new push cancels the previous bounded wait.
+concurrency:
+  group: merge-me-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  merge:
+    name: evaluate (label / push / reopen)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      # Unlabeled pushes exit immediately inside the script; the bounded wait covers
+      # this repo's ~5-minute CI.
+      - name: Evaluate the labeled PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/merge-me.sh "${{ github.event.pull_request.number }}"
