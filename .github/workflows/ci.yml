@@ -206,3 +206,19 @@ jobs:
           diff -u docs/openapi/auth.openapi.yaml out/auth.openapi.yaml
           diff -u docs/openapi/quotes-v0.openapi.yaml out/quotes-v0.openapi.yaml
           diff -u docs/openapi/quotes-v1.openapi.yaml out/quotes-v1.openapi.yaml
+
+  image-pins:
+    name: container image pin drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # The pins in scripts/images.env must be exactly what the pinned Aspire.Hosting.*
+      # packages run; a package bump that misses the pin file fails here instead of
+      # quietly booting two different Postgres images across CI, e2e and the AppHost.
+      - name: Check pins against the Aspire packages
+        run: ./scripts/check-image-tags.sh
