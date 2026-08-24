@@ -166,14 +166,16 @@ server state) and `scripts/export-bundle.sh` (writes `~/repo.bundle`).
 
 ## CI
 
-`.github/workflows/ci.yml` enforces six gates: the test suite in **Release** (where
+`.github/workflows/ci.yml` enforces seven gates: the test suite in **Release** (where
 `TreatWarningsAsErrors` applies) with coverage collection; the repo's own lint script
 (`dotnet format --verify-no-changes`); the frontend job (lint + tests + build so type
 errors cannot pass, plus the Storybook build and a regeneration of the SPA's
 OpenAPI-derived types in `src/api/schema.d.ts` failing on drift); the **specs** job
 (Reqnroll against the Aspire-orchestrated stack, Docker on `ubuntu-latest`); the
-**e2e** job (Playwright + playwright-bdd in Chromium); and the hermetic OpenAPI
-contract regeneration failing on any drift vs `docs/openapi/`.
+**e2e** job (Playwright + playwright-bdd in Chromium); the hermetic OpenAPI
+contract regeneration failing on any drift vs `docs/openapi/`; and the **image-pins**
+gate (`scripts/check-image-tags.sh`) failing when the container image tags in
+`scripts/images.env` drift from the ones the pinned Aspire packages run.
 CI Release is the canonical gate; the local `./scripts/test.sh` (Debug + coverage) is
 the fast inner loop, and `./scripts/bdd.sh` / `./scripts/e2e.sh` run the slow outer
 loops on demand. The old curl-based `smoke` job (and `scripts/test-api.sh`) was replaced

@@ -11,7 +11,7 @@ The design follows the same Anthropic patterns as the [Panel Review](panel-revie
 - **Mechanical before agentic.** The facts come from `scripts/audit-deps.sh` — a plain script, so every run answers the same questions the same way (`dotnet list package --outdated` / `--vulnerable`, `pnpm outdated` / `pnpm audit`, pin inventory). The agents plan; they do not measure. Reproducibility lives in the script, judgment lives in the planning, and the two never blur.
 - **Orchestrator–worker, workflow not loop.** The main conversation orchestrates deterministic stages and launches `deps-planner` subagents in parallel (one per surface) with self-contained briefs — the [multi-agent orchestration](https://www.anthropic.com/engineering/multi-agent-research-system) shape, applied where parallel reading actually pays.
 - **Human in the loop at the decision point.** The agent does not pick your updates: it converges the audit into one proposal plus at most four decision questions and stops. Approving the plan is the owner's move — the same approval-gate discipline Claude Code applies before executing a plan.
-- **Machine-verified outcomes.** After approval, the repo's own gates (the same six CI jobs, run locally) decide whether a batch survives. An update that cannot pass the gate is reverted and recorded as blocked, not argued into the branch.
+- **Machine-verified outcomes.** After approval, the repo's own gates (the same seven CI jobs, run locally) decide whether a batch survives. An update that cannot pass the gate is reverted and recorded as blocked, not argued into the branch.
 
 ## The update surface
 
@@ -21,12 +21,13 @@ The design follows the same Anthropic patterns as the [Panel Review](panel-revie
 | Aspire AppHost SDK | `src/AppHost/AspireQuotesPoc.AppHost.csproj` (`Sdk="Aspire.AppHost.Sdk/…"`, outside CPM) | pin inventory + same-line check against the `Aspire.Hosting.*` pins |
 | Frontend packages | `frontend/package.json` + `frontend/pnpm-lock.yaml` | `pnpm outdated`, `pnpm audit` |
 | Docker base image | `Dockerfile.build` (`mcr.microsoft.com/dotnet/sdk:10.0`) | pin inventory |
-| YARP gateway image | `src/AppHost/AppHost.cs` and `.github/workflows/ci.yml` (`…nightly/yarp:2.3-preview`) | pin inventory |
+| Container images (PostgreSQL, pgweb, YARP) | `scripts/images.env` — the repo's one copy of the tags, read by the test fixture, `scripts/e2e.sh` and CI | `scripts/check-image-tags.sh` against the pinned Aspire packages (the CI `image-pins` job) |
 | GitHub Actions | `.github/workflows/ci.yml` (`actions/*@v4`, `pnpm/action-setup@v4`) | pin inventory + latest release via `gh api`, best effort |
 
-Two pinned-pair rules the planner must carry into every proposal:
+Three pinned-together rules the planner must carry into every proposal:
 
 - **The Aspire same-line rule.** The AppHost SDK pin and the `Aspire.Hosting.*` versions in CPM — including `Aspire.Hosting.Testing` used by the BDD suite — move together as one line; splitting them is a bug, not a batch.
+- **The container image mirror.** `scripts/images.env` is the repo's one copy of the image tags the pinned `Aspire.Hosting.*` packages run (PostgreSQL, pgweb, YARP). An Aspire bump that changes a pinned tag must update that file in the same batch — `scripts/check-image-tags.sh` (the CI `image-pins` job) fails the build otherwise. Bump procedure: raise the package, run the script, let it print the expected tags, bring the file in line.
 - **The pnpm security posture.** `frontend/pnpm-workspace.yaml` refuses install scripts except `allowBuilds`, refuses releases younger than 24h (`minimumReleaseAge: 1440`), and pins transitive `postcss` via `overrides` — see [pnpm as the package manager](package-manager-security.md). A refresh reports a target blocked by these rules; it never bypasses them.
 
 ## The workflow
@@ -43,7 +44,7 @@ The orchestration recipe lives in `.claude/skills/dependency-refresh/SKILL.md` (
 
 ## The verification gate
 
-Every applied batch must pass what CI would run — the refresh runs the same six jobs locally instead of discovering drift when the PR opens:
+Every applied batch must pass what CI would run — the refresh runs the same seven jobs locally instead of discovering drift when the PR opens:
 
 | Check | Script | Proves |
 |-------|--------|--------|
@@ -53,6 +54,7 @@ Every applied batch must pass what CI would run — the refresh runs the same si
 | BDD specs | `./scripts/bdd.sh` (needs Podman) | cross-service journeys through the real Aspire stack incl. the YARP gateway (the CI `specs` job) |
 | E2E | `./scripts/e2e.sh` | Playwright browser journeys against Release APIs + Vite (the CI `e2e` job) |
 | Contract drift | `./scripts/update-contracts.sh` then `git diff --exit-code docs/openapi/` | the frozen OpenAPI documents are unchanged by the update (the CI `contract-drift` job) |
+| Image pins | `./scripts/check-image-tags.sh` | `scripts/images.env` still mirrors the tags the pinned Aspire packages run (the CI `image-pins` job) |
 
 The gate is the floor, not the ceiling: a major-version batch that passes everything may still deserve reading the migration notes — the planner's risk column says where to look. See [Testing](testing.md) for what each suite covers and [the documentation gate](documentation-process.md) for the pattern of script-verified claims this page follows.
 

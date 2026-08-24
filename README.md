@@ -94,7 +94,7 @@ Each `src/` row links to a component document describing that project's layers, 
 | `docs/` | Docsify + combined Scalar reference |
 | `contracts/` | Pointer to Docsify OpenAPI docs ([api-contracts.md](contracts/api-contracts.md)) |
 | `tests/` | xUnit unit/API tests (OpenCover for Sonar) + `tests/Bdd` Reqnroll specs against the running stack |
-| `scripts/` | Env, start, docs, publish, test, bdd, e2e, verify-docs, audit-deps, update-contracts, Sonar, bundle |
+| `scripts/` | Env, start, docs, publish, test, bdd, e2e, verify-docs, audit-deps, check-image-tags, update-contracts, Sonar, bundle |
 
 ## How to run
 

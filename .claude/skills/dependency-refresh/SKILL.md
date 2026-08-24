@@ -19,13 +19,14 @@ Follow the stages in order. Nothing is edited before stage 4 answers; everything
 
 4. **Owner gate.** Merge the tables into one proposal — `Package | Current | Target | Class | Risk | Note`, grouped patch / minor / major / infra pins — and convert the real forks into **at most four decision questions**: which batches are in, the major-version policy (skip, take, or take-separately), whether the slow gates (`./scripts/bdd.sh`, `./scripts/e2e.sh` — both need Podman) run, and whether to ship the PR now or leave the branch. Present both, **ask, and stop.** No manifest is edited before the owner answers.
 
-5. **Apply (approved batches only).** Bump versions in `Directory.Packages.props` (keep the `Aspire.Hosting.*` pins and the AppHost `Sdk="Aspire.AppHost.Sdk/..."` pin on one line — the same-line rule), update `frontend/package.json` via pnpm commands in `frontend/` and commit the regenerated lockfile, and touch image/action pins only if that batch was approved. Never defeat the pnpm security posture (`minimumReleaseAge`, `allowBuilds`, `overrides`) to make an install pass. If a target is refused for being younger than the release gate, report it — do not work around it.
+5. **Apply (approved batches only).** Bump versions in `Directory.Packages.props` (keep the `Aspire.Hosting.*` pins and the AppHost `Sdk="Aspire.AppHost.Sdk/..."` pin on one line — the same-line rule; an Aspire bump that changes a pinned container tag updates `scripts/images.env` in the same batch), update `frontend/package.json` via pnpm commands in `frontend/` and commit the regenerated lockfile, and touch action pins only if that batch was approved. Never defeat the pnpm security posture (`minimumReleaseAge`, `allowBuilds`, `overrides`) to make an install pass. If a target is refused for being younger than the release gate, report it — do not work around it.
 
-6. **Validate.** Mirror the six CI jobs, fastest first; run the slow gates if the owner enabled them:
+6. **Validate.** Mirror the seven CI jobs, fastest first; run the slow gates if the owner enabled them:
    - `./scripts/lint.sh` and `./scripts/test.sh` (dotnet format + unit tests)
    - in `frontend/`: `pnpm lint && pnpm test && pnpm run build`, then `pnpm run gen:api && git diff --exit-code src/api/schema.d.ts`
    - `./scripts/bdd.sh` (Aspire stack; needs Podman) and `./scripts/e2e.sh` (Playwright chromium)
    - contract drift: `./scripts/update-contracts.sh` then `git diff --exit-code docs/openapi/`
+   - image pins: `./scripts/check-image-tags.sh` (fails when `scripts/images.env` no longer mirrors the pinned Aspire packages' tags)
 
    A batch that fails a gate is **reverted** (`git checkout -- <files>`), recorded as blocked with the failing gate and error, and the run continues with the remaining batches. Report results honestly — a skipped or reverted gate is part of the record, not an embarrassment to hide.
 

@@ -199,10 +199,11 @@ say '```text'
 grep -nE '^FROM ' Dockerfile.build >> "${REPORT}" || echo "no FROM lines found" >> "${REPORT}"
 say '```'
 say
-say "YARP gateway image references:"
+say "Container image pins (scripts/images.env; drift vs the pinned Aspire packages is"
+say "enforced, not just inventoried, by scripts/check-image-tags.sh in the image-pins CI job):"
 say
 say '```text'
-grep -ni 'yarp' src/AppHost/AppHost.cs .github/workflows/ci.yml >> "${REPORT}" || echo "no yarp references found" >> "${REPORT}"
+cat scripts/images.env >> "${REPORT}" 2>/dev/null || echo "scripts/images.env not found" >> "${REPORT}"
 say '```'
 say
 
