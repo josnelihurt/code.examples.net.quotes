@@ -247,8 +247,8 @@ client module rather than on `fetch`; the client suite stubs `fetch` directly.
 Playwright + playwright-bdd: feature files in `e2e/features/` (signing-in, reading-quotes,
 browsing-quotes, publishing-quotes), step definitions in `e2e/steps/` split by vocabulary.
 The config boots both APIs on fixed loopback ports plus the Vite dev server, runs with one worker
-(the catalog is an in-memory singleton shared across scenarios), and raises the auth rate limit for
-the run. The wording of the quote features deliberately mirrors
+(the catalog lives in the throwaway PostgreSQL database started before the run and is shared by
+every scenario, so scenarios must not interleave), and raises the auth rate limit for the run. The wording of the quote features deliberately mirrors
 [`tests/Bdd/Features/Quotes`](../tests/Bdd/Features/Quotes) so both BDD layers speak the same
 business language.
 
