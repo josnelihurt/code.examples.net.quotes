@@ -1,13 +1,23 @@
 name: merge-me
 
 # merge-me is standing intent, not a command: labeling a PR asks this workflow to
-# merge it once it is green, and to keep re-evaluating (label, new commits, reopen)
-# until then. Red PRs are held — the decision table and the alternatives that were
-# rejected (classic merge API and marketplace automerge actions both break on stacked
-# PRs) are documented in scripts/merge-me.sh and issue #33.
+# merge it once it is green, and to keep re-evaluating until then. Every evaluation
+# corresponds to a real event — the label, a push, a reopen, the ci workflow
+# completing — nothing runs on a timer (the scheduled sweep this design started
+# with was removed in review; see issue #33). Red PRs are held — the decision table
+# and the rejected alternatives (classic merge API and marketplace automerge actions
+# both break on stacked PRs) are documented in scripts/merge-me.sh and issue #33.
 on:
   pull_request:
     types: [labeled, synchronize, reopened]
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "PR number to evaluate (blank = every open labeled PR)"
+        required: false
 
 # Ephemeral per-run token: no stored credentials, and it cannot bypass branch
 # protection — if that is ever added, revisit with a merge queue (see issue #33).
@@ -15,13 +25,15 @@ permissions:
   contents: write
   pull-requests: write
 
-# One evaluation per PR; a new push cancels the previous bounded wait.
+# One evaluation per PR (a newer event cancels the previous bounded wait); manual
+# runs without a PR input collapse onto themselves.
 concurrency:
-  group: merge-me-${{ github.event.pull_request.number }}
+  group: merge-me-${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.event.pull_request.number || github.event.inputs.pr || 'manual' }}
   cancel-in-progress: true
 
 jobs:
   merge:
+    if: github.event_name == 'pull_request'
     name: evaluate (label / push / reopen)
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -34,3 +46,54 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./scripts/merge-me.sh "${{ github.event.pull_request.number }}"
+
+  on-ci-completion:
+    # The moment mergeability can change is the moment CI finishes. workflow_run
+    # events only fire for workflows on the default branch, so this arm activates
+    # when this stack lands (the pull_request arm above works from PR branches
+    # immediately). Only successful pull_request runs re-evaluate — a failed ci
+    # run leaves the PR red and held, which the script would report anyway.
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    name: evaluate (ci completed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Checks out the default branch — the workflow_run context — which carries
+      # this script's source of truth.
+      - uses: actions/checkout@v4
+
+      - name: Evaluate the PR whose CI just completed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          pr="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${HEAD_BRANCH}" --state open --json number --jq '.[0].number' || true)"
+          if [[ -z "${pr}" ]]; then
+            echo "no open PR for head branch ${HEAD_BRANCH} — nothing to do"
+            exit 0
+          fi
+          # The checks already finished (this run was triggered by their
+          # completion), so evaluate instantly instead of arming another wait.
+          ./scripts/merge-me.sh "${pr}" --wait-minutes 0
+
+  on-demand:
+    # The escape hatch: if an event-path run failed transiently, a human (write
+    # access required to dispatch) replays the evaluation by hand. This replaces
+    # the scheduled sweep's self-healing role.
+    if: github.event_name == 'workflow_dispatch'
+    name: evaluate (manual)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Evaluate the requested PR (or every labeled PR)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_INPUT: ${{ github.event.inputs.pr }}
+        run: |
+          if [[ -n "${PR_INPUT}" ]]; then
+            ./scripts/merge-me.sh "${PR_INPUT}"
+          else
+            ./scripts/merge-me.sh --all
+          fi

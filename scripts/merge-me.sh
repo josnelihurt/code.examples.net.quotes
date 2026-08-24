@@ -2,14 +2,25 @@
 # Merges pull requests labeled `merge-me` — the label is standing intent ("merge when
 # green"), not a command. Each evaluation checks the label, the PR's checks and its
 # mergeability, then either merges, arms GitHub's server-side auto-merge, or holds
-# (red stays labeled; the next push or sweep re-evaluates). See issue #33 for the
-# investigation, the alternatives that were rejected (the classic merge API and
-# marketplace automerge actions break on this repo's stacked PRs), and the tradeoffs.
+# (red stays labeled; the next event re-evaluates). Nothing here runs on a timer —
+# every evaluation is triggered by a real event: the label, a push, a reopen, the ci
+# workflow completing, or a manual dispatch (the scheduled sweep this design started
+# with was removed in review; see issue #33 for the investigation, the rejected
+# alternatives — the classic merge API and marketplace automerge actions both break
+# on this repo's stacked PRs — and the tradeoffs).
 #
 #   ./scripts/merge-me.sh <pr-number> [--wait-minutes N] [--dry-run]
 #       Evaluate one PR. Wait mode (default 15 min): pending checks are polled, so a
 #       green outcome within the window merges in the same run. Used by the workflow's
-#       pull_request trigger (labeled / synchronize / reopened).
+#       pull_request trigger (labeled / synchronize / reopened) and, with a
+#       zero-minute wait, by its ci-completion trigger (checks already finished).
+#
+#   ./scripts/merge-me.sh --all [--dry-run]
+#       Instant evaluation of every open labeled PR — no waiting: green PRs merge,
+#       pending ordinary PRs get auto-merge armed, everything else is left for the
+#       event path. The manual escape hatch behind the workflow's workflow_dispatch
+#       trigger (blank pr input), for replaying an evaluation lost to a transient
+#       run failure.
 #
 # Exit 0 = merged, held (red/pending/conflict — re-evaluated later) or nothing to do;
 # exit 1 = a merge was attempted and failed. Requires gh with GH_TOKEN (or a logged-in
@@ -20,17 +31,19 @@ cd "${ROOT}"
 
 DRY_RUN=false
 WAIT_MINUTES=15
+ALL=false
 PR=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --all)          ALL=true; shift ;;
     --dry-run)      DRY_RUN=true; shift ;;
     --wait-minutes) WAIT_MINUTES="${2:?--wait-minutes needs a value}"; shift 2 ;;
     [0-9]*)         PR="$1"; shift ;;
-    *) echo "usage: $0 <pr-number> [--wait-minutes N] [--dry-run]" >&2; exit 2 ;;
+    *) echo "usage: $0 <pr-number> [--wait-minutes N] [--dry-run] | --all [--dry-run]" >&2; exit 2 ;;
   esac
 done
-if [[ -z "${PR}" ]]; then
-  echo "usage: $0 <pr-number> [--wait-minutes N] [--dry-run]" >&2
+if [[ "${ALL}" == false && -z "${PR}" ]]; then
+  echo "usage: $0 <pr-number> [--wait-minutes N] [--dry-run] | --all [--dry-run]" >&2
   exit 2
 fi
 
@@ -40,7 +53,11 @@ DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.na
 # checks_state PR -> green | red | pending | none
 checks_state() {
   local buckets
-  buckets="$(gh pr checks "$1" --json bucket --jq '[.[].bucket]' 2>/dev/null || true)"
+  # This workflow's own runs are checks on the PR too: the evaluation in flight is
+  # always "pending" from its own point of view, which would deadlock every wait.
+  # The gate's job is the product's checks (ci), not merge-me observing itself.
+  buckets="$(gh pr checks "$1" --json workflow,bucket \
+    --jq '[.[] | select(.workflow != "merge-me") | .bucket]' 2>/dev/null || true)"
   if [[ -z "${buckets}" || "${buckets}" == "[]" ]]; then
     printf none
   elif jq -e 'any(. == "fail")' <<<"${buckets}" >/dev/null; then
@@ -126,7 +143,7 @@ evaluate() {
   local checks
   checks="$(checks_state "${pr}")"
   if [[ "${checks}" == "red" ]]; then
-    printf '#%s has failing checks — holding the label for the next push/sweep\n' "${pr}"
+    printf '#%s has failing checks — holding the label for the next event\n' "${pr}"
     return 0
   fi
 
@@ -151,9 +168,23 @@ evaluate() {
   wait_for_checks "${pr}" "${wait_minutes}" || rc=$?
   case "${rc}" in
     0) if merge "${pr}"; then return 0; else return 1; fi ;;
-    1) printf '#%s went red while waiting — holding the label for the next push/sweep\n' "${pr}"; return 0 ;;
-    2) printf '#%s still pending — the next push/sweep re-evaluates\n' "${pr}"; return 0 ;;
+    1) printf '#%s went red while waiting — holding the label for the next event\n' "${pr}"; return 0 ;;
+    2) printf '#%s still pending — the next event (push, ci completion, manual dispatch) re-evaluates\n' "${pr}"; return 0 ;;
   esac
 }
 
-evaluate "${PR}" "${WAIT_MINUTES}"
+if [[ "${ALL}" == true ]]; then
+  prs="$(gh pr list --label merge-me --state open --json number --jq '.[].number' | sort -n)"
+  if [[ -z "${prs}" ]]; then
+    printf 'no open PRs labeled merge-me\n'
+    exit 0
+  fi
+  failed=0
+  while IFS= read -r pr; do
+    [[ -z "${pr}" ]] && continue
+    evaluate "${pr}" 0 || failed=1
+  done <<<"${prs}"
+  exit "${failed}"
+else
+  evaluate "${PR}" "${WAIT_MINUTES}"
+fi
