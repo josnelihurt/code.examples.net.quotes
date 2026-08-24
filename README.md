@@ -244,7 +244,7 @@ gh stack view / sync / rebase / merge     # inspect, update, land
 
 (The numbers above are the real PostgreSQL-catalog stack this workflow was proven on.)
 
-Gotchas: server-side rebases produce unsigned commits — irrelevant today, but if the repo ever requires signed commits use `gh stack rebase` + `gh stack push` instead of the web button. A stack must keep linear history between its branches. Squash merges work at every layer; branch-protection checks apply to each PR individually.
+Gotchas: server-side rebases produce unsigned commits — irrelevant today, but if the repo ever requires signed commits use `gh stack rebase` + `gh stack push` instead of the web button. A stack must keep linear history between its branches. Squash merges work at every layer; branch-protection checks apply to each PR individually. A layer whose only change is reverting a lower layer can squash to an **empty commit and silently lose the revert** — observed when the merge-me smoke-test stack (#46 → #47) landed: the top layer's "remove the line" diff was computed against a base that already contained the bottom layer's addition. Land reverts after the layer they revert has merged, or outside a stack.
 
 ## Merging: the `merge-me` label
 
@@ -260,5 +260,3 @@ What happens per state:
 Anyone who can label a PR could already merge it manually, so the label adds audit trail, not privilege. The workflow's token is the ephemeral per-run `GITHUB_TOKEN`; it cannot bypass branch protection.
 
 Agents working in this repo follow the same workflow — the agent-side recipe (snapshot before splitting, verify at load-bearing levels, evidence per PR) lives in [`AGENTS.md`](AGENTS.md).
-
-> Smoke-test line for the merge-me automation — added by the bottom layer of a two-PR test stack and removed by its top layer, so `main` ends unchanged.
