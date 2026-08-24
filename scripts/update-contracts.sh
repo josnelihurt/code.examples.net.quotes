@@ -4,7 +4,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DOCKER="${DOCKER:-podman}"
-IMAGE_TAG="${CONTRACTS_IMAGE_TAG:-localhost/aspire-quotes-contracts:export}"
+# The tag is namespaced per worktree (8-hex hash of the repo root) so two checkouts
+# building their OpenAPI export at once don't race the same image tag. CONTRACTS_IMAGE_TAG
+# overrides — plain "export" restores the old machine-global tag.
+SUFFIX="$(printf '%s' "${ROOT}" | shasum | cut -c1-8)"
+IMAGE_TAG="${CONTRACTS_IMAGE_TAG:-localhost/aspire-quotes-contracts:export-${SUFFIX}}"
 OUT_DIR="${ROOT}/docs/openapi"
 
 cd "${ROOT}"
