@@ -6,6 +6,7 @@ See the [repository README](../README.md) for intention, layering rules, and con
 
 ## Quick links
 
+- [UI tour](ui-tour.md)
 - [System design](system-design.md)
 - [Architecture](architecture.md)
 - [API reference](api.md)

@@ -1,4 +1,5 @@
 * [Home](/)
+* [UI tour](ui-tour.md)
 * [System design](system-design.md)
 * [Architecture](architecture.md)
 * [API](api.md)

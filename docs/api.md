@@ -75,7 +75,7 @@ When the AppHost is running, open each API resource endpoint:
 
 With docs serving (`./scripts/serve-docs.sh` or Aspire `docs` resource):
 
-- [Combined Auth + Quotes reference](scalar/) — loads both OpenAPI YAML files
+- [Combined Auth + Quotes reference](scalar/index.html) — loads both OpenAPI YAML files (the explicit `index.html` matters under `docsify-cli`; the bare `scalar/` path gets its SPA shell)
 - Aspire dashboard: **Scalar** link on the `docs` resource (combined Auth+Quotes reference)
 
 ## Error contract

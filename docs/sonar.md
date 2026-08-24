@@ -58,6 +58,8 @@ Dashboard after upload:
 
 `http://localhost:9000/dashboard?id=aspire-quotes`
 
+![SonarQube dashboard for aspire-quotes](images/sonar-dashboard.png)
+
 ## Quality profile (S1128 — unused usings)
 
 The built-in `Sonar way` profile is read-only and does **not** include [S1128 "Unused 'usings' should be removed"](https://sonarcloud.io/organizations/default/rules?open=csharpsquid%3AS1128&rule_languages=cs) — Sonar's counterpart of IDE0005 (ReSharper: *Using directive is unnecessary*). The scanner also only uploads SonarAnalyzer (`S…`) rules, so the IDE0005 warnings the compiler raises during the scan build never reach the dashboard; S1128 has to be active for usings to show up as findings.

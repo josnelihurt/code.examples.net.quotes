@@ -15,18 +15,20 @@ Per-service (when Aspire is running — use each resource URL from the dashboard
   OpenAPI JSON: {base}/openapi/v1.json
 
 Combined reference (Docsify / docs server):
-  http://localhost:3001/scalar/
-  or: ./scripts/serve-docs.sh  then open /scalar/
+  http://localhost:3001/scalar/index.html
+  or: ./scripts/serve-docs.sh  then open /scalar/index.html
+  (the explicit index.html matters — docsify-cli answers the bare /scalar/
+   path with its SPA shell, which renders a 404)
 
 Automated specs (no browser; needs Podman):
   ./scripts/bdd.sh
 EOF
 
 # If docsify is already listening, offer to open the combined page
-if curl -sf -o /dev/null "http://127.0.0.1:3001/scalar/" 2>/dev/null; then
+if curl -sf -o /dev/null "http://127.0.0.1:3001/scalar/index.html" 2>/dev/null; then
   echo
-  echo "Docs Scalar is up — opening http://127.0.0.1:3001/scalar/"
+  echo "Docs Scalar is up — opening http://127.0.0.1:3001/scalar/index.html"
   if command -v open >/dev/null 2>&1; then
-    open "http://127.0.0.1:3001/scalar/"
+    open "http://127.0.0.1:3001/scalar/index.html"
   fi
 fi
