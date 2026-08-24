@@ -82,9 +82,9 @@ public static class QuoteEndpoints
     /// <remarks>
     /// Requires a bearer JWT issued by the Auth API with the <c>quotes:read</c> scope
     /// (<c>POST /api/v1/auth/login</c>); a valid token without the scope answers 403. The
-    /// catalog starts empty, so calls before the first create answer 404. Send
-    /// <c>X-Correlation-Id</c> to correlate calls; it is echoed on every response and
-    /// embedded in problem details.
+    /// catalog boots seeded (eight quotes), so 404 here means the catalog was emptied, not
+    /// that it has not been filled yet. Send <c>X-Correlation-Id</c> to correlate calls; it
+    /// is echoed on every response and embedded in problem details.
     /// </remarks>
     /// <response code="200">A random quote.</response>
     /// <response code="401">Missing or invalid bearer token (errorCode <c>auth.token_missing</c> or <c>auth.token_invalid</c>).</response>

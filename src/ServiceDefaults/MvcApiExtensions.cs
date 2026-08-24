@@ -14,8 +14,11 @@ public static class MvcApiExtensions
     /// <c>[ApiController]</c> short-circuits an invalid model before the action runs and writes its
     /// own payload through MVC's ProblemDetailsFactory, which decorates the body with a
     /// <c>traceId</c> the minimal-API validation filter never emits. Left alone that makes a
-    /// controller version answer a malformed request differently from a minimal-API version of the
-    /// same endpoint, so the response is rebuilt here to match.
+    /// controller version answer a malformed request differently from a minimal-API version of
+    /// the same endpoint, so the response is rebuilt here to match. The shared
+    /// <c>CustomizeProblemDetails</c> hook (see <c>AddStandardApiServices</c>) then stamps the
+    /// <c>errorCode</c>/<c>correlationId</c> extensions on this and on framework-produced
+    /// validation problems alike, so every 400 is shape-identical across both transports.
     /// </remarks>
     public static IMvcBuilder AddStandardControllers(this IServiceCollection services)
     {

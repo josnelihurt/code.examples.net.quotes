@@ -10,12 +10,14 @@ info:
     \ `jrb`/`supersecret` with both scopes, `reader`/`readsecret` read-only).\n2.\
     \ Send `Authorization: Bearer {accessToken}` to every operation below — reads\n\
     \   require the `quotes:read` scope claim, create requires `quotes:write`; a valid\n\
-    \   token without the scope answers 403.\n3. `POST /quotes` first: the catalog\
-    \ starts empty. Then browse with `GET /quotes`,\n   `GET /quotes/{id}` or `GET\
-    \ /quotes/random`.\n\nCross-cutting behavior:\n\n- Every error response is RFC\
-    \ 9457 `application/problem+json` with `errorCode` and\n  `correlationId` extensions.\n\
-    - Pagination is 1-based (`page` from 1, `pageSize` between 1 and 100, default\
-    \ 20).\n- Send `X-Correlation-Id` to correlate calls; it is echoed on every response."
+    \   token without the scope answers 403.\n3. The catalog boots seeded (eight quotes),\
+    \ so reads serve data from the first\n   call: browse with `GET /api/v1/quotes`,\
+    \ `GET /api/v1/quotes/{id}` or\n   `GET /api/v1/quotes/random`, then add your\
+    \ own with `POST /api/v1/quotes`.\n   The same operations exist under `/api/v0/quotes`.\n\
+    \nCross-cutting behavior:\n\n- Every error response is RFC 9457 `application/problem+json`\
+    \ with `errorCode` and\n  `correlationId` extensions.\n- Pagination is 1-based\
+    \ (`page` from 1, `pageSize` between 1 and 100, default 20).\n- Send `X-Correlation-Id`\
+    \ to correlate calls; it is echoed on every response."
   version: 1.0.0
 servers:
 - url: /
@@ -31,11 +33,13 @@ paths:
         (`POST /api/v1/auth/login`); a valid token without the scope answers 403.
         The
 
-        catalog starts empty, so calls before the first create answer 404. Send
+        catalog boots seeded (eight quotes), so 404 here means the catalog was emptied,
+        not
 
-        `X-Correlation-Id` to correlate calls; it is echoed on every response and
+        that it has not been filled yet. Send `X-Correlation-Id` to correlate calls;
+        it
 
-        embedded in problem details.'
+        is echoed on every response and embedded in problem details.'
       responses:
         '401':
           description: Missing or invalid bearer token (errorCode `auth.token_missing`

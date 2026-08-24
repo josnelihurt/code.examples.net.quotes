@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.Mvc;
+using AspireQuotesPoc.ServiceDefaults.Errors;
 using Microsoft.Extensions.Options;
 
 namespace Auth.Api;
@@ -40,17 +40,13 @@ public static class RateLimitingExtensions
                 var response = context.HttpContext.Response;
                 response.ContentType = "application/problem+json";
 
-                var problem = new ProblemDetails
-                {
-                    Status = StatusCodes.Status429TooManyRequests,
-                    Title = "Too many requests",
-                    Detail = "The auth endpoint rate limit was exceeded; retry after the window elapses.",
-                    Extensions =
-                    {
-                        ["correlationId"] = context.HttpContext.GetCorrelationId(),
-                        ["errorCode"] = RateLimitedErrorCode
-                    }
-                };
+                // Built by the shared problem builder so the 429 carries the same
+                // errorCode/correlationId extensions and type link as every other error.
+                var problem = ProblemDetailsBuilder.Build(
+                    StatusCodes.Status429TooManyRequests,
+                    RateLimitedErrorCode,
+                    "The auth endpoint rate limit was exceeded; retry after the window elapses.",
+                    context.HttpContext);
 
                 await response.WriteAsync(JsonSerializer.Serialize(problem, _jsonOptions), cancellationToken);
             };

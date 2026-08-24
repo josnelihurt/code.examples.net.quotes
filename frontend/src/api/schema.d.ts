@@ -15,9 +15,9 @@ export interface paths {
          * Returns a random quote from the catalog.
          * @description Requires a bearer JWT issued by the Auth API with the `quotes:read` scope
          *     (`POST /api/v1/auth/login`); a valid token without the scope answers 403. The
-         *     catalog starts empty, so calls before the first create answer 404. Send
-         *     `X-Correlation-Id` to correlate calls; it is echoed on every response and
-         *     embedded in problem details.
+         *     catalog boots seeded (eight quotes), so 404 here means the catalog was emptied, not
+         *     that it has not been filled yet. Send `X-Correlation-Id` to correlate calls; it
+         *     is echoed on every response and embedded in problem details.
          */
         get: operations["GetRandomQuote"];
         put?: never;

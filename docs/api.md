@@ -80,7 +80,7 @@ With docs serving (`./scripts/serve-docs.sh` or Aspire `docs` resource):
 
 ## Error contract
 
-Every error response is RFC 9457 ProblemDetails (`application/problem+json`), including the JwtBearer 401 (which also carries `WWW-Authenticate`). `ErrorOr` failures from Domain/Application are mapped once by `ErrorOrHttpExtensions.ToProblem`: error code and correlation id travel as `errorCode` / `correlationId` extensions; validation errors appear under `errors` keyed by error code (domain rules, e.g. `quote.text_too_short`) or property name (transport validation).
+Every error response is RFC 9457 ProblemDetails (`application/problem+json`), including the JwtBearer 401 (which also carries `WWW-Authenticate`). `ErrorOr` failures from Domain/Application are mapped once by `ErrorOrHttpExtensions.ToProblem`: error code and correlation id travel as `errorCode` / `correlationId` extensions; validation errors appear under `errors` keyed by error code (domain rules, e.g. `quote.text_too_short`) or property name (transport validation). Transport-validation failures carry `errorCode = validation.request_invalid`, so every 400 a client can meet has the same extensions regardless of which pipeline produced it. Middleware-produced problems (the JwtBearer 401 challenge and the 429 rate-limit rejection) are built by the same envelope (`ProblemDetailsBuilder` in ServiceDefaults), not assembled by hand at each producer.
 
 ## Endpoints
 

@@ -1,7 +1,6 @@
 using ErrorOr;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Hosting;
 
 namespace AspireQuotesPoc.ServiceDefaults.Errors;
@@ -33,7 +32,7 @@ internal static class ProblemDetailsFactory
             {
                 Status = StatusCodes.Status400BadRequest,
                 Title = ValidationTitle,
-                Type = TypeLink(StatusCodes.Status400BadRequest)
+                Type = ProblemDetailsBuilder.TypeLink(StatusCodes.Status400BadRequest)
             };
 
             Merge(problem.Extensions, extensions);
@@ -41,16 +40,7 @@ internal static class ProblemDetailsFactory
         }
 
         var statusCode = StatusCode(primary);
-        var details = new ProblemDetails
-        {
-            Status = statusCode,
-            Title = ReasonPhrases.GetReasonPhrase(statusCode),
-            Detail = primary.Description,
-            Type = TypeLink(statusCode)
-        };
-
-        Merge(details.Extensions, extensions);
-        return details;
+        return ProblemDetailsBuilder.Build(statusCode, primary.Code, primary.Description, httpContext);
     }
 
     private static Error Primary(List<Error> errors) => errors.Count > 0
@@ -84,20 +74,9 @@ internal static class ProblemDetailsFactory
     }
 
     /// <summary>
-    /// The RFC 9110 status links ASP.NET Core would otherwise fill in. Set explicitly so the
-    /// minimal-API and MVC pipelines emit the same <c>type</c> instead of relying on each
-    /// pipeline's own defaulting.
+    /// The RFC 9110 type links and status phrases live in <see cref="ProblemDetailsBuilder"/>
+    /// so middleware-produced problems share them.
     /// </summary>
-    private static string TypeLink(int statusCode) => statusCode switch
-    {
-        StatusCodes.Status401Unauthorized => "https://tools.ietf.org/html/rfc9110#section-15.5.2",
-        StatusCodes.Status403Forbidden => "https://tools.ietf.org/html/rfc9110#section-15.5.4",
-        StatusCodes.Status404NotFound => "https://tools.ietf.org/html/rfc9110#section-15.5.5",
-        StatusCodes.Status409Conflict => "https://tools.ietf.org/html/rfc9110#section-15.5.10",
-        StatusCodes.Status500InternalServerError => "https://tools.ietf.org/html/rfc9110#section-15.6.1",
-        _ => "https://tools.ietf.org/html/rfc9110#section-15.5.1"
-    };
-
     private static void Merge(IDictionary<string, object?> target, Dictionary<string, object?> source)
     {
         foreach (var (key, value) in source)

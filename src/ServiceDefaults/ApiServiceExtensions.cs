@@ -1,5 +1,7 @@
+using AspireQuotesPoc.ServiceDefaults.Errors;
 using AspireQuotesPoc.ServiceDefaults.OpenApi;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
 using Scalar.AspNetCore;
@@ -28,7 +30,25 @@ public static class ApiServiceExtensions
     {
         var names = documentNames.Length > 0 ? documentNames : [_defaultDocumentName];
 
-        builder.Services.AddProblemDetails();
+        builder.Services.AddProblemDetails(options =>
+        {
+            // Framework-produced transport validation (Data Annotations via AddValidation,
+            // model binding) keys `errors` by property name and carries no errorCode. Stamp
+            // the envelope here so every 400 a client can meet is shape-identical across the
+            // minimal-API and MVC pipelines. ErrorOr-driven problems already carry their own
+            // errorCode and are left untouched.
+            options.CustomizeProblemDetails = context =>
+            {
+                if (context.ProblemDetails is HttpValidationProblemDetails validation
+                    && !validation.Extensions.ContainsKey(ProblemDetailsFactory.ErrorCodeExtension))
+                {
+                    validation.Extensions[ProblemDetailsFactory.ErrorCodeExtension] =
+                        ProblemDetailsBuilder.RequestValidationErrorCode;
+                    validation.Extensions[ProblemDetailsFactory.CorrelationIdExtension] =
+                        context.HttpContext.GetCorrelationId();
+                }
+            };
+        });
         builder.Services.AddSingleton(new ApiDocumentNames(names));
 
         return builder;

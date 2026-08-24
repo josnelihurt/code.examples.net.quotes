@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using AspireQuotesPoc.ServiceDefaults.Errors;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Quotes.Api.V1.Contracts;
@@ -155,6 +156,30 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         var errors = problem.GetProperty("errors");
         errors.GetProperty("Text").GetArrayLength().ShouldBeGreaterThan(0);
         errors.GetProperty("Author").GetArrayLength().ShouldBeGreaterThan(0);
+        problem.GetProperty("errorCode").GetString().ShouldBe(ProblemDetailsBuilder.RequestValidationErrorCode);
+        problem.GetProperty("correlationId").GetString().ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task V0_create_with_an_empty_body_field_returns_the_same_validation_envelope()
+    {
+        // The MVC transport must answer transport validation exactly like the minimal-API
+        // transport: property-keyed errors plus the shared errorCode/correlationId envelope.
+        using var client = CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            new Uri("/api/v0/quotes", UriKind.Relative),
+            new CreateQuoteRequestDto { Text = "", Author = "" },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        var errors = problem.GetProperty("errors");
+        errors.GetProperty("Text").GetArrayLength().ShouldBeGreaterThan(0);
+        errors.GetProperty("Author").GetArrayLength().ShouldBeGreaterThan(0);
+        problem.GetProperty("errorCode").GetString().ShouldBe(ProblemDetailsBuilder.RequestValidationErrorCode);
+        problem.GetProperty("correlationId").GetString().ShouldNotBeNullOrWhiteSpace();
     }
 
     [Fact]

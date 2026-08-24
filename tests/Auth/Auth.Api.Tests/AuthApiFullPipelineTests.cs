@@ -204,12 +204,11 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
     {
         // Drift test: ServiceDefaults owns the policies, Auth.Application owns the minted
         // vocabulary; neither can reference the other, so this test pins them together.
+        // (auth.token_missing needs no pin since the registry collapsed to the single
+        // ServiceDefaults constant both producers use.)
         JwtAuthExtensions.ReadQuotesPolicy.ShouldBe(AuthorizationScopes.QuotesRead);
         JwtAuthExtensions.WriteQuotesPolicy.ShouldBe(AuthorizationScopes.QuotesWrite);
         JwtAuthExtensions.ScopeClaimType.ShouldBe(AuthorizationScopes.ClaimType);
-
-        // The 401 challenge vocabulary lives in ServiceDefaults for the same reason.
-        JwtAuthExtensions.TokenMissingErrorCode.ShouldBe(AuthErrors.MissingToken.Code);
 
         var token = await _factory.IssueTokenAsync();
         var scopes = ReadScopes(token);

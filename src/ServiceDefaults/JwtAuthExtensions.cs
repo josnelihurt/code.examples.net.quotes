@@ -1,9 +1,9 @@
 using System.Text;
 using System.Text.Json;
+using AspireQuotesPoc.ServiceDefaults.Errors;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
@@ -78,7 +78,8 @@ public static class JwtAuthExtensions
                 options.Events = new JwtBearerEvents
                 {
                     // RFC 9457 envelope (and the RFC 9110 WWW-Authenticate header) instead of
-                    // the framework's default empty 401, so clients parse one error shape.
+                    // the framework's default empty 401, built by the shared problem factory
+                    // so clients parse one error shape.
                     OnChallenge = async context =>
                     {
                         context.HandleResponse();
@@ -91,17 +92,11 @@ public static class JwtAuthExtensions
                             ? "Bearer error=\"invalid_token\""
                             : "Bearer";
 
-                        var problem = new ProblemDetails
-                        {
-                            Status = StatusCodes.Status401Unauthorized,
-                            Title = "Unauthorized",
-                            Detail = "A valid bearer token is required.",
-                            Extensions =
-                            {
-                                ["correlationId"] = context.HttpContext.GetCorrelationId(),
-                                ["errorCode"] = tokenInvalid ? TokenInvalidErrorCode : TokenMissingErrorCode
-                            }
-                        };
+                        var problem = ProblemDetailsBuilder.Build(
+                            StatusCodes.Status401Unauthorized,
+                            tokenInvalid ? TokenInvalidErrorCode : TokenMissingErrorCode,
+                            "A valid bearer token is required.",
+                            context.HttpContext);
 
                         await response.WriteAsync(
                             JsonSerializer.Serialize(problem, _jsonOptions),

@@ -21,8 +21,10 @@ internal static class OpenApiDocs
         2. Send `Authorization: Bearer {accessToken}` to every operation below — reads
            require the `quotes:read` scope claim, create requires `quotes:write`; a valid
            token without the scope answers 403.
-        3. `POST /quotes` first: the catalog starts empty. Then browse with `GET /quotes`,
-           `GET /quotes/{id}` or `GET /quotes/random`.
+        3. The catalog boots seeded (eight quotes), so reads serve data from the first
+           call: browse with `GET /api/v1/quotes`, `GET /api/v1/quotes/{id}` or
+           `GET /api/v1/quotes/random`, then add your own with `POST /api/v1/quotes`.
+           The same operations exist under `/api/v0/quotes`.
 
         Cross-cutting behavior:
 

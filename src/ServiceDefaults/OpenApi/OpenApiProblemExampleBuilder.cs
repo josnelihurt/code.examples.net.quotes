@@ -4,6 +4,7 @@ using AspireQuotesPoc.ServiceDefaults.Errors;
 using ErrorOr;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Hosting;
 
 namespace AspireQuotesPoc.ServiceDefaults.OpenApi;
@@ -15,8 +16,6 @@ internal static class OpenApiProblemExampleBuilder
 {
     /// <summary>Fixed sample value; real correlation ids are generated per request.</summary>
     internal const string SampleCorrelationId = "5c1f4a0e9d2b7386a4c0b1e8d3f69a27";
-
-    private const string _type400 = "https://tools.ietf.org/html/rfc9110#section-15.5.1";
 
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -35,7 +34,7 @@ internal static class OpenApiProblemExampleBuilder
                 Status = StatusCodes.Status403Forbidden,
                 Title = metadata.Title ?? "Forbidden",
                 Detail = metadata.Detail,
-                Type = TypeLink(StatusCodes.Status403Forbidden)
+                Type = ProblemDetailsBuilder.TypeLink(StatusCodes.Status403Forbidden)
             });
         }
 
@@ -57,9 +56,11 @@ internal static class OpenApiProblemExampleBuilder
     private static JsonObject BuildTransportValidation(string propertyName, string message) =>
         new()
         {
-            ["type"] = _type400,
+            ["type"] = ProblemDetailsBuilder.TypeLink(StatusCodes.Status400BadRequest),
             ["title"] = ProblemDetailsFactory.ValidationTitle,
             ["status"] = StatusCodes.Status400BadRequest,
+            ["errorCode"] = ProblemDetailsBuilder.RequestValidationErrorCode,
+            ["correlationId"] = SampleCorrelationId,
             ["errors"] = new JsonObject
             {
                 [propertyName] = new JsonArray(message),
@@ -68,11 +69,13 @@ internal static class OpenApiProblemExampleBuilder
 
     private static ProblemDetails BuildRateLimitProblem(OpenApiProblemExampleMetadata metadata)
     {
+        var statusCode = StatusCodes.Status429TooManyRequests;
         var problem = new ProblemDetails
         {
-            Status = StatusCodes.Status429TooManyRequests,
-            Title = metadata.Title ?? "Too many requests",
-            Detail = metadata.Detail
+            Status = statusCode,
+            Title = ReasonPhrases.GetReasonPhrase(statusCode),
+            Detail = metadata.Detail,
+            Type = ProblemDetailsBuilder.TypeLink(statusCode)
         };
 
         problem.Extensions[ProblemDetailsFactory.CorrelationIdExtension] = SampleCorrelationId;
@@ -122,10 +125,4 @@ internal static class OpenApiProblemExampleBuilder
         context.Items[Extensions.CorrelationIdHeaderName] = SampleCorrelationId;
         return context;
     }
-
-    private static string TypeLink(int statusCode) => statusCode switch
-    {
-        StatusCodes.Status403Forbidden => "https://tools.ietf.org/html/rfc9110#section-15.5.4",
-        _ => _type400
-    };
 }

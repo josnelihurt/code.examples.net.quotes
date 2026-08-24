@@ -3,6 +3,7 @@ using AspireQuotesPoc.ServiceDefaults.OpenApi;
 using AspireQuotesPoc.ServiceDefaults.Telemetry;
 using Auth.Api.Contracts;
 using Auth.Application.Abstractions;
+using ErrorOr;
 
 namespace Auth.Api.Endpoints;
 
@@ -13,6 +14,16 @@ public static class AuthEndpoints
 {
     /// <summary>OpenAPI document this version publishes into. See <c>AddStandardApiServices</c>.</summary>
     internal const string DocumentName = "v1";
+
+    /// <summary>
+    /// Pre-service failure: no token in the body or the Authorization header. The code
+    /// lives in ServiceDefaults (<see cref="JwtAuthExtensions.TokenMissingErrorCode"/>)
+    /// because the 401 challenge and this 400 are the same vocabulary — one registry,
+    /// not one per producer.
+    /// </summary>
+    private static Error TokenMissing => Error.Validation(
+        JwtAuthExtensions.TokenMissingErrorCode,
+        "An access token is required.");
 
     public static IEndpointRouteBuilder Map(IEndpointRouteBuilder endpoints)
     {
@@ -41,9 +52,8 @@ public static class AuthEndpoints
             .WithName("ValidateToken")
             .Produces<ValidateResponseDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status429TooManyRequests)
-            .WithProblemExample(StatusCodes.Status400BadRequest, AuthErrors.MissingToken)
+            .WithProblemExample(StatusCodes.Status400BadRequest, TokenMissing)
             .WithProblemExample(
                 StatusCodes.Status429TooManyRequests,
                 title: "Too many requests",
@@ -100,11 +110,11 @@ public static class AuthEndpoints
     /// <c>Authorization: Bearer</c> header. Rate limited per client IP exactly like login
     /// (fixed window, 10 requests per 30 seconds by default).
     /// </remarks>
-    /// <param name="body">Optional payload carrying the access token; omit it to introspect the bearer header instead.</param>
     /// <param name="authService">Application dependency, not part of the HTTP contract.</param>
     /// <param name="http">Request context, not part of the HTTP contract.</param>
     /// <param name="logger">Telemetry dependency, not part of the HTTP contract.</param>
     /// <param name="cancellationToken">Cooperative cancellation, not part of the HTTP contract.</param>
+    /// <param name="body">Optional payload carrying the access token; omit it to introspect the bearer header instead.</param>
     /// <response code="200">Introspection result. <c>valid</c> is false for unknown or expired tokens; <c>username</c> is only set for valid ones.</response>
     /// <response code="400">No token in the body or the Authorization header (errorCode <c>auth.token_missing</c>).</response>
     /// <response code="429">Rate limit exceeded (errorCode <c>auth.rate_limited</c>); retry after the window elapses.</response>
@@ -128,7 +138,7 @@ public static class AuthEndpoints
             // into the decorators: record it here, before the auth service is involved.
             AppMetrics.Record(AppMetrics.AuthValidateCount, "failure");
             logger.LogWarning("Token validation request carried no token");
-            return AuthErrors.MissingToken.ToProblem(http);
+            return TokenMissing.ToProblem(http);
         }
 
         var result = await authService.ValidateAsync(token, cancellationToken);
