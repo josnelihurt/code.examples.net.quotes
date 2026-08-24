@@ -68,6 +68,8 @@ public class ListQuotesUseCaseTests
     [Theory]
     [InlineData(0, 20)]
     [InlineData(-1, 20)]
+    [InlineData(QuoteRules.MaxPage + 1, 20)]
+    [InlineData(int.MaxValue, 100)]
     [InlineData(1, 0)]
     [InlineData(1, -5)]
     [InlineData(1, 101)]
@@ -82,6 +84,21 @@ public class ListQuotesUseCaseTests
         result.FirstError.Code.ShouldBe("quote.invalid_page_request");
         result.FirstError.Type.ShouldBe(ErrorType.Validation);
         await _quotes.DidNotReceiveWithAnyArgs().ListAsync(default, default, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_accepts_the_maximum_page()
+    {
+        _quotes.ListAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new QuotePage([], 0));
+
+        var result = await _sut.ExecuteAsync(
+            new ListQuotesQuery(QuoteRules.MaxPage, QuoteRules.MaxPageSize),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeFalse();
+        await _quotes.Received(1)
+            .ListAsync((QuoteRules.MaxPage - 1) * QuoteRules.MaxPageSize, QuoteRules.MaxPageSize, Arg.Any<CancellationToken>());
     }
 
     [Fact]

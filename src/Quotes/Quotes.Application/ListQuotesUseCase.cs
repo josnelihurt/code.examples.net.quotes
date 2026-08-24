@@ -12,12 +12,21 @@ public sealed class ListQuotesUseCase(IQuoteRepository quotes) : IListQuotesUseC
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (query.Page < 1 || query.PageSize < 1 || query.PageSize > QuoteRules.MaxPageSize)
+        if (query.Page < 1 || query.Page > QuoteRules.MaxPage
+            || query.PageSize < 1 || query.PageSize > QuoteRules.MaxPageSize)
         {
             return QuoteErrors.InvalidPageRequest;
         }
 
-        var page = await quotes.ListAsync((query.Page - 1) * query.PageSize, query.PageSize, cancellationToken);
+        // The rules above bound the product well below int.MaxValue; the long arithmetic is
+        // defense in depth so a future rule change fails closed instead of wrapping the skip.
+        var skip = (long)(query.Page - 1) * query.PageSize;
+        if (skip > int.MaxValue)
+        {
+            return QuoteErrors.InvalidPageRequest;
+        }
+
+        var page = await quotes.ListAsync((int)skip, query.PageSize, cancellationToken);
 
         return new QuotePageDto(
             [.. page.Items.Select(item => item.ToDto())],

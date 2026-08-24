@@ -16,4 +16,11 @@ public static class QuoteRules
 
     public const int DefaultPageSize = 20;
     public const int MaxPageSize = 100;
+
+    /// <summary>
+    /// Upper bound for <c>page</c>. The guard exists so the 1-based → offset translation
+    /// (<c>(page - 1) * pageSize</c>) can never overflow <see langword="int"/> and turn a
+    /// bad request into an unhandled exception.
+    /// </summary>
+    public const int MaxPage = 10_000;
 }
