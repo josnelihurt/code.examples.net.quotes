@@ -99,12 +99,22 @@ jobs:
           dotnet-version: 10.0.x
 
       # The gateway resource is a container; pre-pulling keeps the readiness wait honest.
-      # Same for the catalog database and its pgweb companion (tags pinned by
-      # Aspire.Hosting.PostgreSQL 13.4.6).
+      # Same for the catalog database and its pgweb companion. The references come from
+      # scripts/images.env — the repo's one copy of the tags the pinned Aspire.Hosting.*
+      # packages run — exported here for every later step in the job.
+      - name: Load container image pins
+        run: |
+          set -a
+          . ./scripts/images.env
+          set +a
+          echo "POSTGRES_IMAGE=${POSTGRES_IMAGE}" >> "$GITHUB_ENV"
+          echo "PGWEB_IMAGE=${PGWEB_IMAGE}" >> "$GITHUB_ENV"
+          echo "YARP_IMAGE=${YARP_IMAGE}" >> "$GITHUB_ENV"
+
       - run: |
-          docker pull mcr.microsoft.com/dotnet/nightly/yarp:2.3-preview
-          docker pull docker.io/library/postgres:18.3
-          docker pull docker.io/sosedoff/pgweb:0.17.0
+          docker pull "${YARP_IMAGE}"
+          docker pull "${POSTGRES_IMAGE}"
+          docker pull "${PGWEB_IMAGE}"
 
       # No Aspire CLI needed: DistributedApplicationTestingBuilder drives the AppHost
       # in-process via the Aspire.AppHost.Sdk. Slower than build-and-test by design —
@@ -144,14 +154,22 @@ jobs:
 
       # The quotes catalog is real in e2e too: throwaway PostgreSQL on the fixed port the
       # webServer config expects (mirrors scripts/e2e.sh locally). The API migrates +
-      # seeds it at boot, so pg_isready is the only readiness gate needed here.
+      # seeds it at boot, so pg_isready is the only readiness gate needed here. The image
+      # comes from the same shared pin file the specs job loads.
+      - name: Load container image pins
+        run: |
+          set -a
+          . ./scripts/images.env
+          set +a
+          echo "POSTGRES_IMAGE=${POSTGRES_IMAGE}" >> "$GITHUB_ENV"
+
       - name: Start quotes catalog PostgreSQL
         run: |
           docker run -d --name e2e-pg \
             -e POSTGRES_PASSWORD=postgres \
             -e POSTGRES_DB=quotesdb \
             -p 127.0.0.1:55432:5432 \
-            docker.io/library/postgres:18.3
+            "${POSTGRES_IMAGE}"
           for i in $(seq 1 60); do
             docker exec e2e-pg pg_isready -U postgres -d quotesdb && break
             sleep 1

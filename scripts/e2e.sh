@@ -15,8 +15,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=env.sh
 source "${ROOT}/scripts/env.sh"
 
-# Same tag Aspire.Hosting.PostgreSQL pins, so local runs reuse the already-pulled image.
-PG_IMAGE="docker.io/library/postgres:18.3"
+# The catalog image comes from the repo's shared pin file (the one copy of the tag
+# Aspire.Hosting.PostgreSQL pins), so local runs reuse the already-pulled image.
+# shellcheck source=images.env
+source "${ROOT}/scripts/images.env"
+PG_IMAGE="${POSTGRES_IMAGE}"
 
 SUFFIX="$(printf '%s' "${ROOT}" | shasum | cut -c1-8)"
 PG_NAME="aspirequotes-e2e-pg-${SUFFIX}"

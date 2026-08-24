@@ -9,8 +9,43 @@ namespace Quotes.Infrastructure.Tests;
 /// </summary>
 internal static class PostgresTestDatabase
 {
-    // Matches the tag Aspire.Hosting.PostgreSQL 13.4.6 pins, so all boot paths share one image.
-    private const string _image = "docker.io/library/postgres:18.3";
+    // The image is the repo's single copy of the tag Aspire.Hosting.PostgreSQL pins
+    // (scripts/images.env, shared with e2e and CI so all boot paths run one image);
+    // a POSTGRES_IMAGE env var overrides it for local experiments.
+    private static readonly string _image = ResolveImage();
+
+    private static string ResolveImage()
+    {
+        var overrideImage = Environment.GetEnvironmentVariable("POSTGRES_IMAGE");
+        if (!string.IsNullOrWhiteSpace(overrideImage))
+        {
+            return overrideImage;
+        }
+
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "scripts", "images.env")))
+        {
+            directory = directory.Parent;
+        }
+
+        if (directory is null)
+        {
+            throw new InvalidOperationException(
+                "scripts/images.env not found above the test output directory; the container image pin cannot be resolved.");
+        }
+
+        foreach (var line in File.ReadLines(Path.Combine(directory.FullName, "scripts", "images.env")))
+        {
+            var entry = line.Split('=', 2);
+            if (entry.Length == 2 && entry[0].Trim() == "POSTGRES_IMAGE")
+            {
+                return entry[1].Trim();
+            }
+        }
+
+        throw new InvalidOperationException(
+            "scripts/images.env has no POSTGRES_IMAGE entry; the container image pin cannot be resolved.");
+    }
 
     private static readonly PostgreSqlContainer _container = new PostgreSqlBuilder(_image).Build();
 
