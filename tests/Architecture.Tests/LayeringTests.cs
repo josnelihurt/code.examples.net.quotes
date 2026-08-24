@@ -1,7 +1,9 @@
 using AspireQuotesPoc.ServiceDefaults.Telemetry;
 using Auth.Api.Endpoints;
 using Auth.Application;
+using Auth.Application.Abstractions;
 using Auth.Infrastructure;
+using Microsoft.Extensions.Hosting;
 using NetArchTest.Rules;
 using Quotes.Api.V1.Endpoints;
 using Quotes.Application;
@@ -112,5 +114,19 @@ public class LayeringTests
             .GetResult();
 
         result.IsSuccessful.ShouldBeTrue(string.Join("\n", result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Scope_vocabularies_stay_aligned_across_contexts()
+    {
+        // Quotes.Api owns the policies it registers (the kit is parameterized and carries no
+        // context vocabulary); Auth.Application owns what the token mint carries. Neither can
+        // reference the other — this suite is the one place allowed to see both, so the
+        // cross-context drift pin lives here.
+        Quotes.Api.QuoteScopes.ReadScope.ShouldBe(AuthorizationScopes.QuotesRead);
+        Quotes.Api.QuoteScopes.WriteScope.ShouldBe(AuthorizationScopes.QuotesWrite);
+        Quotes.Api.QuoteScopes.ReadPolicy.ShouldBe(AuthorizationScopes.QuotesRead);
+        Quotes.Api.QuoteScopes.WritePolicy.ShouldBe(AuthorizationScopes.QuotesWrite);
+        JwtAuthExtensions.ScopeClaimType.ShouldBe(AuthorizationScopes.ClaimType);
     }
 }

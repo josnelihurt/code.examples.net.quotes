@@ -170,7 +170,9 @@ public class QuoteAuthIntegrationTests
         builder.Configuration["Jwt:Issuer"] = _issuer;
         builder.Configuration["Jwt:Audience"] = _audience;
 
-        builder.AddStandardJwtAuthentication();
+        builder.AddStandardJwtAuthentication(
+            (QuoteScopes.ReadPolicy, QuoteScopes.ReadScope),
+            (QuoteScopes.WritePolicy, QuoteScopes.WriteScope));
         builder.Services.AddSingleton(useCase);
         builder.Services.AddSingleton(getById);
         builder.Services.AddSingleton(Substitute.For<IListQuotesUseCase>());

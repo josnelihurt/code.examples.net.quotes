@@ -71,7 +71,7 @@ public sealed class QuotesController(
     /// <response code="403">The token lacks the <c>quotes:read</c> scope.</response>
     /// <response code="404">The catalog is empty (errorCode <c>quote.not_found</c>).</response>
     [HttpGet("random")]
-    [Authorize(Policy = JwtAuthExtensions.ReadQuotesPolicy)]
+    [Authorize(Policy = QuoteScopes.ReadPolicy)]
     [ProducesResponseType<QuoteResponseDto>(StatusCodes.Status200OK, _jsonContentType)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, _problemContentType)]
     [OpenApiProblemExample(
@@ -104,7 +104,7 @@ public sealed class QuotesController(
     /// <response code="401">Missing or invalid bearer token (errorCode <c>auth.token_missing</c> or <c>auth.token_invalid</c>).</response>
     /// <response code="403">The token lacks the <c>quotes:read</c> scope.</response>
     [HttpGet("", Name = "ListQuotesV0")]
-    [Authorize(Policy = JwtAuthExtensions.ReadQuotesPolicy)]
+    [Authorize(Policy = QuoteScopes.ReadPolicy)]
     [ProducesResponseType<QuotePageResponseDto>(StatusCodes.Status200OK, _jsonContentType)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest, _problemContentType)]
     [OpenApiProblemExample(
@@ -136,7 +136,7 @@ public sealed class QuotesController(
     /// <response code="403">The token lacks the <c>quotes:read</c> scope.</response>
     /// <response code="404">No quote matches the id (errorCode <c>quote.not_found</c>).</response>
     [HttpGet("{id}", Name = GetByIdRouteName)]
-    [Authorize(Policy = JwtAuthExtensions.ReadQuotesPolicy)]
+    [Authorize(Policy = QuoteScopes.ReadPolicy)]
     [ProducesResponseType<QuoteResponseDto>(StatusCodes.Status200OK, _jsonContentType)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, _problemContentType)]
     [OpenApiProblemExample(
@@ -173,7 +173,7 @@ public sealed class QuotesController(
     /// <response code="403">The token lacks the <c>quotes:write</c> scope.</response>
     /// <response code="409">A quote with the same meaning already exists (errorCode <c>quote.duplicate_fingerprint</c>).</response>
     [HttpPost("")]
-    [Authorize(Policy = JwtAuthExtensions.WriteQuotesPolicy)]
+    [Authorize(Policy = QuoteScopes.WritePolicy)]
     [ProducesResponseType<QuoteResponseDto>(StatusCodes.Status201Created, _jsonContentType)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest, _problemContentType)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, _problemContentType)]

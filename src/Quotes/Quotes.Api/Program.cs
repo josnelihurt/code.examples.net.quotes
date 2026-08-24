@@ -28,7 +28,9 @@ try
     // would silently drop every /// summary and response description from the documents.
     builder.Services.AddOpenApi("v0", options => options.ConfigureStandardOpenApi("v0"));
     builder.Services.AddOpenApi("v1", options => options.ConfigureStandardOpenApi("v1"));
-    builder.AddStandardJwtAuthentication();
+    builder.AddStandardJwtAuthentication(
+        (QuoteScopes.ReadPolicy, QuoteScopes.ReadScope),
+        (QuoteScopes.WritePolicy, QuoteScopes.WriteScope));
 
     // The API host is the composition root: each layer contributes its own registrations.
     builder.Services.AddQuotesApplication();

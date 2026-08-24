@@ -30,7 +30,7 @@ public static class QuoteEndpoints
 
         quotes.MapGet("/random", GetRandomAsync)
             .WithName("GetRandomQuote")
-            .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
+            .RequireAuthorization(QuoteScopes.ReadPolicy)
             .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status403Forbidden)
@@ -39,7 +39,7 @@ public static class QuoteEndpoints
 
         quotes.MapGet("", ListAsync)
             .WithName("ListQuotes")
-            .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
+            .RequireAuthorization(QuoteScopes.ReadPolicy)
             .Produces<QuotePageResponseDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status403Forbidden)
@@ -51,7 +51,7 @@ public static class QuoteEndpoints
 
         quotes.MapGet("/{id}", GetByIdAsync)
             .WithName(GetByIdRouteName)
-            .RequireAuthorization(JwtAuthExtensions.ReadQuotesPolicy)
+            .RequireAuthorization(QuoteScopes.ReadPolicy)
             .Produces<QuoteResponseDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status403Forbidden)
@@ -60,7 +60,7 @@ public static class QuoteEndpoints
 
         quotes.MapPost("", CreateAsync)
             .WithName("CreateQuote")
-            .RequireAuthorization(JwtAuthExtensions.WriteQuotesPolicy)
+            .RequireAuthorization(QuoteScopes.WritePolicy)
             .Produces<QuoteResponseDto>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status409Conflict)

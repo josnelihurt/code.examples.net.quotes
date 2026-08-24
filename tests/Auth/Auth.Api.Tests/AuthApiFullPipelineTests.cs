@@ -200,21 +200,18 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
     }
 
     [Fact]
-    public async Task Issued_scope_claims_match_the_policies_the_resource_api_registers()
+    public async Task Issued_tokens_carry_the_documented_scope_vocabulary()
     {
-        // Drift test: ServiceDefaults owns the policies, Auth.Application owns the minted
-        // vocabulary; neither can reference the other, so this test pins them together.
-        // (auth.token_missing needs no pin since the registry collapsed to the single
-        // ServiceDefaults constant both producers use.)
-        JwtAuthExtensions.ReadQuotesPolicy.ShouldBe(AuthorizationScopes.QuotesRead);
-        JwtAuthExtensions.WriteQuotesPolicy.ShouldBe(AuthorizationScopes.QuotesWrite);
+        // The Auth context can only pin its own side of the vocabulary: what the mint
+        // puts into tokens. The resource side (QuoteScopes) cannot be referenced from
+        // here — Architecture.Tests owns the cross-context drift pin.
         JwtAuthExtensions.ScopeClaimType.ShouldBe(AuthorizationScopes.ClaimType);
 
         var token = await _factory.IssueTokenAsync();
         var scopes = ReadScopes(token);
 
-        scopes.ShouldContain(JwtAuthExtensions.ReadQuotesScope);
-        scopes.ShouldContain(JwtAuthExtensions.WriteQuotesScope);
+        scopes.ShouldContain(AuthorizationScopes.QuotesRead);
+        scopes.ShouldContain(AuthorizationScopes.QuotesWrite);
     }
 
     [Fact]

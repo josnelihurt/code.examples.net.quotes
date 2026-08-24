@@ -62,11 +62,26 @@ public class JwtAuthExtensionsTests
         });
         builder.Configuration["Jwt:SigningKey"] = "a-production-grade-secret-key-of-sufficient-length";
 
+        builder.AddStandardJwtAuthentication(("seed:read", "seed:read"), ("seed:write", "seed:write"));
+
+        var policyProvider = builder.Services.BuildServiceProvider()
+            .GetRequiredService<IAuthorizationPolicyProvider>();
+        (await policyProvider.GetPolicyAsync("seed:read")).ShouldNotBeNull();
+        (await policyProvider.GetPolicyAsync("seed:write")).ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task AddStandardJwtAuthentication_carries_no_policies_when_none_are_passed()
+    {
+        // The kit holds no context vocabulary: with no scopes declared at composition there
+        // is nothing to authorize against beyond authentication.
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.Configuration["Jwt:SigningKey"] = "unit-test-signing-key-that-is-long-enough-1234567890";
+
         builder.AddStandardJwtAuthentication();
 
         var policyProvider = builder.Services.BuildServiceProvider()
             .GetRequiredService<IAuthorizationPolicyProvider>();
-        (await policyProvider.GetPolicyAsync(JwtAuthExtensions.ReadQuotesPolicy)).ShouldNotBeNull();
-        (await policyProvider.GetPolicyAsync(JwtAuthExtensions.WriteQuotesPolicy)).ShouldNotBeNull();
+        (await policyProvider.GetPolicyAsync("quotes:read")).ShouldBeNull();
     }
 }

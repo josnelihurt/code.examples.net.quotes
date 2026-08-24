@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using NSubstitute;
 using Quotes.Api.V1.Contracts;
 using Quotes.Api.V1.Endpoints;
@@ -187,13 +186,13 @@ public class QuoteEndpointsTests
                 e.RoutePattern.RawText!.TrimEnd('/') == "/api/v1/quotes" && e.Metadata.OfType<HttpMethodMetadata>().Single().HttpMethods.Single() == "POST");
 
             random.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull()
-                .Policy.ShouldBe(JwtAuthExtensions.ReadQuotesPolicy);
+                .Policy.ShouldBe(QuoteScopes.ReadPolicy);
             byId.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull()
-                .Policy.ShouldBe(JwtAuthExtensions.ReadQuotesPolicy);
+                .Policy.ShouldBe(QuoteScopes.ReadPolicy);
             list.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull()
-                .Policy.ShouldBe(JwtAuthExtensions.ReadQuotesPolicy);
+                .Policy.ShouldBe(QuoteScopes.ReadPolicy);
             var createAuthorize = create.Metadata.GetMetadata<IAuthorizeData>().ShouldNotBeNull();
-            createAuthorize.Policy.ShouldBe(JwtAuthExtensions.WriteQuotesPolicy);
+            createAuthorize.Policy.ShouldBe(QuoteScopes.WritePolicy);
         }
         finally
         {
