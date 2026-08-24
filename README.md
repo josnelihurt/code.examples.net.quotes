@@ -260,3 +260,5 @@ What happens per state:
 Anyone who can label a PR could already merge it manually, so the label adds audit trail, not privilege. The workflow's token is the ephemeral per-run `GITHUB_TOKEN`; it cannot bypass branch protection.
 
 Agents working in this repo follow the same workflow — the agent-side recipe (snapshot before splitting, verify at load-bearing levels, evidence per PR) lives in [`AGENTS.md`](AGENTS.md).
+
+> Smoke-test line for the merge-me automation — added by the bottom layer of a two-PR test stack and removed by its top layer, so `main` ends unchanged.
