@@ -69,7 +69,7 @@ Transport vs domain validation: DTOs keep shallow guards (`[Required]`, `[MaxLen
 
 ## What it does today
 
-1. **Auth API** issues a JWT for hardcoded local users — `jrb` / `supersecret` holds `quotes:read` + `quotes:write`, `reader` / `readsecret` holds `quotes:read` only — and can validate tokens via `/api/v1/auth/validate` (optional introspection). Login and validate are rate-limited (fixed window per client IP, 429 as ProblemDetails), and the scaffolding credential store refuses to register in Production.
+1. **Auth API** issues a JWT for hardcoded local users — the maintainer holds `quotes:read` + `quotes:write`, the reader holds `quotes:read` only (users and passwords live in [docs/dev-credentials.md](docs/dev-credentials.md)) — and can validate tokens via `/api/v1/auth/validate` (optional introspection). Login and validate are rate-limited (fixed window per client IP, 429 as ProblemDetails), and the scaffolding credential store refuses to register in Production.
 2. **Quotes API** serves the catalog from PostgreSQL (container in the AppHost; schema migrated + seeded at boot) after JwtBearer validates the bearer token: `GET /api/v1/quotes/random`, `GET /api/v1/quotes/{id}`, `GET /api/v1/quotes?page=&pageSize=` (the ratified offset-pagination pattern), and `POST /api/v1/quotes` (requires `quotes:write`; rejects invalid and near-duplicate quotes — the latter by a unique fingerprint index). The same four operations are also served at `/api/v0/quotes/...` by MVC controllers — one core, two transport styles, held to byte-level response parity by tests. See [docs/architecture.md](docs/architecture.md#api-versions-and-transport-styles).
 3. **React SPA** logs in, stores token + `X-Correlation-Id`, then fetches quotes through the Vite proxy: a random quote, the paginated catalog (`/quotes`), and publishing a new quote (`/publish`, maintainer scope only). Its API types are generated from the frozen OpenAPI document, and its components have Storybook stories smoke-built in CI.
 4. **Aspire AppHost** starts everything, wires service discovery, exports OpenTelemetry to the dashboard, and publishes a **YARP** gateway (no Traefik).
@@ -207,16 +207,16 @@ See [docs/observability.md](docs/observability.md).
 
 ## Credentials and secrets
 
-- Maintainer (read + write): `jrb` / `supersecret`
-- Reader (read only): `reader` / `readsecret`
-- JWT signing key: **not committed**. For standalone `dotnet run` in Development, put the documented dev key in user-secrets (Aspire `run` injects the shared `jwt-signing-key` parameter automatically):
+All non-Production credentials — the two local users, the development signing key, and the ephemeral keys automation uses — live in exactly one place: [docs/dev-credentials.md](docs/dev-credentials.md). The CI `secrets-hygiene` job fails the build when a credential literal shows up anywhere outside that document, the code that implements it, and the tests that authenticate with it.
+
+For standalone `dotnet run` in Development, put the documented development key in user-secrets (Aspire `run` injects the shared `jwt-signing-key` parameter automatically):
 
 ```bash
-dotnet user-secrets set "Jwt:SigningKey" "AspireQuotesPoc-Dev-Signing-Key-32chars!" --project src/Auth/Auth.Api
-dotnet user-secrets set "Jwt:SigningKey" "AspireQuotesPoc-Dev-Signing-Key-32chars!" --project src/Quotes/Quotes.Api
+dotnet user-secrets set "Jwt:SigningKey" "<dev key from docs/dev-credentials.md>" --project src/Auth/Auth.Api
+dotnet user-secrets set "Jwt:SigningKey" "<dev key from docs/dev-credentials.md>" --project src/Quotes/Quotes.Api
 ```
 
-Production startup fails if the key is missing or equal to the public development key (`JwtAuthExtensions`). The hermetic OpenAPI export (`Dockerfile.build`) uses a build-time ephemeral key.
+Production startup fails if the key is missing, shorter than 32 bytes, or equal to the public development key (`JwtAuthExtensions`). The hermetic OpenAPI export (`Dockerfile.build`) generates a random build-time key.
 
 ## Stacked pull requests
 

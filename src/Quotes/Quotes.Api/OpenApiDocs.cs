@@ -16,8 +16,9 @@ internal static class OpenApiDocs
 
         Typical use:
 
-        1. Obtain a bearer JWT from the Auth API: `POST /api/v1/auth/login` (development
-           users: `jrb`/`supersecret` with both scopes, `reader`/`readsecret` read-only).
+        1. Obtain a bearer JWT from the Auth API: `POST /api/v1/auth/login`
+           (development users: see the repository's dev-credentials documentation;
+           the maintainer holds both scopes, the reader is read-only).
         2. Send `Authorization: Bearer {accessToken}` to every operation below — reads
            require the `quotes:read` scope claim, create requires `quotes:write`; a valid
            token without the scope answers 403.

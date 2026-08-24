@@ -33,7 +33,7 @@ Defaults (override via env; see `scripts/sonar-env.sh`):
 | Variable | Default |
 |----------|---------|
 | `SONAR_HOST_URL` | `http://localhost:9000` |
-| `SONAR_ADMIN_PASSWORD` | `AspireQuotes-Local2!` |
+| `SONAR_ADMIN_PASSWORD` | none — required, provide your own (see [dev-credentials.md](dev-credentials.md)) |
 | `SONAR_PROJECT_KEY` | `aspire-quotes` |
 
 UI: [http://localhost:9000](http://localhost:9000) — login `admin` / password above.
@@ -79,7 +79,7 @@ SONAR_ADMIN_PASSWORD='...' ./scripts/sonar-quality-profile.sh
 
 These stay in code with documented suppressions (local scaffolding, not production secrets):
 
-- Hardcoded `jrb` / `supersecret` in `HardcodedCredentialStore`
+- Hardcoded scaffolding users in `HardcodedCredentialStore` (documented in [dev-credentials.md](dev-credentials.md), refused in Production)
 - Aspire service-discovery base address `http://auth-api` (rewritten at runtime)
 
 Real issues (dead code, empty-token guards, duplicated bearer parsing, silent validation, Polly magic numbers) were fixed rather than suppressed.

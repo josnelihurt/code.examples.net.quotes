@@ -5,6 +5,7 @@
 * [Data storage](data-storage.md)
 * [Scalar (combined)](scalar/)
 * [Local development](local-dev.md)
+* [Development credentials](dev-credentials.md)
 * [Testing](testing.md)
 * [SonarQube](sonar.md)
 * [Observability](observability.md)

@@ -6,15 +6,16 @@ info:
     \ implemented with\nminimal APIs only. The MVC controller transport demonstrated\
     \ by the Quotes API (v0)\nis intentionally not replicated here.\n\nTypical use:\n\
     \n1. `POST /api/v1/auth/login` with username/password — the response carries the\n\
-    \   `accessToken` (development users: `jrb`/`supersecret` with both scopes,\n\
-    \   `reader`/`readsecret` read-only).\n2. Send `Authorization: Bearer {accessToken}`\
-    \ to the Quotes API (`/api/v1/quotes`).\n3. Optionally `POST /api/v1/auth/validate`\
-    \ to introspect a token; valid and invalid\n   tokens both answer `200 { valid,\
-    \ username }`.\n\nCross-cutting behavior:\n\n- Every error response is RFC 9457\
-    \ `application/problem+json` with `errorCode` and\n  `correlationId` extensions.\n\
-    - Both endpoints are rate limited per client IP (fixed window, 10 requests / 30\n\
-    \  seconds by default); over-limit answers `429` with `auth.rate_limited`.\n-\
-    \ Send `X-Correlation-Id` to correlate calls; it is echoed on every response."
+    \   `accessToken` (development users: see the repository's dev-credentials\n \
+    \  documentation; the maintainer holds both scopes, the reader is read-only).\n\
+    2. Send `Authorization: Bearer {accessToken}` to the Quotes API (`/api/v1/quotes`).\n\
+    3. Optionally `POST /api/v1/auth/validate` to introspect a token; valid and invalid\n\
+    \   tokens both answer `200 { valid, username }`.\n\nCross-cutting behavior:\n\
+    \n- Every error response is RFC 9457 `application/problem+json` with `errorCode`\
+    \ and\n  `correlationId` extensions.\n- Both endpoints are rate limited per client\
+    \ IP (fixed window, 10 requests / 30\n  seconds by default); over-limit answers\
+    \ `429` with `auth.rate_limited`.\n- Send `X-Correlation-Id` to correlate calls;\
+    \ it is echoed on every response."
   version: 1.0.0
 servers:
 - url: /
@@ -40,8 +41,9 @@ paths:
         is echoed on every response and embedded in problem details.'
       operationId: Login
       requestBody:
-        description: 'Credentials. Development users: `jrb/supersecret` (read + write
-          scopes), `reader/readsecret` (read only).'
+        description: Credentials. Development users are listed in the repository's
+          dev-credentials documentation; the maintainer holds both scopes, the reader
+          is read-only.
         content:
           application/json:
             schema:
@@ -213,8 +215,8 @@ components:
           type: string
           description: Account password.
       example:
-        username: jrb
-        password: supersecret
+        username: example-maintainer
+        password: example-password
     LoginResponseDto:
       required:
       - accessToken

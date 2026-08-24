@@ -16,8 +16,8 @@ internal static class OpenApiDocs
         Typical use:
 
         1. `POST /api/v1/auth/login` with username/password — the response carries the
-           `accessToken` (development users: `jrb`/`supersecret` with both scopes,
-           `reader`/`readsecret` read-only).
+           `accessToken` (development users: see the repository's dev-credentials
+           documentation; the maintainer holds both scopes, the reader is read-only).
         2. Send `Authorization: Bearer {accessToken}` to the Quotes API (`/api/v1/quotes`).
         3. Optionally `POST /api/v1/auth/validate` to introspect a token; valid and invalid
            tokens both answer `200 { valid, username }`.

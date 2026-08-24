@@ -5,17 +5,25 @@ on:
     branches: [main]
   pull_request:
 
+# Superseded runs waste the container-heavy jobs (specs, e2e, contract-drift); cancel
+# them for PRs while keeping every push to main.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
+# Actions are pinned to commit SHAs (tag in the trailing comment) so a mutable-tag
+# takeover cannot run third-party code against the repository.
 jobs:
   build-and-test:
     name: build & test (Release + coverage)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 10.0.x
 
@@ -28,7 +36,7 @@ jobs:
           find tests -name '*.Tests.csproj' -print0 | xargs -0 -n1 dotnet test -c Release --settings ./tests/coverlet.runsettings
 
       - name: Upload coverage (OpenCover)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: coverage-opencover
           path: tests/**/TestResults/**/*.xml
@@ -38,9 +46,9 @@ jobs:
     name: lint (dotnet format)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 10.0.x
 
@@ -49,6 +57,97 @@ jobs:
       - name: Format check
         run: ./scripts/lint.sh
 
+  secrets-hygiene:
+    name: secrets hygiene (credential literals stay in the allowlist)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # The seed's scaffolding credentials live in exactly one documentation location
+      # (docs/dev-credentials.md), one code location per credential (the implementing
+      # class, refused in Production), and tests that must authenticate against them.
+      # Everything else fails: a literal that exists only to be copy-pasted is how forks
+      # leak. The component READMEs of the implementing classes document their own
+      # literals and are allowlisted with them.
+      - name: Fail on credential literals outside the allowlist
+        run: |
+          set -euo pipefail
+          pattern='supersecret|readsecret|Dev-Signing-Key|AspireQuotes-Local2!'
+          hits=$(git grep -nE "$pattern" \
+            ':!**/bin/**' ':!**/obj/**' ':!frontend/pnpm-lock.yaml' \
+            ':!.github/workflows/ci.yml' \
+            ':!tests/**' ':!**/*.test.ts' ':!**/*.test.tsx' ':!frontend/e2e/**' \
+            ':!docs/dev-credentials.md' \
+            ':!src/Auth/Auth.Infrastructure/HardcodedCredentialStore.cs' \
+            ':!src/Auth/Auth.Infrastructure/README.md' \
+            ':!src/ServiceDefaults/JwtAuthExtensions.cs' \
+            ':!src/ServiceDefaults/README.md' \
+            || true)
+          if [ -n "$hits" ]; then
+            echo "Credential literals outside the allowlist:"
+            echo "$hits"
+            echo "Consolidate them into docs/dev-credentials.md (see the allowlist in ci.yml)."
+            exit 1
+          fi
+
+  codeql:
+    name: security (CodeQL)
+    runs-on: ubuntu-latest
+    permissions:
+      # Required by CodeQL to upload the analysis; everything else stays read-only.
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: github/codeql-action/init@42947a340483f03ba47bb1a039b2c519aab3df85 # v3
+        with:
+          languages: csharp
+
+      # The C# extractor needs a build between init and analyze. Explicit projects rather
+      # than the solution (it contains the VS-only frontend.esproj a clean SDK checkout
+      # cannot build); the two APIs pull in ServiceDefaults and both bounded contexts.
+      - name: Build for analysis
+        run: |
+          dotnet restore src/Auth/Auth.Api/Auth.Api.csproj
+          dotnet restore src/Quotes/Quotes.Api/Quotes.Api.csproj
+          dotnet build src/Auth/Auth.Api/Auth.Api.csproj --no-restore
+          dotnet build src/Quotes/Quotes.Api/Quotes.Api.csproj --no-restore
+
+      - uses: github/codeql-action/analyze@42947a340483f03ba47bb1a039b2c519aab3df85 # v3
+
+  dependency-review:
+    name: security (dependency review)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # The review action hard-fails when the repository's dependency graph is disabled
+      # (a setting the API will not flip for this repository). Probe the graph first:
+      # gate when it is available, emit a notice instead of a failure when it is not, so
+      # enabling the feature in Settings is the only step needed to turn this into a gate.
+      - name: Is the dependency graph enabled?
+        id: graph
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${{ github.repository }}/dependency-graph/sbom" >/dev/null 2>&1; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Dependency graph is disabled for this repository; skipping dependency review. Enable it in Settings → Code security and analysis."
+          fi
+
+      # Fails the PR when a changed lockfile introduces a known-vulnerable or unlicensed
+      # dependency (pnpm-lock.yaml; NuGet is covered by CodeQL's SBOM pass).
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        if: steps.graph.outputs.enabled == 'true'
+
   frontend:
     name: frontend (lint + tests + build)
     runs-on: ubuntu-latest
@@ -56,16 +155,16 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # pnpm/action-setup reads the pinned version from packageManager in
       # frontend/package.json; it must run before setup-node (which needs the
       # pnpm binary on PATH to locate the store for caching).
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           package_json_file: frontend/package.json
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: pnpm
@@ -92,9 +191,9 @@ jobs:
     name: specs (BDD against the Aspire stack)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 10.0.x
 
@@ -121,7 +220,7 @@ jobs:
       # it proves cross-service journeys, so it runs as its own parallel gate.
       - run: dotnet test tests/Bdd/AspireQuotesPoc.Specs.csproj -c Release --logger "trx;LogFileName=specs.trx"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: specs-results
@@ -130,18 +229,22 @@ jobs:
   e2e:
     name: e2e (Playwright + playwright-bdd)
     runs-on: ubuntu-latest
+    env:
+      # Ephemeral per-run key for the two local API processes Playwright boots; the
+      # local-development key is documented in docs/dev-credentials.md, never committed.
+      E2E_SIGNING_KEY: ci-run-${{ github.run_id }}-${{ github.run_attempt }}-0123456789abcdef
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 10.0.x
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           package_json_file: frontend/package.json
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: pnpm
@@ -184,7 +287,7 @@ jobs:
       - run: pnpm run test:e2e
         working-directory: frontend
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: playwright-report
@@ -194,7 +297,7 @@ jobs:
     name: openapi contract drift
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # The frozen contracts under docs/openapi are product: regenerate them hermetically
       # (same flow as scripts/update-contracts.sh) and fail when they no longer match.

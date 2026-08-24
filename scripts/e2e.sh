@@ -48,6 +48,16 @@ fi
 # Honors ASPIRE_CONTAINER_RUNTIME (podman by default here); both CLIs accept these args.
 RUNTIME="${ASPIRE_CONTAINER_RUNTIME:-podman}"
 
+# playwright.config.ts refuses to boot without a 32+ char signing key; check here so the
+# failure names the fix instead of surfacing as a Playwright config error (CI sets its own
+# ephemeral value; locally export one — see docs/dev-credentials.md).
+if [ -z "${E2E_SIGNING_KEY:-}" ]; then
+  echo "E2E_SIGNING_KEY is not set: export a value of at least 32 characters" >&2
+  echo "(see docs/dev-credentials.md), for example:" >&2
+  echo '  export E2E_SIGNING_KEY="local-e2e-<your-random-32-plus-chars>"' >&2
+  exit 1
+fi
+
 dotnet build "${ROOT}/src/Auth/Auth.Api/Auth.Api.csproj" --configuration Release
 dotnet build "${ROOT}/src/Quotes/Quotes.Api/Quotes.Api.csproj" --configuration Release
 

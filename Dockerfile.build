@@ -3,7 +3,9 @@
 # Hermetic OpenAPI freeze: build Auth/Quotes APIs, export each /openapi/{document}.json to YAML.
 # Extract with: ./scripts/update-contracts.sh  (podman|docker build + cp from scratch stage)
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Digest-pinned so the "frozen" contract export cannot churn when the floating tag moves;
+# bump deliberately via `podman pull mcr.microsoft.com/dotnet/sdk:10.0 && podman images --digests`.
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e1ffd2a92ae84c1291bc1b6887501f8af98e6331e7af6d4c8d37168c5e87a64c AS build
 WORKDIR /src
 
 COPY Directory.Build.props Directory.Packages.props nuget.config ./
@@ -26,8 +28,9 @@ mkdir -p /out /tmp/logs
 
 # Throwaway key for the export only: both APIs must agree on it, and it must never
 # match the committed development key (the Production guard would reject it, and
-# this throwaway never leaves the build container).
-export Jwt__SigningKey="openapi-export-throwaway-key-0123456789abcdef"
+# this throwaway never leaves the build container). Generated randomly at build time,
+# so no key literal lives in the repository.
+export Jwt__SigningKey="openapi-export-$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 
 # The Quotes API needs its catalog database even to serve the OpenAPI documents (it
 # migrates at boot), so start the cluster Debian just installed and hand it a throwaway

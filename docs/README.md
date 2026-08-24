@@ -17,5 +17,4 @@ See the [repository README](../README.md) for intention, layering rules, and con
 
 ## Credentials (local scaffolding)
 
-- Maintainer (read + write): `jrb` / `supersecret`
-- Reader (read only): `reader` / `readsecret`
+All non-Production credentials — the two local users, the development signing key, the ephemeral keys automation uses — live in [dev-credentials.md](dev-credentials.md), the single source of truth the CI secrets-hygiene gate enforces.

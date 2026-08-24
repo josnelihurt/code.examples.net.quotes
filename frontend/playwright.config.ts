@@ -6,9 +6,16 @@ const testDir = defineBddConfig({
   steps: 'e2e/steps/**/*.ts',
 });
 
-// Shared by both APIs (Auth signs, Quotes verifies) — mirrors the CI smoke key the old
-// bash script used; any 32+ char value the Production guard would accept works.
-const JWT_KEY = 'e2e-signing-key-0123456789abcdef';
+// Shared by both APIs (Auth signs, Quotes verifies). Required: any value of at least 32
+// characters — CI generates an ephemeral per-run key; locally export your own (see
+// docs/dev-credentials.md). Failing fast here beats a cryptic JwtBearer error at boot.
+const JWT_KEY = process.env.E2E_SIGNING_KEY ?? '';
+if (!JWT_KEY || JWT_KEY.length < 32) {
+  throw new Error(
+    'E2E_SIGNING_KEY must be set to a value of at least 32 characters before running e2e ' +
+      '(see docs/dev-credentials.md; CI generates an ephemeral one).',
+  );
+}
 
 // scripts/e2e.sh namespaces every port per worktree (several agents/worktrees can share
 // one machine without deleting each other's containers or reusing each other's servers)

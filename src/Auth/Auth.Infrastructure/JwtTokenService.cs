@@ -18,12 +18,27 @@ public sealed class JwtTokenService : ITokenService
     private readonly SymmetricSecurityKey _key;
     private readonly ILogger<JwtTokenService> _logger;
 
+    /// <summary>
+    /// Mirrors <c>JwtAuthExtensions.MinimumSigningKeyBytes</c> in ServiceDefaults (this
+    /// project cannot reference the platform kit); the test suite pins the two values
+    /// together so they cannot drift.
+    /// </summary>
+    private const int _minimumSigningKeyBytes = 32;
+
     public JwtTokenService(IConfiguration configuration, ILogger<JwtTokenService> logger)
     {
         _logger = logger;
         var jwt = configuration.GetSection("Jwt");
         var signingKey = jwt["SigningKey"]
             ?? throw new InvalidOperationException("Jwt:SigningKey is required");
+
+        // HMAC-SHA256 with a short key is a misconfiguration, not a degraded mode: fail at
+        // first resolution, the same boot-time stance ServiceDefaults' JwtAuthExtensions takes.
+        if (Encoding.UTF8.GetByteCount(signingKey) < _minimumSigningKeyBytes)
+        {
+            throw new InvalidOperationException(
+                $"Jwt:SigningKey must be at least {_minimumSigningKeyBytes} bytes.");
+        }
 
         _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         // These fallbacks mirror JwtAuthExtensions.DefaultIssuer/DefaultAudience in ServiceDefaults;

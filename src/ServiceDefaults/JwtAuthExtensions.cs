@@ -32,6 +32,9 @@ public static class JwtAuthExtensions
 
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
+    /// <summary>Minimum HMAC-SHA256 key length the seed accepts at boot, in bytes.</summary>
+    public const int MinimumSigningKeyBytes = 32;
+
     /// <summary>
     /// Registers JwtBearer validation plus one authorization policy per scope the host
     /// passes in. The kit carries no context vocabulary: each API declares its own scopes
@@ -47,6 +50,14 @@ public static class JwtAuthExtensions
         var jwt = builder.Configuration.GetSection(JwtSectionName);
         var signingKey = jwt["SigningKey"]
             ?? throw new InvalidOperationException($"{SigningKeyKey} is required");
+
+        // HMAC-SHA256 needs a key with real entropy; a short key is a misconfiguration that
+        // would otherwise surface as weak tokens, so it fails at boot like the dev key does.
+        if (Encoding.UTF8.GetByteCount(signingKey) < MinimumSigningKeyBytes)
+        {
+            throw new InvalidOperationException(
+                $"{SigningKeyKey} must be at least {MinimumSigningKeyBytes} bytes; configure a real secret.");
+        }
 
         if (builder.Environment.IsProduction() && signingKey == DevelopmentSigningKey)
         {

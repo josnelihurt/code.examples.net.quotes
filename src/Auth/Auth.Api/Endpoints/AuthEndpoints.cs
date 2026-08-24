@@ -75,7 +75,7 @@ public static class AuthEndpoints
     /// <param name="authService">Application dependency, not part of the HTTP contract.</param>
     /// <param name="http">Request context, not part of the HTTP contract.</param>
     /// <param name="cancellationToken">Cooperative cancellation, not part of the HTTP contract.</param>
-    /// <param name="body">Credentials. Development users: <c>jrb/supersecret</c> (read + write scopes), <c>reader/readsecret</c> (read only).</param>
+    /// <param name="body">Credentials. Development users are listed in the repository's dev-credentials documentation; the maintainer holds both scopes, the reader is read-only.</param>
     /// <response code="200">Credentials accepted; the body carries the access token, its lifetime in seconds and the correlation id.</response>
     /// <response code="400">Malformed payload; transport validation errors are keyed by property name (Username, Password).</response>
     /// <response code="401">Unknown credentials (errorCode <c>auth.invalid_credentials</c>).</response>

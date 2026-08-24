@@ -6,18 +6,19 @@ info:
     \ same operations, payloads and error envelope; parity is enforced by\ntests.\
     \ `v0` exists to demonstrate that transport style is a swappable detail of the\n\
     architecture — new integrations should prefer `v1`.\n\nTypical use:\n\n1. Obtain\
-    \ a bearer JWT from the Auth API: `POST /api/v1/auth/login` (development\n   users:\
-    \ `jrb`/`supersecret` with both scopes, `reader`/`readsecret` read-only).\n2.\
-    \ Send `Authorization: Bearer {accessToken}` to every operation below — reads\n\
-    \   require the `quotes:read` scope claim, create requires `quotes:write`; a valid\n\
-    \   token without the scope answers 403.\n3. The catalog boots seeded (eight quotes),\
-    \ so reads serve data from the first\n   call: browse with `GET /api/v1/quotes`,\
-    \ `GET /api/v1/quotes/{id}` or\n   `GET /api/v1/quotes/random`, then add your\
-    \ own with `POST /api/v1/quotes`.\n   The same operations exist under `/api/v0/quotes`.\n\
-    \nCross-cutting behavior:\n\n- Every error response is RFC 9457 `application/problem+json`\
-    \ with `errorCode` and\n  `correlationId` extensions.\n- Pagination is 1-based\
-    \ (`page` from 1, `pageSize` between 1 and 100, default 20).\n- Send `X-Correlation-Id`\
-    \ to correlate calls; it is echoed on every response."
+    \ a bearer JWT from the Auth API: `POST /api/v1/auth/login`\n   (development users:\
+    \ see the repository's dev-credentials documentation;\n   the maintainer holds\
+    \ both scopes, the reader is read-only).\n2. Send `Authorization: Bearer {accessToken}`\
+    \ to every operation below — reads\n   require the `quotes:read` scope claim,\
+    \ create requires `quotes:write`; a valid\n   token without the scope answers\
+    \ 403.\n3. The catalog boots seeded (eight quotes), so reads serve data from the\
+    \ first\n   call: browse with `GET /api/v1/quotes`, `GET /api/v1/quotes/{id}`\
+    \ or\n   `GET /api/v1/quotes/random`, then add your own with `POST /api/v1/quotes`.\n\
+    \   The same operations exist under `/api/v0/quotes`.\n\nCross-cutting behavior:\n\
+    \n- Every error response is RFC 9457 `application/problem+json` with `errorCode`\
+    \ and\n  `correlationId` extensions.\n- Pagination is 1-based (`page` from 1,\
+    \ `pageSize` between 1 and 100, default 20).\n- Send `X-Correlation-Id` to correlate\
+    \ calls; it is echoed on every response."
   version: 1.0.0
 servers:
 - url: /

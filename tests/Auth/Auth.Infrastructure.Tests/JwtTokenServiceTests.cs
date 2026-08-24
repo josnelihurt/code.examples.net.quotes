@@ -39,6 +39,19 @@ public class JwtTokenServiceTests
     }
 
     [Fact]
+    public void Constructor_rejects_a_signing_key_shorter_than_the_platform_minimum()
+    {
+        // The local minimum mirrors JwtAuthExtensions.MinimumSigningKeyBytes (this project
+        // cannot reference ServiceDefaults); pinning the boundary behavior keeps the mirror
+        // honest — one char below the platform floor throws, the floor itself works.
+        var tooShort = new string('k', JwtAuthExtensions.MinimumSigningKeyBytes - 1);
+        Should.Throw<InvalidOperationException>(() => CreateService(("Jwt:SigningKey", tooShort)));
+
+        var atFloor = new string('k', JwtAuthExtensions.MinimumSigningKeyBytes);
+        CreateService(("Jwt:SigningKey", atFloor)).ShouldNotBeNull();
+    }
+
+    [Fact]
     public async Task CreateTokenAsync_reports_the_configured_lifetime()
     {
         var sut = CreateService(("Jwt:ExpiresInSeconds", "120"));

@@ -28,7 +28,7 @@ export function LoginPage() {
     <section className="panel">
       <h1>Sign in</h1>
       <p className="muted">
-        Local credentials — maintainer: jrb / supersecret, read-only: reader / readsecret
+        Local credentials — see docs/dev-credentials.md in the repository
       </p>
       <form onSubmit={onSubmit} className="form">
         <label>

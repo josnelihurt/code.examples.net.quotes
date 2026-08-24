@@ -39,6 +39,18 @@ public class JwtAuthExtensionsTests
     }
 
     [Fact]
+    public void AddStandardJwtAuthentication_rejects_a_signing_key_shorter_than_the_minimum()
+    {
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.Configuration["Jwt:SigningKey"] = new string('k', JwtAuthExtensions.MinimumSigningKeyBytes - 1);
+
+        var act = () => builder.AddStandardJwtAuthentication();
+
+        Should.Throw<InvalidOperationException>(act)
+            .Message.ShouldContain("at least");
+    }
+
+    [Fact]
     public void AddStandardJwtAuthentication_rejects_the_development_key_in_production()
     {
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions

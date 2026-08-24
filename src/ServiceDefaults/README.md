@@ -224,9 +224,11 @@ Called by: `ConfigureOpenTelemetry` from `AddServiceDefaults`; `AppMetrics.Recor
 
 Files: [`JwtAuthExtensions.cs`](JwtAuthExtensions.cs).
 
-`AddStandardJwtAuthentication` reads the `Jwt` configuration section and configures JwtBearer plus
-the authorization policies. `UseStandardAuthentication` adds `UseAuthentication()` then
-`UseAuthorization()` in the right order.
+`AddStandardJwtAuthentication` reads the `Jwt` configuration section, configures JwtBearer, and
+registers one authorization policy per `(policy, scope)` tuple the host passes in — the kit itself
+carries **no context vocabulary**, so a second bounded context grows authorization without editing
+the shared kit (`Quotes.Api` declares `QuoteScopes` and passes its own tuples at composition).
+`UseStandardAuthentication` adds `UseAuthentication()` then `UseAuthorization()` in the right order.
 
 Constants (all `public const string`, so hosts and tests reference them instead of literals):
 
@@ -240,26 +242,28 @@ Constants (all `public const string`, so hosts and tests reference them instead 
 | `ScopeClaimType` | `scope` |
 | `TokenMissingErrorCode` | `auth.token_missing` |
 | `TokenInvalidErrorCode` | `auth.token_invalid` |
-| `ReadQuotesPolicy` / `ReadQuotesScope` | `quotes:read` |
-| `WriteQuotesPolicy` / `WriteQuotesScope` | `quotes:write` |
 
 `Issuer` and `Audience` fall back to the defaults when unconfigured; the signing key has no
-fallback. Two startup guards throw `InvalidOperationException` before the host is built:
+fallback. Three startup guards throw `InvalidOperationException` before the host is built:
 
 1. **Missing key** — no `Jwt:SigningKey` in configuration at all.
-2. **Public development key in Production** — `IsProduction()` and the configured key equals
-   `DevelopmentSigningKey`. The dev key is printed in the repository README, so it is public by
-   construction; failing at startup is cheaper than discovering it in a running deployment.
+2. **Key shorter than `MinimumSigningKeyBytes` (32)** — HMAC-SHA256 with a short key is a
+   misconfiguration, not a degraded mode.
+3. **Public development key in Production** — `IsProduction()` and the configured key equals
+   `DevelopmentSigningKey`. The dev key is public by construction (see
+   `docs/dev-credentials.md`); failing at startup is cheaper than discovering it in a running
+   deployment.
 
-Both are pinned by `JwtAuthExtensionsTests`.
+All are pinned by `JwtAuthExtensionsTests`.
 
 Token validation: issuer, audience, issuer signing key and lifetime are all validated, with
 `ClockSkew` cut to one minute (the framework default is five). The key is a
 `SymmetricSecurityKey` over the UTF-8 bytes of the configured string.
 
-Two scope policies are registered, each a `RequireClaim(scope, ...)`: `quotes:read` and
-`quotes:write`. A valid token on its own authorizes nothing — every protected endpoint names a
-policy.
+Scope policies are registered from the tuples passed at composition, each a
+`RequireClaim(ScopeClaimType, scope)`. A valid token on its own authorizes nothing — every
+protected endpoint names a policy; `Architecture.Tests` pins the composing API's vocabulary to
+the minting side's.
 
 The `OnChallenge` event is replaced so that even the 401 is an RFC 9457 document. It calls
 `HandleResponse()` to suppress the framework's empty 401 and writes:
@@ -267,17 +271,19 @@ The `OnChallenge` event is replaced so that even the 401 is an RFC 9457 document
 - status `401`, content type `application/problem+json`
 - `WWW-Authenticate: Bearer error="invalid_token"` when a token was presented and failed
   (`AuthenticateFailure is not null`), plain `Bearer` when none was presented at all
-- a body with `title` `Unauthorized`, `detail` "A valid bearer token is required.", and the
-  extensions `correlationId` (via `GetCorrelationId`) and `errorCode`
+- a body built by `ProblemDetailsBuilder` (the same envelope every error uses): `title`
+  `Unauthorized`, `detail` "A valid bearer token is required.", the RFC 9110 `type` link, and
+  the extensions `correlationId` (via `GetCorrelationId`) and `errorCode`
   (`auth.token_invalid` or `auth.token_missing`, matching the header)
 
-This body is serialized inline with `JsonSerializerDefaults.Web` rather than through
-`ProblemDetailsFactory`, because the challenge happens before any `ErrorOr` result exists.
+The body is serialized inline with `JsonSerializerDefaults.Web` because the challenge happens in
+authentication middleware, before any `ErrorOr` result exists — but it is *built* by the shared
+envelope, not hand-rolled.
 
-Called by: `Quotes.Api/Program.cs` (`AddStandardJwtAuthentication` and `UseStandardAuthentication`).
-`Auth.Api` does not authenticate requests — it issues tokens — but its `JwtTokenService` mirrors
-`DefaultIssuer`/`DefaultAudience`, and both `Quotes.Api` transports reference the policy and error-code
-constants.
+Called by: `Quotes.Api/Program.cs` (`AddStandardJwtAuthentication` with the `QuoteScopes` tuples,
+and `UseStandardAuthentication`). `Auth.Api` does not authenticate requests — it issues tokens —
+but its `JwtTokenService` mirrors `DefaultIssuer`/`DefaultAudience` and the minimum key length,
+and both `Quotes.Api` transports use the error-code constants.
 
 ## Error mapping
 
