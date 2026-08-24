@@ -246,4 +246,17 @@ gh stack view / sync / rebase / merge     # inspect, update, land
 
 Gotchas: server-side rebases produce unsigned commits — irrelevant today, but if the repo ever requires signed commits use `gh stack rebase` + `gh stack push` instead of the web button. A stack must keep linear history between its branches. Squash merges work at every layer; branch-protection checks apply to each PR individually.
 
+## Merging: the `merge-me` label
+
+Labeling a PR `merge-me` asks the [`merge-me` workflow](.github/workflows/merge-me.yml) to merge it — deterministically, with no agent holding tokens: the label is **standing intent ("merge when green"), not a command ("merge now")**. The workflow re-evaluates the PR when the label lands, when new commits are pushed, on reopen, and when the `ci` workflow completes (`workflow_run`) — every evaluation corresponds to a real event, and nothing runs on a timer. It merges (squash) only when every check passes. A manual `workflow_dispatch` run (a PR number, or blank for every labeled PR) is the escape hatch for replaying an evaluation lost to a transient run failure. The mechanics live in `scripts/merge-me.sh`; the investigation, rejected alternatives and tradeoffs are recorded in [issue #33](https://github.com/josnelihurt/net-examples/issues/33).
+
+What happens per state:
+
+- **Green** → merged in that run, via GitHub's asynchronous merge endpoint — the only merge path that also works for stacked PRs.
+- **Pending** → an ordinary PR gets GitHub's server-side auto-merge armed (it merges the moment checks pass, surviving any number of fix pushes); a stacked layer gets a bounded 15-minute wait, re-armed by the next push or by CI completing.
+- **Red** → nothing merges and the label stays: approval of *intent* is separate from merge *state*. Push the fix and the PR merges itself.
+- **Stack semantics**: merging a labeled layer lands every stack member below it atomically — labeling the top PR of a reviewed stack lands the whole chain.
+
+Anyone who can label a PR could already merge it manually, so the label adds audit trail, not privilege. The workflow's token is the ephemeral per-run `GITHUB_TOKEN`; it cannot bypass branch protection.
+
 Agents working in this repo follow the same workflow — the agent-side recipe (snapshot before splitting, verify at load-bearing levels, evidence per PR) lives in [`AGENTS.md`](AGENTS.md).

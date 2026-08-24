@@ -40,7 +40,10 @@ The recipe (proven on the PostgreSQL-catalog stack, PRs #13 → #14):
    for existing PRs, and `gh stack link <stack-number> <new-pr>` to append later layers.
 8. **After registration, merging is bottom-up and automatic** — GitHub rebases and
    retargets the layers above as each PR merges. Do not rebase, force-push, or delete
-   mid-stack branches, and do not edit PR bases by hand.
+   mid-stack branches, and do not edit PR bases by hand. Never merge by hand: labeling a
+   reviewed PR `merge-me` hands it to the merge-me workflow, which merges green PRs
+   itself (stack layers atomically, everything below included) — see
+   `.github/workflows/merge-me.yml` and `scripts/merge-me.sh`.
 
 What matters most: every intermediate level green, per-level evidence in the PR bodies,
 and a tip that matches the independently verified end state.
