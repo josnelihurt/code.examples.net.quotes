@@ -264,8 +264,11 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         second.ShouldNotBeNull();
         second.Page.ShouldBe(2);
         first.Items.Count.ShouldBe(5);
-        second.Items.Count.ShouldBe(second.TotalItems - 5);
-        second.TotalItems.ShouldBe(first.TotalItems);
+        // The fixture's catalog is shared with parallel creators, so appends can land
+        // between the two fetches: the totals can only grow, and page two stays full
+        // (five items) while the tail moves one page later.
+        second.Items.Count.ShouldBe(Math.Min(second.TotalItems - 5, 5));
+        second.TotalItems.ShouldBeGreaterThanOrEqualTo(first.TotalItems);
         first.Items.Select(quote => quote.Id)
             .Intersect(second.Items.Select(quote => quote.Id))
             .ShouldBeEmpty();
