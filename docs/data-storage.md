@@ -101,9 +101,25 @@ step.
 
 `frontend/playwright.config.ts` boots the APIs *without* the AppHost, and `Dockerfile.build` boots
 Quotes.Api inside a build container to freeze the OpenAPI documents. Both supply the same contract
-the AppHost injects — a `ConnectionStrings__quotesdb` value pointing at a throwaway PostgreSQL
-(`scripts/e2e.sh` / the CI e2e job start one on `127.0.0.1:55432`; the Dockerfile starts a distro
-cluster inside the export stage). Same key, same migration-at-boot, same seeded catalog.
+the AppHost injects — a `ConnectionStrings__quotesdb` value pointing at a throwaway PostgreSQL.
+Same key, same migration-at-boot, same seeded catalog.
+
+Every surface that hands a database connection to a service:
+
+| Surface | Connection source | Credentials |
+|---------|-------------------|-------------|
+| AppHost `WithReference(quotesDb)` | Aspire generates the address and password at run time and injects `ConnectionStrings__quotesdb` | The model for real secrets: never a literal; published output exposes it as a variable operators must fill |
+| Standalone e2e | [`scripts/e2e.env`](../scripts/e2e.env) — the one copy of the throwaway catalog's port, user, password and database. `scripts/e2e.sh` and the CI e2e job source it to start the container; `playwright.config.ts` parses it for its webServer env | Deliberately disposable (loopback-only, guards nothing), committed on purpose. Never put a real credential in this file |
+| `Dockerfile.build` export stage | A distro PostgreSQL cluster started inside the hermetic build container | Throwaway; created and consumed without ever leaving the image |
+| Testcontainers fixtures (`PostgresTestDatabase`, `QuoteApiFactory`) | `_container.GetConnectionString()` from per-run containers | Random per run |
+
+The rule the table encodes: **throwaway connections may live in exactly one file because they
+guard nothing; anything that could ever carry a non-throwaway credential must come from a
+parameter, never a committed literal.** The model is `jwt-signing-key`
+(`builder.AddParameter("jwt-signing-key", secret: true)` in [AppHost.cs](../src/AppHost/AppHost.cs)):
+if a future standalone database stops being throwaway, its credentials become an `AddParameter`
+secret the same way. The `secrets-hygiene` CI job keeps the inventory honest — it fails when the
+throwaway literals appear outside `scripts/e2e.env` and its allowlist.
 
 ## The polyglot door
 
@@ -139,4 +155,5 @@ Running the app or the suites needs a container runtime (`scripts/env.sh` defaul
   exports `DOCKER_HOST` (pointing at the machine's socket) and disables Ryuk, whose privileges the
   machine does not grant; with Docker Desktop nothing is needed. On CI (GitHub runners) Docker is
   simply there.
-- **e2e** — `scripts/e2e.sh` starts the throwaway catalog and cleans it up on exit.
+- **e2e** — `scripts/e2e.sh` starts the throwaway catalog (connection values from
+  `scripts/e2e.env`) and cleans it up on exit.

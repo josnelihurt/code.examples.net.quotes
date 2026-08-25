@@ -136,7 +136,8 @@ inside a checkout and unique across checkouts.
   15142–22035, docs 3001, Sonar 9000, PostgreSQL 55432). Playwright receives the ports
   through `E2E_AUTH_PORT` / `E2E_QUOTES_PORT` / `E2E_VITE_PORT` / `E2E_PG_PORT`; each
   is overridable, and `frontend/playwright.config.ts` falls back to the historical
-  fixed ports when they are absent — which is what CI does with its own PostgreSQL.
+  fixed API/Vite ports — and, for the catalog, to `scripts/e2e.env`, the one copy of
+  the throwaway connection values that CI also starts its own PostgreSQL from.
 - `scripts/update-contracts.sh` tags its export image `…:export-<hash>`, so two
   worktrees exporting contracts never race the same image tag.
 - `scripts/start.sh` passes `--isolated` to `aspire run`: randomized dashboard/service
@@ -172,7 +173,8 @@ server state) and `scripts/export-bundle.sh` (writes `~/repo.bundle`).
 errors cannot pass, plus the Storybook build and a regeneration of the SPA's
 OpenAPI-derived types in `src/api/schema.d.ts` failing on drift); the **specs** job
 (Reqnroll against the Aspire-orchestrated stack, Docker on `ubuntu-latest`); the
-**e2e** job (Playwright + playwright-bdd in Chromium); the hermetic OpenAPI
+**e2e** job (Playwright + playwright-bdd in Chromium, its throwaway catalog started from
+`scripts/e2e.env`); the hermetic OpenAPI
 contract regeneration failing on any drift vs `docs/openapi/`; and the **image-pins**
 gate (`scripts/check-image-tags.sh`) failing when the container image tags in
 `scripts/images.env` drift from the ones the pinned Aspire packages run.
