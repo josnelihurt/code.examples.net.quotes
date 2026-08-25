@@ -62,7 +62,10 @@ checks_state() {
     printf none
   elif jq -e 'any(. == "fail")' <<<"${buckets}" >/dev/null; then
     printf red
-  elif jq -e 'any(. == "pending")' <<<"${buckets}" >/dev/null; then
+  elif jq -e 'any(. == "pending") or any(. == "cancel")' <<<"${buckets}" >/dev/null; then
+    # cancel is pending, not green: ci's concurrency cancels superseded runs (every
+    # label now retriggers it), and the replacement run's checks may not exist yet —
+    # merging on the cancelled run's stale checks is never the verdict to act on.
     printf pending
   else
     printf green

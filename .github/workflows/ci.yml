@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+    # labeled re-evaluates the path gates so ci:full-build applied mid-PR retriggers
+    # ci with the full matrix (any other label re-runs the filtered set; the
+    # concurrency group below cancels the superseded run).
+    types: [opened, synchronize, reopened, labeled]
 
 # Superseded runs waste the container-heavy jobs (specs, e2e, contract-drift); cancel
 # them for PRs while keeping every push to main.
@@ -17,6 +21,139 @@ permissions:
 # Actions are pinned to commit SHAs (tag in the trailing comment) so a mutable-tag
 # takeover cannot run third-party code against the repository.
 jobs:
+  # Path detection plumbing: classifies the PR diff into areas so later layers can
+  # gate jobs on what actually changed (no job consumes these outputs yet). When the
+  # gates land, the skip must stay at the job level: skipped check runs still satisfy
+  # the branch-protection checks, and the workflow still completes success so
+  # merge-me's ci-completion trigger keeps firing. A workflow-level paths filter
+  # would break both.
+  changes:
+    name: detect changed paths
+    runs-on: ubuntu-latest
+    permissions:
+      # paths-filter lists the PR's changed files via the API; the workflow-level
+      # contents-only grant would 403 that call and fail every PR run.
+      contents: read
+      pull-requests: read
+    outputs:
+      run_build_and_test: ${{ steps.decide.outputs.run_build_and_test }}
+      run_lint: ${{ steps.decide.outputs.run_lint }}
+      run_codeql: ${{ steps.decide.outputs.run_codeql }}
+      run_dependency_review: ${{ steps.decide.outputs.run_dependency_review }}
+      run_frontend: ${{ steps.decide.outputs.run_frontend }}
+      run_specs: ${{ steps.decide.outputs.run_specs }}
+      run_e2e: ${{ steps.decide.outputs.run_e2e }}
+      run_contract_drift: ${{ steps.decide.outputs.run_contract_drift }}
+      run_image_pins: ${{ steps.decide.outputs.run_image_pins }}
+    steps:
+      # Only pull_request diffs are filtered; the API listing needs no checkout. On
+      # every other trigger (push to main, ci:full-build) the step is skipped and the
+      # decide step below forces the full matrix.
+      - name: Filter paths
+        id: filter
+        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ci:full-build')
+        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+        with:
+          filters: |
+            backend:
+              - 'src/**'
+              - 'tests/**'
+              - '*.sln'
+              - 'Directory.Build.props'
+              - 'Directory.Packages.props'
+              - 'nuget.config'
+              - '.config/**'
+              - '.editorconfig'
+            frontend:
+              # The SPA code plus the frozen OpenAPI documents its types are generated from.
+              - 'frontend/**'
+              - 'docs/openapi/**'
+            contracts:
+              # Everything that can drift docs/openapi: the APIs that generate the
+              # contracts, the hermetic export image with the root build files it
+              # COPYs (and the .dockerignore shaping its context), and the frozen
+              # files themselves — a package bump can change the generated YAML too.
+              - 'src/**'
+              - 'docs/openapi/**'
+              - 'Dockerfile.build'
+              - 'contracts/**'
+              - 'Directory.Build.props'
+              - 'Directory.Packages.props'
+              - 'nuget.config'
+              - '.dockerignore'
+            pins:
+              # scripts/images.env is the repo's one copy of the container tags; the
+              # pinned Aspire.Hosting packages must agree with it.
+              - 'scripts/images.env'
+              - 'Directory.Packages.props'
+              - 'scripts/check-image-tags.sh'
+            workflow:
+              # CI itself or a script it executes: run the unfiltered matrix.
+              - '.github/workflows/**'
+              - 'scripts/lint.sh'
+              - 'scripts/check-image-tags.sh'
+
+      - name: Decide which jobs run
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FULL_BUILD: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full-build') }}
+          FILTER_BACKEND: ${{ steps.filter.outputs.backend }}
+          FILTER_FRONTEND: ${{ steps.filter.outputs.frontend }}
+          FILTER_CONTRACTS: ${{ steps.filter.outputs.contracts }}
+          FILTER_PINS: ${{ steps.filter.outputs.pins }}
+          FILTER_WORKFLOW: ${{ steps.filter.outputs.workflow }}
+        run: |
+          set -euo pipefail
+          decisions=""
+          out() { decisions+="$1"$'\n'; }
+          flush() { printf '%s' "${decisions}" >> "$GITHUB_OUTPUT"; }
+
+          # Pushes to main, ci:full-build PRs and CI-configuration edits have no
+          # filtered diff to trust: run everything.
+          if [ "${EVENT_NAME:-}" != "pull_request" ] || [ "${FULL_BUILD:-false}" = "true" ] || [ "${FILTER_WORKFLOW:-false}" = "true" ]; then
+            out "run_build_and_test=true"
+            out "run_lint=true"
+            out "run_codeql=true"
+            out "run_dependency_review=true"
+            out "run_frontend=true"
+            out "run_specs=true"
+            out "run_e2e=true"
+            out "run_contract_drift=true"
+            out "run_image_pins=true"
+            flush
+            exit 0
+          fi
+
+          backend="${FILTER_BACKEND:-false}"
+          frontend="${FILTER_FRONTEND:-false}"
+          contracts="${FILTER_CONTRACTS:-false}"
+          pins="${FILTER_PINS:-false}"
+
+          # specs and e2e boot the pinned container images, so a pin move must reach
+          # them even without code changes; e2e additionally builds both APIs and the SPA.
+          run_specs="false"
+          if [ "${backend}" = "true" ] || [ "${pins}" = "true" ]; then run_specs="true"; fi
+          run_e2e="false"
+          if [ "${backend}" = "true" ] || [ "${frontend}" = "true" ] || [ "${pins}" = "true" ]; then run_e2e="true"; fi
+
+          # The Postgres-backed tests parse scripts/images.env at runtime, so a pin
+          # move must reach build-and-test too, not just the jobs that pull images.
+          # dependency-review reads only the pnpm lockfile (NuGet is CodeQL's SBOM
+          # pass), so it follows the frontend flag.
+          run_build_and_test="false"
+          if [ "${backend}" = "true" ] || [ "${pins}" = "true" ]; then run_build_and_test="true"; fi
+          out "run_build_and_test=${run_build_and_test}"
+          out "run_lint=${backend}"
+          out "run_codeql=${backend}"
+          out "run_dependency_review=${frontend}"
+          out "run_frontend=${frontend}"
+          out "run_specs=${run_specs}"
+          out "run_e2e=${run_e2e}"
+          out "run_contract_drift=${contracts}"
+          out "run_image_pins=${pins}"
+          flush
+
   build-and-test:
     name: build & test (Release + coverage)
     runs-on: ubuntu-latest
@@ -314,9 +451,9 @@ jobs:
     name: container image pin drift
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 10.0.x
 
