@@ -43,7 +43,7 @@ jobs:
     steps:
       # Pinned by SHA with the tag in the trailing comment, like every other action.
       # No checkout needed: the action is self-contained.
-      - uses: josnelihurt/code.examples.ci/merge-me@fab8efcc90352cd5589a71f6832b68bcb717c62c # v1
+      - uses: josnelihurt/code.examples.ci/merge-me@135d13c5c828eaa81b2cb1b8c752ad0e3bb17caf # v1.1
         with:
           pr: ${{ github.event.pull_request.number }}
           disarm: ${{ github.event.action == 'unlabeled' }}
@@ -74,7 +74,7 @@ jobs:
 
       # The checks already finished (this run was triggered by their completion),
       # so evaluate instantly instead of arming another wait.
-      - uses: josnelihurt/code.examples.ci/merge-me@fab8efcc90352cd5589a71f6832b68bcb717c62c # v1
+      - uses: josnelihurt/code.examples.ci/merge-me@135d13c5c828eaa81b2cb1b8c752ad0e3bb17caf # v1.1
         if: steps.resolve.outputs.pr != ''
         with:
           pr: ${{ steps.resolve.outputs.pr }}
@@ -88,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: josnelihurt/code.examples.ci/merge-me@fab8efcc90352cd5589a71f6832b68bcb717c62c # v1
+      - uses: josnelihurt/code.examples.ci/merge-me@135d13c5c828eaa81b2cb1b8c752ad0e3bb17caf # v1.1
         with:
           pr: ${{ github.event.inputs.pr }}
           all: ${{ github.event.inputs.pr == '' }}
