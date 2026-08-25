@@ -21,11 +21,12 @@ permissions:
 # Actions are pinned to commit SHAs (tag in the trailing comment) so a mutable-tag
 # takeover cannot run third-party code against the repository.
 jobs:
-  # Path gating: the optional checks run only when the diff touches the areas they
-  # consume; the branch-protection checks (build-and-test, frontend, contract-drift)
-  # stay ungated until the next layer. The skip happens at the job level on purpose:
-  # skipped check runs still satisfy the branch-protection checks, and the workflow
-  # still completes success so merge-me's ci-completion trigger keeps firing.
+  # Path gating: every job except this one and secrets-hygiene (a whole-tree grep
+  # that costs seconds) runs only when the diff touches the areas it consumes — a
+  # docs-only change should not pay for the full matrix. The skip happens at the job
+  # level on purpose: skipped check runs still satisfy the branch-protection checks,
+  # and the workflow still completes success so merge-me's ci-completion trigger
+  # keeps firing. A workflow-level paths filter would break both.
   changes:
     name: detect changed paths
     runs-on: ubuntu-latest
@@ -156,6 +157,8 @@ jobs:
   build-and-test:
     name: build & test (Release + coverage)
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.run_build_and_test == 'true'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -294,6 +297,8 @@ jobs:
   frontend:
     name: frontend (lint + tests + build)
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.run_frontend == 'true'
     defaults:
       run:
         working-directory: frontend
@@ -443,6 +448,8 @@ jobs:
   contract-drift:
     name: openapi contract drift
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.run_contract_drift == 'true'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
