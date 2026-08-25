@@ -94,6 +94,8 @@ wait_for_checks() {
 
 # arm_auto_merge PR -> 0 armed, 1 unavailable (setting off, stacked PR, already armed)
 arm_auto_merge() {
+  # Arming changes repository state — never in a dry-run, which must stay inert.
+  if [[ "${DRY_RUN}" == true ]]; then return 1; fi
   gh pr merge "$1" --squash --auto >/dev/null 2>&1
 }
 
@@ -116,10 +118,13 @@ merge() {
   fi
   for ((tries = 0; tries < 60; tries++)); do
     sleep 5
-    status="$(gh api "repos/${REPO}/pulls/${1}/merge-async/${uuid}" | jq -r .status)"
+    resp="$(gh api "repos/${REPO}/pulls/${1}/merge-async/${uuid}")"
+    status="$(jq -r .status <<<"${resp}")"
     case "${status}" in
       merged) printf '#%s merged\n' "$1"; return 0 ;;
-      failed) printf '#%s: merge failed\n' "$1" >&2; return 1 ;;
+      # The poll response carries the failure's actual reason; swallowing it is how
+      # "#N: merge failed" became a mystery on stack #58 (issue #61).
+      failed) printf '#%s: merge failed — %s\n' "$1" "$(jq -c . <<<"${resp}")" >&2; return 1 ;;
     esac
   done
   printf '#%s: merge still pending after polling window (uuid %s)\n' "$1" "${uuid}" >&2
