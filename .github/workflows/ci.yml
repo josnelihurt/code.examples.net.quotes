@@ -289,7 +289,7 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - uses: github/codeql-action/init@42947a340483f03ba47bb1a039b2c519aab3df85 # v3
+      - uses: github/codeql-action/init@37f2634a92ba38a0926ef79a0748ac8ae7d95ab2 # v4.37.8
         with:
           languages: csharp
 
@@ -303,7 +303,7 @@ jobs:
           dotnet build src/Auth/Auth.Api/Auth.Api.csproj --no-restore
           dotnet build src/Quotes/Quotes.Api/Quotes.Api.csproj --no-restore
 
-      - uses: github/codeql-action/analyze@42947a340483f03ba47bb1a039b2c519aab3df85 # v3
+      - uses: github/codeql-action/analyze@37f2634a92ba38a0926ef79a0748ac8ae7d95ab2 # v4.37.8
 
   specs:
     name: specs (BDD against the Aspire stack)
