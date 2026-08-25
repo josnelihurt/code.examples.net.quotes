@@ -174,7 +174,7 @@ jobs:
       pull-requests: read
     steps:
       # fetch-depth 0 because the action's push-to-main range mode reads history.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -190,7 +190,7 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.run_build_and_test == 'true'
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
@@ -217,7 +217,7 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.run_lint == 'true'
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
@@ -234,7 +234,7 @@ jobs:
     name: secrets hygiene (credential literals stay in the allowlist)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The seed's scaffolding credentials live in exactly one documentation
       # location (docs/dev-credentials.md), one code location per credential
@@ -283,7 +283,7 @@ jobs:
       security-events: write
       contents: read
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
@@ -314,7 +314,7 @@ jobs:
       # The AppHost model (AddViteApp at ../../frontend) is constructed even though
       # the spec harness removes the web resource before startup — the submodule
       # must be present for the model to resolve.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
 
@@ -363,7 +363,7 @@ jobs:
     steps:
       # The SPA under test is the frontend submodule; its default e2e is the mocked
       # suite (that repository's CI), this job runs the full-stack config.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
 
@@ -436,7 +436,7 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.run_contract_drift == 'true'
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The frozen contracts under docs/openapi are product: regenerate them hermetically
       # (same flow as scripts/update-contracts.sh) and fail when they no longer match.
@@ -455,7 +455,7 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.run_image_pins == 'true'
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
