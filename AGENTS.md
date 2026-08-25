@@ -23,7 +23,7 @@ Never open one large PR. Decompose the change into an ordered chain in which **e
 level compiles, passes lint, and passes every CI gate independently**. If an
 intermediate level would be red, the split is wrong — redo the split.
 
-The recipe (proven on the PostgreSQL-catalog stack, PRs #13 → #14):
+The recipe (proven on the two-layer PostgreSQL-catalog stack — EF Core catalog storage beneath the repository swap):
 
 1. **Build and verify the end state first** — all suites green, lint clean. Then snapshot
    uncommitted work to a local backup branch

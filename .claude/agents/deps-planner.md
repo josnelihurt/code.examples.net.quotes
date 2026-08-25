@@ -1,6 +1,6 @@
 ---
 name: deps-planner
-description: Turns one slice of the dependency audit (NuGet or infra pins) into a classified update plan — semver batches, risk flags, pinned-pair constraints — for the dependency-refresh orchestrator. Launched one per surface, in parallel. Read-only. (The pnpm/frontend surface moved to net-examples-frontend with the SPA.)
+description: Turns one slice of the dependency audit (NuGet or infra pins) into a classified update plan — semver batches, risk flags, pinned-pair constraints — for the dependency-refresh orchestrator. Launched one per surface, in parallel. Read-only. (The pnpm/frontend surface moved to code.examples.frontend.quotes with the SPA.)
 tools: Read, Grep, Glob, Bash
 ---
 

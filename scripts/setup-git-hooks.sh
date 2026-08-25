@@ -2,7 +2,7 @@
 # Opts this clone into the repository's local git hooks (.githooks): the
 # commit-msg and pre-push validators backed by scripts/check-conventions.sh.
 # Pure git configuration — no package-manager lifecycle involved, matching the
-# frontend's deliberate hookless posture (see net-examples-frontend's docs).
+# frontend's deliberate hookless posture (see code.examples.frontend.quotes's docs).
 #
 #   ./scripts/setup-git-hooks.sh                        # enable
 #   git config --unset core.hooksPath                    # undo

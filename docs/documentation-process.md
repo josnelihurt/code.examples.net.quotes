@@ -31,7 +31,7 @@ The pass is built against those two failures specifically:
 | [System design](system-design.md) | The whole system as diagrams, plus the component index | Rules already stated in Architecture |
 | `src/**/README.md` | Types, invariants, wiring, call flows and DDD rationale for **one** project | Policy already stated above |
 
-(The frontend's README lives in [net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend) since the extraction.)
+(The frontend's README lives in [code.examples.frontend.quotes](https://github.com/josnelihurt/code.examples.frontend.quotes) since the extraction.)
 
 Component pages sit next to the code on purpose. GitHub renders a folder's `README.md` when you browse
 into it, so the explanation is one click from the thing it explains — and a reviewer changing

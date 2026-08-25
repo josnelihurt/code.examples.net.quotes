@@ -45,7 +45,7 @@ If you already have a local Sonar volume from the previous `aspire-quotes-poc` k
 ./scripts/sonar-scan.sh
 ```
 
-Pipeline (C# only — TypeScript coverage moved to net-examples-frontend with the SPA): `sonarscanner begin` → `dotnet build` → `dotnet test` (OpenCover) → `sonarscanner end`.
+Pipeline (C# only — TypeScript coverage moved to code.examples.frontend.quotes with the SPA): `sonarscanner begin` → `dotnet build` → `dotnet test` (OpenCover) → `sonarscanner end`.
 
 Dashboard after upload:
 

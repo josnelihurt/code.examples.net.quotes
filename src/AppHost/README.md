@@ -189,4 +189,4 @@ looked like when it was produced, including route patterns that have since chang
 - [docs/local-dev.md](../../docs/local-dev.md) — prerequisites and the full command list
 - [docs/observability.md](../../docs/observability.md) — what to do with the dashboard once it is up
 - [`../ServiceDefaults/README.md`](../ServiceDefaults/README.md) — the platform kit both APIs load
-- [`../../frontend/README.md`](../../frontend/README.md) — the `web` resource (the submodule's working-tree copy; the repository is [net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend))
+- [`../../frontend/README.md`](../../frontend/README.md) — the `web` resource (the submodule's working-tree copy; the repository is [code.examples.frontend.quotes](https://github.com/josnelihurt/code.examples.frontend.quotes))

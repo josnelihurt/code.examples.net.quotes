@@ -139,7 +139,7 @@ merge() {
     case "${status}" in
       merged) printf '#%s merged\n' "$1"; return 0 ;;
       # The poll response carries the failure's actual reason; swallowing it is how
-      # "#N: merge failed" became a mystery on stack #58 (issue #61).
+      # "#N: merge failed" became a mystery on an early review stack (issue #61).
       failed) printf '#%s: merge failed — %s\n' "$1" "$(jq -c . <<<"${resp}")" >&2; return 1 ;;
     esac
   done

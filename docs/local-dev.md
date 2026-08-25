@@ -12,7 +12,7 @@
 - pnpm — install standalone (`brew install pnpm` or `npm i -g pnpm`); Corepack no longer
   ships with Node 25+. The exact version is pinned by `packageManager` in
   `frontend/package.json` (inside the submodule) and pnpm honors it automatically.
-  Rationale: [pnpm as the package manager](https://github.com/josnelihurt/net-examples-frontend/blob/main/docs/package-manager-security.md) (moved to the frontend repository with the SPA)
+  Rationale: [pnpm as the package manager](https://github.com/josnelihurt/code.examples.frontend.quotes/blob/main/docs/package-manager-security.md) (moved to the frontend repository with the SPA)
 
 ## Start the app
 

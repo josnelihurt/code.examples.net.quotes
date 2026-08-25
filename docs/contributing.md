@@ -63,7 +63,7 @@ Bad:
 update stuff                        — no type
 feat: Add capital summary           — summary must start lowercase
 fix: ends with period.              — no trailing period
-docs: document the workflow (#17)   — (#N) belongs to merged commits only
+docs: document the workflow           — no issue or pull-request trailers
 ```
 
 ## Enforcement
@@ -90,7 +90,7 @@ does **not** require approvals, "up to date" branches, or a merge queue: the
 [merge-me automation](../README.md#merging-the-merge-me-label) merges with
 `GITHUB_TOKEN`, which cannot bypass branch protection, and stacked layers are
 rebased server-side when a lower layer merges. The merge-queue revisit is
-tracked in [issue #33](https://github.com/josnelihurt/net-examples/issues/33).
+tracked in [issue #33](https://github.com/josnelihurt/code.examples.net.quotes/issues/33).
 
 To recreate the ruleset after a repository reset:
 
@@ -138,7 +138,7 @@ git config --unset core.hooksPath   # undo
 
 Pure git configuration — no package-manager lifecycle, matching the
 package-manager posture (in
-[net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend)). CI enforces the same
+[code.examples.frontend.quotes](https://github.com/josnelihurt/code.examples.frontend.quotes)). CI enforces the same
 rules regardless of whether the hooks are installed.
 
 ## The checker

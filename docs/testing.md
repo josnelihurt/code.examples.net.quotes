@@ -97,7 +97,7 @@ to take a few minutes (container start dominates).
 ## Run the full-stack E2E
 
 The SPA's own suites — Vitest, the MSW-mocked Playwright e2e, Storybook — live in
-[net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend) with
+[code.examples.frontend.quotes](https://github.com/josnelihurt/code.examples.frontend.quotes) with
 their own CI; its default `pnpm run test:e2e` needs no backend. From this checkout
 (both trees present via the submodule) the integration suite is the full-stack one:
 
@@ -164,7 +164,7 @@ server state) and `scripts/export-bundle.sh` (writes `~/repo.bundle`).
 - **Architecture** — NetArchTest suite (`tests/Architecture.Tests`) enforcing the layering table: dependency direction per layer, no Api→Domain, no cross-context references, ServiceDefaults isolated
 - **Auth rate limiting** — slim-pipeline suite with a two-request window proving the 429 ProblemDetails shape (`auth.rate_limited`), plus the Production refusal of the scaffolding credential store at the DI boundary
 - **Specs (tests/Bdd)** — cross-service journeys through the gateway: sign in → token → random quote, create → `Location` round trip, near-duplicate 409, rejected text 400, reader-scope 403, v0/v1 transport parity, token introspection, OpenAPI/Scalar surfaces
-- **Frontend** — `api/client` (session, login, random, catalog paging, publish — every failure path parsed out of the RFC 9457 body into `ApiError`), `LoginPage`, `QuotePage`, `QuotesListPage` (first page, next/previous bounds, version switch refetch, empty catalog), `PublishQuotePage` (success confirmation + form reset, validation/conflict/forbidden alerts, in-flight disabling), routing/`RequireAuth` over `/quote`, `/quotes` and `/publish` (Vitest); browser journeys across signing-in, reading-quotes, browsing-quotes and publishing-quotes (Playwright BDD); Storybook stories for the extracted presentational components — all in [net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend) and gated in its CI
+- **Frontend** — `api/client` (session, login, random, catalog paging, publish — every failure path parsed out of the RFC 9457 body into `ApiError`), `LoginPage`, `QuotePage`, `QuotesListPage` (first page, next/previous bounds, version switch refetch, empty catalog), `PublishQuotePage` (success confirmation + form reset, validation/conflict/forbidden alerts, in-flight disabling), routing/`RequireAuth` over `/quote`, `/quotes` and `/publish` (Vitest); browser journeys across signing-in, reading-quotes, browsing-quotes and publishing-quotes (Playwright BDD); Storybook stories for the extracted presentational components — all in [code.examples.frontend.quotes](https://github.com/josnelihurt/code.examples.frontend.quotes) and gated in its CI
 
 ## CI
 

@@ -5,7 +5,7 @@
 #   2. infra    version pins that live outside the package managers (AppHost SDK,
 #               Aspire same-line rule, Docker/YARP images, GitHub Actions)
 #
-# The pnpm half of the audit moved to net-examples-frontend with the SPA's
+# The pnpm half of the audit moved to code.examples.frontend.quotes with the SPA's
 # extraction from this repository.
 #
 # The report is the product: a failed check is recorded inside its section, never

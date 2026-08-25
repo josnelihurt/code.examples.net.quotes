@@ -66,7 +66,7 @@ jobs:
               - '.editorconfig'
             frontend:
               # The submodule pointer (the gitlink at frontend/). The SPA's own
-              # lint/unit/build gates live in net-examples-frontend's CI; a pointer
+              # lint/unit/build gates live in code.examples.frontend.quotes's CI; a pointer
               # move here means new SPA code runs against this backend in the
               # full-stack e2e job.
               - 'frontend'
@@ -146,7 +146,7 @@ jobs:
           # The frontend flag now means one thing only: the submodule pointer moved,
           # so the full-stack e2e integration must re-run. The SPA's own gates
           # (lint, unit, mocked e2e, pnpm dependency review) live in
-          # net-examples-frontend's CI on every commit there.
+          # code.examples.frontend.quotes's CI on every commit there.
           run_build_and_test="false"
           if [ "${backend}" = "true" ] || [ "${pins}" = "true" ]; then run_build_and_test="true"; fi
           out "run_build_and_test=${run_build_and_test}"

@@ -32,7 +32,7 @@ Agents run with the Agent tool. Stages 2 and 4 launch their agents **in parallel
    - Decide the mode: **full pass** (every component) or **targeted** (a new or changed component, plus the general page's affected sections).
    - Note anything untracked on another branch. A document must not link to a file that does not exist on *this* branch — say so in the report instead.
 
-2. **Map (Cartographers, parallel).** Split the tree into 2–4 slices that do not overlap — the natural split is one per bounded context plus one for the platform, orchestrator, build and CI (the frontend's docs live in the net-examples-frontend submodule's own repository). Launch one `doc-cartographer` per slice. Each brief is self-contained: absolute repo root, the exact paths to read, the inventory to produce, and the facts-only rule. Collect the fact sheets.
+2. **Map (Cartographers, parallel).** Split the tree into 2–4 slices that do not overlap — the natural split is one per bounded context plus one for the platform, orchestrator, build and CI (the frontend's docs live in the code.examples.frontend.quotes submodule's own repository). Launch one `doc-cartographer` per slice. Each brief is self-contained: absolute repo root, the exact paths to read, the inventory to produce, and the facts-only rule. Collect the fact sheets.
 
 3. **Read the spine yourself.** While the cartographers run, read the files the general page depends on directly: the AppHost, the architecture test suite, one domain in full, the CI workflow, and every existing `docs/*.md`. You cannot verify a writer's output against a summary — only against the code.
 

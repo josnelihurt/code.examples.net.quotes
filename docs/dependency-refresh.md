@@ -2,7 +2,7 @@
 
 **Dependency refresh** is this repository's reproducible library-update workflow: a mechanical audit of every dependency surface, a batched update plan produced by a read-only planner agent, a mandatory **owner gate** where the proposed updates are approved question by question, and the repo's full verification gate run against every applied batch. It exists because dependencies age silently: nothing in the build fails when a package stops being current, so the failure arrives later — as a security advisory you cannot patch quickly because you are three majors behind, or as a wall of accumulated breaking changes. Regular, small, validated refreshes are the cheapest way to hold both risks down.
 
-The workflow was introduced for [net-examples issue #5](https://github.com/josnelihurt/net-examples/issues/5).
+The workflow was introduced for [code.examples.net.quotes issue #5](https://github.com/josnelihurt/code.examples.net.quotes/issues/5).
 
 ## Grounding
 
@@ -19,7 +19,7 @@ The design follows the same Anthropic patterns as the [Panel Review](panel-revie
 |---------|--------------------------|------------|
 | NuGet packages (~25 pins) | `Directory.Packages.props` (central package management) | `dotnet list package --outdated` / `--vulnerable --include-transitive`, per project |
 | Aspire AppHost SDK | `src/AppHost/AspireQuotesPoc.AppHost.csproj` (`Sdk="Aspire.AppHost.Sdk/…"`, outside CPM) | pin inventory + same-line check against the `Aspire.Hosting.*` pins |
-| ~~Frontend packages~~ | moved to [net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend) (its dependabot + CI) | — |
+| ~~Frontend packages~~ | moved to [code.examples.frontend.quotes](https://github.com/josnelihurt/code.examples.frontend.quotes) (its dependabot + CI) | — |
 | Docker base image | `Dockerfile.build` (`mcr.microsoft.com/dotnet/sdk:10.0`) | pin inventory |
 | Container images (PostgreSQL, pgweb, YARP) | `scripts/images.env` — the repo's one copy of the tags, read by the test fixture, `scripts/e2e.sh` and CI | `scripts/check-image-tags.sh` against the pinned Aspire packages (the CI `image-pins` job) |
 | GitHub Actions | `.github/workflows/ci.yml` (`actions/*@v4`, `pnpm/action-setup@v4`) | pin inventory + latest release via `gh api`, best effort |
@@ -28,7 +28,7 @@ Three pinned-together rules the planner must carry into every proposal:
 
 - **The Aspire same-line rule.** The AppHost SDK pin and the `Aspire.Hosting.*` versions in CPM — including `Aspire.Hosting.Testing` used by the BDD suite — move together as one line; splitting them is a bug, not a batch.
 - **The container image mirror.** `scripts/images.env` is the repo's one copy of the image tags the pinned `Aspire.Hosting.*` packages run (PostgreSQL, pgweb, YARP). An Aspire bump that changes a pinned tag must update that file in the same batch — `scripts/check-image-tags.sh` (the CI `image-pins` job) fails the build otherwise. Bump procedure: raise the package, run the script, let it print the expected tags, bring the file in line.
-- **The pnpm security posture moved with the SPA** into the frontend submodule's repository (its `pnpm-workspace.yaml`; see its [package-manager note](https://github.com/josnelihurt/net-examples-frontend/blob/main/docs/package-manager-security.md)). Frontend dependency refreshes happen there; a pin bump here just picks up the result.
+- **The pnpm security posture moved with the SPA** into the frontend submodule's repository (its `pnpm-workspace.yaml`; see its [package-manager note](https://github.com/josnelihurt/code.examples.frontend.quotes/blob/main/docs/package-manager-security.md)). Frontend dependency refreshes happen there; a pin bump here just picks up the result.
 
 ## The workflow
 
@@ -38,7 +38,7 @@ The orchestration recipe lives in `.claude/skills/dependency-refresh/SKILL.md` (
 2. **Audit.** `./scripts/audit-deps.sh --out docs/dependency-refresh/runs/YYYY-MM-DD-audit.md`. A section that stays PARTIAL or FAILED marks its packages *unknown* for the run — recorded, not assumed current.
 3. **Plan.** Two `deps-planner` agents in parallel (NuGet / infra), each returning a batch table: `Package | Current | Target | Class | Risk | Note`, with patch / minor / major / infra-pin classes and the constraint flags above.
 4. **Owner gate.** One merged proposal plus at most four decision questions: which batches, the major-version policy, whether the slow gates (BDD, e2e — both need Podman) run, ship-now vs leave-branch. The agent asks and stops.
-5. **Apply.** Approved batches only: CPM bumps, the AppHost SDK pin (same line), image/action pins if approved. Frontend package bumps happen in net-examples-frontend; picking one up here is a submodule pin bump.
+5. **Apply.** Approved batches only: CPM bumps, the AppHost SDK pin (same line), image/action pins if approved. Frontend package bumps happen in code.examples.frontend.quotes; picking one up here is a submodule pin bump.
 6. **Validate.** The verification gate below, fastest first. A failing batch is reverted and recorded as blocked; the run continues.
 7. **Record and ship.** `docs/dependency-refresh/runs/YYYY-MM-DD.md` (audit verdict, approved plan, applied / reverted / unknown, per-gate results), one commit, one PR: `chore: refresh dependencies YYYY-MM-DD`.
 

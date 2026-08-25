@@ -30,7 +30,7 @@ dotnet tool restore
 # Coverage reports are discovered by glob at scanner end, so stale runs must go first.
 find tests -type d -name TestResults -prune -exec rm -rf {} +
 
-# TypeScript coverage and test inclusion moved to net-examples-frontend with the
+# TypeScript coverage and test inclusion moved to code.examples.frontend.quotes with the
 # SPA's extraction; this scan is the C# side only.
 COVERAGE_PATHS="${ROOT}/tests/**/TestResults/**/coverage.opencover.xml"
 

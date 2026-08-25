@@ -1,6 +1,6 @@
 ---
 name: dependency-refresh
-description: Run the dependency-refresh workflow — a mechanical audit of every dependency surface (NuGet central package management, the Aspire SDK pin, Docker/YARP images, GitHub Actions; the pnpm frontend lives in the net-examples-frontend submodule with its own dependabot and CI), a batched update plan from a read-only planner agent, a mandatory owner gate that approves every change, and the full repo gate (unit, lint, BDD, e2e, contract drift) validating each applied batch. Use whenever the user asks to update, upgrade, or refresh dependencies or libraries, to check for outdated or vulnerable packages, or to bring the stack current.
+description: Run the dependency-refresh workflow — a mechanical audit of every dependency surface (NuGet central package management, the Aspire SDK pin, Docker/YARP images, GitHub Actions; the pnpm frontend lives in the code.examples.frontend.quotes submodule with its own dependabot and CI), a batched update plan from a read-only planner agent, a mandatory owner gate that approves every change, and the full repo gate (unit, lint, BDD, e2e, contract drift) validating each applied batch. Use whenever the user asks to update, upgrade, or refresh dependencies or libraries, to check for outdated or vulnerable packages, or to bring the stack current.
 ---
 
 # Dependency refresh
@@ -19,7 +19,7 @@ Follow the stages in order. Nothing is edited before stage 4 answers; everything
 
 4. **Owner gate.** Merge the tables into one proposal — `Package | Current | Target | Class | Risk | Note`, grouped patch / minor / major / infra pins — and convert the real forks into **at most four decision questions**: which batches are in, the major-version policy (skip, take, or take-separately), whether the slow gates (`./scripts/bdd.sh`, `./scripts/e2e.sh` — both need Podman) run, and whether to ship the PR now or leave the branch. Present both, **ask, and stop.** No manifest is edited before the owner answers.
 
-5. **Apply (approved batches only).** Bump versions in `Directory.Packages.props` (keep the `Aspire.Hosting.*` pins and the AppHost `Sdk="Aspire.AppHost.Sdk/..."` pin on one line — the same-line rule; an Aspire bump that changes a pinned container tag updates `scripts/images.env` in the same batch), and touch action pins only if that batch was approved. Frontend package updates happen in net-examples-frontend (its dependabot, its gates); picking one up here means bumping the `frontend` submodule pin in a PR.
+5. **Apply (approved batches only).** Bump versions in `Directory.Packages.props` (keep the `Aspire.Hosting.*` pins and the AppHost `Sdk="Aspire.AppHost.Sdk/..."` pin on one line — the same-line rule; an Aspire bump that changes a pinned container tag updates `scripts/images.env` in the same batch), and touch action pins only if that batch was approved. Frontend package updates happen in code.examples.frontend.quotes (its dependabot, its gates); picking one up here means bumping the `frontend` submodule pin in a PR.
 
 6. **Validate.** Mirror the seven CI jobs, fastest first; run the slow gates if the owner enabled them:
    - `./scripts/lint.sh` and `./scripts/test.sh` (dotnet format + unit tests)

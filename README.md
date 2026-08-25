@@ -93,7 +93,7 @@ Each `src/` row links to a component document describing that project's layers, 
 | [`src/ServiceDefaults/`](src/ServiceDefaults/README.md) | Platform kit: Serilog, OTEL, OpenAPI/Scalar helpers, JwtBearer + scope policies, ErrorOr→ProblemDetails, correlation |
 | [`src/Auth/`](src/Auth/README.md) | Auth service — Domain / Application / Infrastructure / Api |
 | [`src/Quotes/`](src/Quotes/README.md) | Quotes service — Domain / Application / Infrastructure / Api |
-| [`frontend/`](frontend/README.md) | React + TS Vite SPA — a **git submodule pinned by commit** ([net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend)); clone with `--recurse-submodules`, move the pin via PR |
+| [`frontend/`](frontend/README.md) | React + TS Vite SPA — a **git submodule pinned by commit** ([code.examples.frontend.quotes](https://github.com/josnelihurt/code.examples.frontend.quotes)); clone with `--recurse-submodules`, move the pin via PR |
 | `docs/` | Docsify + combined Scalar reference |
 | `contracts/` | Pointer to Docsify OpenAPI docs ([api-contracts.md](contracts/api-contracts.md)) |
 | `tests/` | xUnit unit/API tests (OpenCover for Sonar) + `tests/Bdd` Reqnroll specs against the running stack |
@@ -154,7 +154,7 @@ C# lint — warning-level style rules incl. unused usings (IDE0005); `--fix` rew
 ```
 
 The SPA's own suites (Vitest, mocked Playwright e2e, Storybook) live in
-[net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend) and run
+[code.examples.frontend.quotes](https://github.com/josnelihurt/code.examples.frontend.quotes) and run
 in its CI. What runs from this checkout is the full-stack e2e — real APIs, real
 catalog, the SPA from the submodule:
 
@@ -211,7 +211,7 @@ See [docs/observability.md](docs/observability.md).
 - OpenTelemetry (ASP.NET, HttpClient, runtime + custom meters)
 - ProblemDetails / health checks
 - Reqnroll + Aspire.Hosting.Testing (`tests/Bdd` specs against the real stack)
-- Playwright + playwright-bdd (browser journeys in the [frontend submodule](https://github.com/josnelihurt/net-examples-frontend); full-stack runs from this repo, mocked runs in its own)
+- Playwright + playwright-bdd (browser journeys in the [frontend submodule](https://github.com/josnelihurt/code.examples.frontend.quotes); full-stack runs from this repo, mocked runs in its own)
 
 ## Credentials and secrets
 
@@ -270,23 +270,23 @@ gh stack view / sync / rebase / merge     # inspect, update, land
 
 (The numbers above are the real PostgreSQL-catalog stack this workflow was proven on.)
 
-Gotchas: server-side rebases produce unsigned commits — irrelevant today, but if the repo ever requires signed commits use `gh stack rebase` + `gh stack push` instead of the web button. A stack must keep linear history between its branches. Squash merges work at every layer; branch-protection checks apply to each PR individually. A layer whose only change is reverting a lower layer can squash to an **empty commit and silently lose the revert** — observed when the merge-me smoke-test stack (#46 → #47) landed: the top layer's "remove the line" diff was computed against a base that already contained the bottom layer's addition. Land reverts after the layer they revert has merged, or outside a stack.
+Gotchas: server-side rebases produce unsigned commits — irrelevant today, but if the repo ever requires signed commits use `gh stack rebase` + `gh stack push` instead of the web button. A stack must keep linear history between its branches. Squash merges work at every layer; branch-protection checks apply to each PR individually. A layer whose only change is reverting a lower layer can squash to an **empty commit and silently lose the revert** — observed when the merge-me smoke-test stack landed: the top layer's "remove the line" diff was computed against a base that already contained the bottom layer's addition. Land reverts after the layer they revert has merged, or outside a stack.
 
 ## Merging: the `merge-me` label
 
-Labeling a PR `merge-me` asks the [`merge-me` workflow](.github/workflows/merge-me.yml) to merge it — deterministically, with no agent holding tokens: the label is **standing intent ("merge when green"), not a command ("merge now")**. The workflow re-evaluates the PR when the label lands, when new commits are pushed, on reopen, and when the `ci` workflow completes (`workflow_run`) — every evaluation corresponds to a real event, and nothing runs on a timer. It merges (squash) only when every check passes. A manual `workflow_dispatch` run (a PR number, or blank for every labeled PR) is the escape hatch for replaying an evaluation lost to a transient run failure. The mechanics live in `scripts/merge-me.sh`; the investigation, rejected alternatives and tradeoffs are recorded in [issue #33](https://github.com/josnelihurt/net-examples/issues/33).
+Labeling a PR `merge-me` asks the [`merge-me` workflow](.github/workflows/merge-me.yml) to merge it — deterministically, with no agent holding tokens: the label is **standing intent ("merge when green"), not a command ("merge now")**. The workflow re-evaluates the PR when the label lands, when new commits are pushed, on reopen, and when the `ci` workflow completes (`workflow_run`) — every evaluation corresponds to a real event, and nothing runs on a timer. It merges (squash) only when every check passes. A manual `workflow_dispatch` run (a PR number, or blank for every labeled PR) is the escape hatch for replaying an evaluation lost to a transient run failure. The mechanics live in `scripts/merge-me.sh`; the investigation, rejected alternatives and tradeoffs are recorded in [issue #33](https://github.com/josnelihurt/code.examples.net.quotes/issues/33).
 
 What happens per state:
 
 - **Green** → merged in that run, via GitHub's asynchronous merge endpoint — the only merge path that also works for stacked PRs.
 - **Pending** → an ordinary PR gets GitHub's server-side auto-merge armed (it merges the moment checks pass, surviving any number of fix pushes); a stacked layer gets a bounded 15-minute wait, re-armed by the next push or by CI completing.
 - **Red** → nothing merges and the label stays: approval of *intent* is separate from merge *state*. Push the fix and the PR merges itself.
-- **Stack semantics**: merging a labeled layer lands every stack member below it atomically — labeling the top PR of a reviewed stack lands the whole chain. **Label the top layer only**: one label lands everything below, and labeling several layers starts concurrent merges that race each other ([issue #61](https://github.com/josnelihurt/net-examples/issues/61)).
+- **Stack semantics**: merging a labeled layer lands every stack member below it atomically — labeling the top PR of a reviewed stack lands the whole chain. **Label the top layer only**: one label lands everything below, and labeling several layers starts concurrent merges that race each other ([issue #61](https://github.com/josnelihurt/code.examples.net.quotes/issues/61)).
 - **Unlabeling** disarms: removing `merge-me` runs an `unlabeled` evaluation that undoes any armed auto-merge — the label's intent does not outlive the label.
 
 ### The squash-merge stack wedge
 
-When the bottom PR of a stack squash-merges, the layer above is retargeted but still carries the bottom layer as a real commit while the base carries the same diff as the squash — GitHub then reports the upper PR **CONFLICTING**, `gh pr update-branch` refuses, and every atomic merge of the layers above fails ([issue #61](https://github.com/josnelihurt/net-examples/issues/61); merge-me holds with this recipe instead of a bare "merge failed"). The repair — the one sanctioned exception to "never force-push mid-stack branches" — replays only a branch's own commits onto the new base, bottom-up:
+When the bottom PR of a stack squash-merges, the layer above is retargeted but still carries the bottom layer as a real commit while the base carries the same diff as the squash — GitHub then reports the upper PR **CONFLICTING**, `gh pr update-branch` refuses, and every atomic merge of the layers above fails ([issue #61](https://github.com/josnelihurt/code.examples.net.quotes/issues/61); merge-me holds with this recipe instead of a bare "merge failed"). The repair — the one sanctioned exception to "never force-push mid-stack branches" — replays only a branch's own commits onto the new base, bottom-up:
 
 ```bash
 git fetch origin
