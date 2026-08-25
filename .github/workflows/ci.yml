@@ -83,8 +83,11 @@ jobs:
               - '.dockerignore'
             pins:
               # scripts/images.env is the repo's one copy of the container tags; the
-              # pinned Aspire.Hosting packages must agree with it.
+              # pinned Aspire.Hosting packages must agree with it. scripts/e2e.env is
+              # the sibling one-copy file for the e2e catalog's connection values — a
+              # move in either must reach the jobs that boot containers.
               - 'scripts/images.env'
+              - 'scripts/e2e.env'
               - 'Directory.Packages.props'
               - 'scripts/check-image-tags.sh'
             workflow:
@@ -230,6 +233,29 @@ jobs:
             echo "Credential literals outside the allowlist:"
             echo "$hits"
             echo "Consolidate them into docs/dev-credentials.md (see the allowlist in ci.yml)."
+            exit 1
+          fi
+
+      # The throwaway e2e catalog credentials have exactly one home — scripts/e2e.env —
+      # so changing them can never again mean editing three files in sync. The sealed
+      # world inside Dockerfile.build's export stage (its own in-image PostgreSQL) and
+      # the tests are the only other allowed homes; everything else fails, because a
+      # literal that exists to be copy-pasted is how the three-way drift came back.
+      - name: Fail on throwaway database literals outside the allowlist
+        run: |
+          set -euo pipefail
+          pattern='POSTGRES_PASSWORD=postgres|Password=postgres|PASSWORD .postgres.'
+          hits=$(git grep -nE "$pattern" \
+            ':!**/bin/**' ':!**/obj/**' ':!**/pnpm-lock.yaml' \
+            ':!.github/workflows/ci.yml' \
+            ':!scripts/e2e.env' \
+            ':!Dockerfile.build' \
+            ':!tests/**' \
+            || true)
+          if [ -n "$hits" ]; then
+            echo "Throwaway e2e database literals outside the allowlist:"
+            echo "$hits"
+            echo "Consolidate them into scripts/e2e.env (see the allowlist in ci.yml)."
             exit 1
           fi
 
@@ -407,10 +433,12 @@ jobs:
           dotnet build src/Auth/Auth.Api/Auth.Api.csproj -c Release
           dotnet build src/Quotes/Quotes.Api/Quotes.Api.csproj -c Release
 
-      # The quotes catalog is real in e2e too: throwaway PostgreSQL on the fixed port the
-      # webServer config expects (mirrors scripts/e2e.sh locally). The API migrates +
-      # seeds it at boot, so pg_isready is the only readiness gate needed here. The image
-      # comes from the same shared pin file the specs job loads.
+      # The quotes catalog is real in e2e too: throwaway PostgreSQL started from
+      # scripts/e2e.env — the one copy of the connection values, the same file
+      # scripts/e2e.sh sources locally and playwright.config.ts parses for its webServer
+      # env, so the boot paths cannot drift. The API migrates + seeds it at boot, so
+      # pg_isready is the only readiness gate needed here. The image comes from the same
+      # shared pin file the specs job loads.
       - name: Load container image pins
         run: |
           set -a
@@ -420,13 +448,17 @@ jobs:
 
       - name: Start quotes catalog PostgreSQL
         run: |
+          set -a
+          . ./scripts/e2e.env
+          set +a
           docker run -d --name e2e-pg \
-            -e POSTGRES_PASSWORD=postgres \
-            -e POSTGRES_DB=quotesdb \
-            -p 127.0.0.1:55432:5432 \
+            -e POSTGRES_USER="${E2E_PG_USER}" \
+            -e POSTGRES_PASSWORD="${E2E_PG_PASSWORD}" \
+            -e POSTGRES_DB="${E2E_PG_DATABASE}" \
+            -p "127.0.0.1:${E2E_PG_PORT}:5432" \
             "${POSTGRES_IMAGE}"
           for i in $(seq 1 60); do
-            docker exec e2e-pg pg_isready -U postgres -d quotesdb && break
+            docker exec e2e-pg pg_isready -U "${E2E_PG_USER}" -d "${E2E_PG_DATABASE}" && break
             sleep 1
           done
 
