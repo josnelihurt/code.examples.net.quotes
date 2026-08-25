@@ -11,6 +11,7 @@ See the [repository README](../README.md) for intention, layering rules, and con
 - [Architecture](architecture.md)
 - [API reference](api.md)
 - [Local development](local-dev.md)
+- [Contributing](contributing.md)
 - [Testing](testing.md)
 - [SonarQube](sonar.md)
 - [Observability in Aspire](observability.md)

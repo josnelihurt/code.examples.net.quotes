@@ -3,6 +3,20 @@
 Working agreements for coding agents in this repository. Humans reviewing the results are
 the audience that matters — every rule below exists to keep what lands reviewable.
 
+## Hard rules: branch names and commit messages
+
+Enforced by the `conventions` CI job on every PR and by a ruleset on `main` — a violating
+PR cannot merge. Full reference: `docs/contributing.md`.
+
+- **Branch names**: `feature/`, `hotfix/`, `chore/`, `docs/`, `ci/` or `fix/` + a kebab-case
+  name (issue-number suffix encouraged: `feature/e2e-db-19`). Local-only `backup/…`
+  snapshots are exempt because they are never pushed.
+- **Commit subjects**: `type: lowercase imperative summary`, ≤72 characters, types
+  `feat fix docs style refactor perf test build ci chore revert` (optional `(scope)` and
+  `!`). **PR titles follow the same rule** — squash merges make the title the canonical
+  commit on `main`; the `(#N)` suffix GitHub appends at merge time is the only difference.
+- Local fast feedback is opt-in: `./scripts/setup-git-hooks.sh`. CI enforces regardless.
+
 ## Big changes land as stacked pull requests
 
 Never open one large PR. Decompose the change into an ordered chain in which **every
@@ -28,9 +42,9 @@ The recipe (proven on the PostgreSQL-catalog stack, PRs #13 → #14):
    behavior, run the suites it could break — at that level — before moving on. Config-only
    layers need a build check. Finish with the full sweep at the tip, then diff the tip
    against the backup: the only acceptable delta is what was deliberately reorganized.
-5. **One commit per branch**, message as `type: lowercase imperative`
-   (feat / fix / ci / docs / test / refactor / build) — the same convention as the
-   repository history.
+5. **One commit per branch**, message as `type: lowercase imperative` with the enforced
+   type set (`feat fix docs style refactor perf test build ci chore revert` — see the
+   hard rules above) — the same convention as the repository history.
 6. **PR body** = **What** (one paragraph) · **Stack** (part N of M, prev + next links) ·
    **Review pointers** (the three or four things to actually look at) · **Evidence**
    (which suites ran green *at this level*).
@@ -50,8 +64,8 @@ and a tip that matches the independently verified end state.
 
 ## CI runs only the jobs a change can affect
 
-`ci` gates every job (except path detection and secrets hygiene) on the areas the PR
-touches: a markdown-only change runs neither the backend nor the frontend matrix, and a
+`ci` gates every job (except path detection, secrets hygiene and conventions) on the
+areas the PR touches: a markdown-only change runs neither the backend nor the frontend matrix, and a
 backend-only change skips the frontend job. The gates live in the `changes` job of
 `.github/workflows/ci.yml` — a PR that adds a job or a load-bearing file extends the
 filters in the same PR. The `ci:full-build` PR label forces the full matrix; pushes to

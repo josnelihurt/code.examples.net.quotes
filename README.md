@@ -66,6 +66,7 @@ Transport vs domain validation: DTOs keep shallow guards (`[Required]`, `[MaxLen
 3. OpenAPI conventions in the platform (Bearer scheme, standard ProblemDetails shapes for 401/403/404/409/500). Operations are documented with XML `///` comments (`<summary>`/`<remarks>`/`<param>`/`<response>`/`<example>`) that the built-in generator flows into the documents, plus per-host narratives (`OpenApiDocs`); see [docs/api.md](docs/api.md).
 4. Composition root at the API host: layers register themselves (`AddQuotesApplication`, `AddQuotesInfrastructure`); Program.cs composes them. Api references Application + Infrastructure, never Domain directly.
 5. Transport input validation: request DTOs use Data Annotations; each host calls `AddValidation()` so binding validates before handlers run.
+6. Branch and commit hygiene: pushed branches use `feature/ hotfix/ chore/ docs/ ci/ fix/` prefixes, commit subjects and PR titles are conventional commits — enforced by the `conventions` CI gate (see [docs/contributing.md](docs/contributing.md)).
 
 ## What it does today
 
@@ -221,6 +222,24 @@ dotnet user-secrets set "Jwt:SigningKey" "<dev key from docs/dev-credentials.md>
 ```
 
 Production startup fails if the key is missing, shorter than 32 bytes, or equal to the public development key (`JwtAuthExtensions`). The hermetic OpenAPI export (`Dockerfile.build`) generates a random build-time key.
+
+## Branches and commits
+
+Hard rules, enforced in CI and by the branch ruleset on `main` — the full
+reference (regexes, examples, local hooks, how enforcement works) lives in
+[docs/contributing.md](docs/contributing.md):
+
+- **Branch names** — `feature/`, `hotfix/`, `chore/`, `docs/`, `ci/` or `fix/`
+  followed by a kebab-case name; local-only `backup/…` snapshots are exempt.
+- **Commit messages** — conventional commits (`feat`, `fix`, `docs`, `style`,
+  `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`), lowercase
+  imperative summary, at most 72 characters. **PR titles follow the same rule**:
+  squash merges make the title the canonical commit on `main`.
+
+The `conventions` CI job checks the branch, the commits and the title of every
+PR; a ruleset on `main` blocks merges without a green check. Agents get the same
+rules in [AGENTS.md](AGENTS.md); `./scripts/setup-git-hooks.sh` opts a clone into
+matching local hooks.
 
 ## Stacked pull requests
 

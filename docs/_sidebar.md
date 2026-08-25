@@ -7,6 +7,7 @@
 * [Scalar (combined)](scalar/)
 * [Local development](local-dev.md)
 * [Development credentials](dev-credentials.md)
+* [Contributing](contributing.md)
 * [Testing](testing.md)
 * [SonarQube](sonar.md)
 * [Observability](observability.md)

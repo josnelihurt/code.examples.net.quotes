@@ -35,8 +35,11 @@ This repository uses conventional commits with a single lowercase subject line:
 type: lowercase imperative summary
 ```
 
-- `type` — `feat`, `fix`, `docs`, `refactor`, `test`, or `chore`, chosen by the dominant nature of the change
+- `type` — one of the enforced conventional types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`, chosen by the dominant nature of the change
 - Summary — imperative mood ("add", not "added"), no trailing period, under 72 characters
+
+The full rule set — including the branch-naming rule and the PR-title rule that
+CI's `conventions` job enforces — lives in `docs/contributing.md`.
 
 Real examples from this history:
 
