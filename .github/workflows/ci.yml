@@ -205,7 +205,7 @@ jobs:
           find tests -name '*.Tests.csproj' -print0 | xargs -0 -n1 dotnet test -c Release --settings ./tests/coverlet.runsettings
 
       - name: Upload coverage (OpenCover)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-opencover
           path: tests/**/TestResults/**/*.xml
@@ -345,7 +345,7 @@ jobs:
       # it proves cross-service journeys, so it runs as its own parallel gate.
       - run: dotnet test tests/Bdd/AspireQuotesPoc.Specs.csproj -c Release --logger "trx;LogFileName=specs.trx"
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: specs-results
@@ -424,7 +424,7 @@ jobs:
       - run: pnpm run test:e2e:fullstack
         working-directory: frontend
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: playwright-report
