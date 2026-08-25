@@ -2,14 +2,16 @@
 # Dependency audit gate for the dependency-refresh workflow (see .claude/skills/dependency-refresh).
 #
 #   1. nuget    outdated and vulnerable packages, consolidated across src/ and tests/
-#   2. pnpm     outdated and audit for frontend/
-#   3. infra    version pins that live outside the package managers (AppHost SDK,
+#   2. infra    version pins that live outside the package managers (AppHost SDK,
 #               Aspire same-line rule, Docker/YARP images, GitHub Actions)
 #
+# The pnpm half of the audit moved to net-examples-frontend with the SPA's
+# extraction from this repository.
+#
 # The report is the product: a failed check is recorded inside its section, never
-# hidden, and the script still exits 0 — this is an audit, not a gate. Sections 1
-# and 2 need network (nuget.org, npm registry). NuGet answers come as JSON and are
-# consolidated by python3; raw text is kept for the frontend and the infra pins.
+# hidden, and the script still exits 0 — this is an audit, not a gate. The nuget
+# section needs network (nuget.org). NuGet answers come as JSON and are
+# consolidated by python3; raw text is kept for the infra pins.
 #
 # Usage: ./scripts/audit-deps.sh [--out <file>]
 set -uo pipefail
@@ -40,7 +42,7 @@ say
 
 say "## Environment"
 say
-for tool in dotnet node pnpm gh python3; do
+for tool in dotnet gh python3; do
   if command -v "${tool}" >/dev/null 2>&1; then
     say "- ${tool}: $("${tool}" --version 2>/dev/null | head -1)"
   else
@@ -141,38 +143,7 @@ for kind in restore outdated vulnerable; do
   fi
 done
 
-# ---------------------------------------------------------------- 2. frontend
-
-note "frontend: pnpm outdated + audit"
-say "## Frontend (pnpm)"
-say
-if command -v pnpm >/dev/null 2>&1; then
-  (cd frontend && pnpm outdated) > "${WORK}/pnpm-outdated.txt" 2>&1 || true
-  (cd frontend && pnpm audit)     > "${WORK}/pnpm-audit.txt"     2>&1 || true
-  say "### pnpm outdated"
-  say
-  say '```text'
-  cat "${WORK}/pnpm-outdated.txt" >> "${REPORT}"
-  say '```'
-  say
-  say "### pnpm audit"
-  say
-  say '```text'
-  cat "${WORK}/pnpm-audit.txt" >> "${REPORT}"
-  say '```'
-  say
-else
-  say "pnpm not on PATH — section FAILED."
-  say
-fi
-say "Security posture in force (frontend/pnpm-workspace.yaml): pnpm refuses install scripts except \`allowBuilds\`, refuses releases younger than \`minimumReleaseAge\` minutes, and pins \`overrides\`:"
-say
-say '```yaml'
-cat frontend/pnpm-workspace.yaml >> "${REPORT}"
-say '```'
-say
-
-# ------------------------------------------------------------------- 3. infra
+# ------------------------------------------------------------------- 2. infra
 
 note "infra: pins outside the package managers"
 say "## Infra pins"
@@ -239,7 +210,6 @@ if (( restore_failed + outdated_failed + vuln_failed == 0 )); then
 else
   say "- nuget: PARTIAL (restore: ${restore_failed}, outdated: ${outdated_failed}, vulnerable: ${vuln_failed} projects failed)"
 fi
-say "- frontend: $(command -v pnpm >/dev/null 2>&1 && echo OK || echo FAILED)"
 say "- infra: OK"
 say
 say "Audit only — no dependency was changed by this run. Interpretation and batching belong to the dependency-refresh skill."

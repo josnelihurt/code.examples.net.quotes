@@ -30,21 +30,13 @@ dotnet tool restore
 # Coverage reports are discovered by glob at scanner end, so stale runs must go first.
 find tests -type d -name TestResults -prune -exec rm -rf {} +
 
+# TypeScript coverage and test inclusion moved to net-examples-frontend with the
+# SPA's extraction; this scan is the C# side only.
 COVERAGE_PATHS="${ROOT}/tests/**/TestResults/**/coverage.opencover.xml"
-LCOV_PATH="${ROOT}/frontend/coverage/lcov.info"
 
-if [[ "${SONAR_SKIP_FRONTEND:-}" == "1" ]]; then
-  echo "SONAR_SKIP_FRONTEND=1; leaving the frontend coverage report untouched."
-elif [[ -d "${ROOT}/frontend/node_modules" ]]; then
-  echo "Running frontend tests with coverage..."
-  (cd "${ROOT}/frontend" && pnpm run test:coverage)
-else
-  echo "frontend/node_modules is missing; run 'pnpm install' there for TypeScript coverage." >&2
-fi
-
-SONAR_EXCLUSIONS="**/bin/**,**/obj/**,frontend/dist/**,frontend/node_modules/**,frontend/coverage/**,frontend/public/**,docs/**,src/AppHost/aspire-output/**,**/*.g.cs"
-SONAR_TEST_INCLUSIONS="tests/**/*.cs,frontend/src/**/*.test.ts,frontend/src/**/*.test.tsx"
-SONAR_COVERAGE_EXCLUSIONS="tests/**/*,src/AppHost/**/*,**/Program.cs,**/Contracts/**,frontend/src/main.tsx,frontend/src/test/**,frontend/*.config.ts,frontend/*.config.js"
+SONAR_EXCLUSIONS="**/bin/**,**/obj/**,docs/**,src/AppHost/aspire-output/**,**/*.g.cs"
+SONAR_TEST_INCLUSIONS="tests/**/*.cs"
+SONAR_COVERAGE_EXCLUSIONS="tests/**/*,src/AppHost/**/*,**/Program.cs,**/Contracts/**"
 
 begin_args=(
   "/k:${SONAR_PROJECT_KEY}"
@@ -58,12 +50,6 @@ begin_args=(
   "/d:sonar.coverage.exclusions=${SONAR_COVERAGE_EXCLUSIONS}"
   "/d:sonar.scm.disabled=true"
 )
-
-if [[ -f "$LCOV_PATH" ]]; then
-  begin_args+=("/d:sonar.javascript.lcov.reportPaths=${LCOV_PATH}")
-else
-  echo "No frontend lcov report found; TypeScript will be analysed without coverage."
-fi
 
 dotnet dotnet-sonarscanner begin "${begin_args[@]}"
 
