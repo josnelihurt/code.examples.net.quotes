@@ -4,12 +4,15 @@
 
 - .NET 10 SDK
 - Aspire CLI 13.x
+- A checkout with the frontend submodule present: `git clone --recurse-submodules …`
+  (or `git submodule update --init` in an existing clone) — the AppHost's `web`
+  resource and the e2e suite resolve `frontend/` from it
 - Podman (`ASPIRE_CONTAINER_RUNTIME=podman`)
 - Node.js 20.19+ / 22.12+ / 24+ (CI runs Node 24, the active LTS)
 - pnpm — install standalone (`brew install pnpm` or `npm i -g pnpm`); Corepack no longer
   ships with Node 25+. The exact version is pinned by `packageManager` in
-  `frontend/package.json` and pnpm honors it automatically. Rationale:
-  [pnpm as the package manager](package-manager-security.md)
+  `frontend/package.json` (inside the submodule) and pnpm honors it automatically.
+  Rationale: [pnpm as the package manager](https://github.com/josnelihurt/net-examples-frontend/blob/main/docs/package-manager-security.md) (moved to the frontend repository with the SPA)
 
 ## Start the app
 

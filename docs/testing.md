@@ -2,7 +2,7 @@
 
 Four layers, each owning exactly one question. The bottom two are TDD — exhaustive and
 fast; the top two are BDD — few scenarios in business language, run against real
-processes. Frontend coverage is emitted as LCOV for SonarQube.
+processes. The frontend's coverage is emitted as LCOV in its own repository's pipeline.
 
 ## The testing model
 
@@ -94,14 +94,15 @@ raised for the spec environment (many scenarios sign in inside one fixed window)
 ~20 scenarios across Authentication, Quotes and Platform features. Expect the first run
 to take a few minutes (container start dominates).
 
-## Run frontend tests and E2E
+## Run the full-stack E2E
+
+The SPA's own suites — Vitest, the MSW-mocked Playwright e2e, Storybook — live in
+[net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend) with
+their own CI; its default `pnpm run test:e2e` needs no backend. From this checkout
+(both trees present via the submodule) the integration suite is the full-stack one:
 
 ```bash
-cd frontend
-pnpm test                 # vitest run
-pnpm run test:coverage    # + LCOV under frontend/coverage/
-
-./scripts/e2e.sh         # from the repo root: builds APIs (Release), runs Playwright BDD
+./scripts/e2e.sh   # builds the APIs (Release), starts the throwaway catalog, runs Playwright BDD
 ```
 
 The E2E suite boots both APIs on loopback ports namespaced per worktree (see
@@ -135,7 +136,7 @@ inside a checkout and unique across checkouts.
   way once) and clear of this repo's own fixed ports (Aspire dashboard/OTLP
   15142–22035, docs 3001, Sonar 9000, PostgreSQL 55432). Playwright receives the ports
   through `E2E_AUTH_PORT` / `E2E_QUOTES_PORT` / `E2E_VITE_PORT` / `E2E_PG_PORT`; each
-  is overridable, and `frontend/playwright.config.ts` falls back to the historical
+  is overridable, and `frontend/playwright.fullstack.config.ts` falls back to the historical
   fixed API/Vite ports — and, for the catalog, to `scripts/e2e.env`, the one copy of
   the throwaway connection values that CI also starts its own PostgreSQL from.
 - `scripts/update-contracts.sh` tags its export image `…:export-<hash>`, so two
@@ -163,18 +164,17 @@ server state) and `scripts/export-bundle.sh` (writes `~/repo.bundle`).
 - **Architecture** — NetArchTest suite (`tests/Architecture.Tests`) enforcing the layering table: dependency direction per layer, no Api→Domain, no cross-context references, ServiceDefaults isolated
 - **Auth rate limiting** — slim-pipeline suite with a two-request window proving the 429 ProblemDetails shape (`auth.rate_limited`), plus the Production refusal of the scaffolding credential store at the DI boundary
 - **Specs (tests/Bdd)** — cross-service journeys through the gateway: sign in → token → random quote, create → `Location` round trip, near-duplicate 409, rejected text 400, reader-scope 403, v0/v1 transport parity, token introspection, OpenAPI/Scalar surfaces
-- **Frontend** — `api/client` (session, login, random, catalog paging, publish — every failure path parsed out of the RFC 9457 body into `ApiError`), `LoginPage`, `QuotePage`, `QuotesListPage` (first page, next/previous bounds, version switch refetch, empty catalog), `PublishQuotePage` (success confirmation + form reset, validation/conflict/forbidden alerts, in-flight disabling), routing/`RequireAuth` over `/quote`, `/quotes` and `/publish` (Vitest); browser journeys across signing-in, reading-quotes, browsing-quotes and publishing-quotes (Playwright BDD); Storybook interaction stories for the extracted presentational components, smoke-built in CI
+- **Frontend** — `api/client` (session, login, random, catalog paging, publish — every failure path parsed out of the RFC 9457 body into `ApiError`), `LoginPage`, `QuotePage`, `QuotesListPage` (first page, next/previous bounds, version switch refetch, empty catalog), `PublishQuotePage` (success confirmation + form reset, validation/conflict/forbidden alerts, in-flight disabling), routing/`RequireAuth` over `/quote`, `/quotes` and `/publish` (Vitest); browser journeys across signing-in, reading-quotes, browsing-quotes and publishing-quotes (Playwright BDD); Storybook stories for the extracted presentational components — all in [net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend) and gated in its CI
 
 ## CI
 
-`.github/workflows/ci.yml` enforces seven gates: the test suite in **Release** (where
+`.github/workflows/ci.yml` enforces six gates: the test suite in **Release** (where
 `TreatWarningsAsErrors` applies) with coverage collection; the repo's own lint script
-(`dotnet format --verify-no-changes`); the frontend job (lint + tests + build so type
-errors cannot pass, plus the Storybook build and a regeneration of the SPA's
-OpenAPI-derived types in `src/api/schema.d.ts` failing on drift); the **specs** job
+(`dotnet format --verify-no-changes`); the **specs** job
 (Reqnroll against the Aspire-orchestrated stack, Docker on `ubuntu-latest`); the
-**e2e** job (Playwright + playwright-bdd in Chromium, its throwaway catalog started from
-`scripts/e2e.env`); the hermetic OpenAPI
+**e2e** job (full-stack Playwright + playwright-bdd in Chromium — the SPA from the
+`frontend` submodule against real APIs, its throwaway catalog started from
+`scripts/e2e.env`; a submodule pointer move re-runs it); the hermetic OpenAPI
 contract regeneration failing on any drift vs `docs/openapi/`; and the **image-pins**
 gate (`scripts/check-image-tags.sh`) failing when the container image tags in
 `scripts/images.env` drift from the ones the pinned Aspire packages run.

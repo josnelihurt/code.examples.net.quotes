@@ -99,7 +99,7 @@ step.
 
 ## Standalone boots (e2e, contract freeze)
 
-`frontend/playwright.config.ts` boots the APIs *without* the AppHost, and `Dockerfile.build` boots
+`frontend/playwright.fullstack.config.ts` boots the APIs *without* the AppHost, and `Dockerfile.build` boots
 Quotes.Api inside a build container to freeze the OpenAPI documents. Both supply the same contract
 the AppHost injects — a `ConnectionStrings__quotesdb` value pointing at a throwaway PostgreSQL.
 Same key, same migration-at-boot, same seeded catalog.

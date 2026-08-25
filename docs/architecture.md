@@ -13,7 +13,7 @@ Aspire AppHost orchestrates processes + YARP gateway (publish) + Docsify
 This page states the **rules**. The diagrams and the per-project detail live elsewhere:
 
 - [System design](system-design.md) — deployment topology, component diagram, request lifecycle, CI pipeline.
-- Per-project documents next to the source: [AppHost](../src/AppHost/README.md), [ServiceDefaults](../src/ServiceDefaults/README.md), [Auth](../src/Auth/README.md), [Quotes](../src/Quotes/README.md), [frontend](../frontend/README.md). Each layer folder carries its own `README.md` with its types, invariants and DDD rationale.
+- Per-project documents next to the source: [AppHost](../src/AppHost/README.md), [ServiceDefaults](../src/ServiceDefaults/README.md), [Auth](../src/Auth/README.md), [Quotes](../src/Quotes/README.md), [frontend](https://github.com/josnelihurt/net-examples-frontend) (a pinned submodule — its README lives in its own repository). Each layer folder carries its own `README.md` with its types, invariants and DDD rationale.
 
 ## Projects
 

@@ -12,7 +12,7 @@
 * [SonarQube](sonar.md)
 * [Observability](observability.md)
 * [ServiceDefaults as a NuGet building block](servicedefaults-nuget-extraction.md)
-* [pnpm as the package manager](package-manager-security.md)
+* [pnpm as the package manager](https://github.com/josnelihurt/net-examples-frontend/blob/main/docs/package-manager-security.md) (frontend repo)
 * [Documentation process](documentation-process.md)
 * [Panel Review](panel-review.md)
 * [Dependency refresh](dependency-refresh.md)

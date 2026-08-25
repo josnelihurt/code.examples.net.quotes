@@ -253,8 +253,8 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      # The same invocation developers run locally (scripts/lint.sh); per-project because
-      # the solution includes the VS-only frontend.esproj a clean SDK checkout cannot build.
+      # The same invocation developers run locally (scripts/lint.sh); per-project,
+      # matching scripts/lint.sh (the SPA builds itself in the frontend submodule).
       - name: Format check
         run: ./scripts/lint.sh
 

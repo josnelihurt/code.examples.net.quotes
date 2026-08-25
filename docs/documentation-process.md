@@ -29,7 +29,9 @@ The pass is built against those two failures specifically:
 | [Repository README](../README.md) | Intention, the layering table, the domain glossary, conventions, how to run | Per-project detail |
 | `docs/*.md` | Policy — [Architecture](architecture.md), [API](api.md), [Testing](testing.md), [Observability](observability.md) | Per-project detail |
 | [System design](system-design.md) | The whole system as diagrams, plus the component index | Rules already stated in Architecture |
-| `src/**/README.md`, [`frontend/README.md`](../frontend/README.md) | Types, invariants, wiring, call flows and DDD rationale for **one** project | Policy already stated above |
+| `src/**/README.md` | Types, invariants, wiring, call flows and DDD rationale for **one** project | Policy already stated above |
+
+(The frontend's README lives in [net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend) since the extraction.)
 
 Component pages sit next to the code on purpose. GitHub renders a folder's `README.md` when you browse
 into it, so the explanation is one click from the thing it explains — and a reviewer changing

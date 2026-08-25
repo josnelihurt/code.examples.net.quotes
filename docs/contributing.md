@@ -137,7 +137,8 @@ git config --unset core.hooksPath   # undo
   tags are exempt.
 
 Pure git configuration — no package-manager lifecycle, matching the
-[package-manager posture](package-manager-security.md). CI enforces the same
+package-manager posture (in
+[net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend)). CI enforces the same
 rules regardless of whether the hooks are installed.
 
 ## The checker

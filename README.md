@@ -93,7 +93,7 @@ Each `src/` row links to a component document describing that project's layers, 
 | [`src/ServiceDefaults/`](src/ServiceDefaults/README.md) | Platform kit: Serilog, OTEL, OpenAPI/Scalar helpers, JwtBearer + scope policies, ErrorOr→ProblemDetails, correlation |
 | [`src/Auth/`](src/Auth/README.md) | Auth service — Domain / Application / Infrastructure / Api |
 | [`src/Quotes/`](src/Quotes/README.md) | Quotes service — Domain / Application / Infrastructure / Api |
-| [`frontend/`](frontend/README.md) | React + TS Vite SPA |
+| [`frontend/`](frontend/README.md) | React + TS Vite SPA — a **git submodule pinned by commit** ([net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend)); clone with `--recurse-submodules`, move the pin via PR |
 | `docs/` | Docsify + combined Scalar reference |
 | `contracts/` | Pointer to Docsify OpenAPI docs ([api-contracts.md](contracts/api-contracts.md)) |
 | `tests/` | xUnit unit/API tests (OpenCover for Sonar) + `tests/Bdd` Reqnroll specs against the running stack |
@@ -153,10 +153,13 @@ C# lint — warning-level style rules incl. unused usings (IDE0005); `--fix` rew
 ./scripts/lint.sh
 ```
 
-Frontend tests (Vitest):
+The SPA's own suites (Vitest, mocked Playwright e2e, Storybook) live in
+[net-examples-frontend](https://github.com/josnelihurt/net-examples-frontend) and run
+in its CI. What runs from this checkout is the full-stack e2e — real APIs, real
+catalog, the SPA from the submodule:
 
 ```bash
-cd frontend && pnpm test
+./scripts/e2e.sh
 ```
 
 Local SonarQube (Podman) + scan:
@@ -208,7 +211,7 @@ See [docs/observability.md](docs/observability.md).
 - OpenTelemetry (ASP.NET, HttpClient, runtime + custom meters)
 - ProblemDetails / health checks
 - Reqnroll + Aspire.Hosting.Testing (`tests/Bdd` specs against the real stack)
-- Playwright + playwright-bdd (`frontend/e2e` browser journeys)
+- Playwright + playwright-bdd (browser journeys in the [frontend submodule](https://github.com/josnelihurt/net-examples-frontend); full-stack runs from this repo, mocked runs in its own)
 
 ## Credentials and secrets
 

@@ -1,6 +1,6 @@
 ---
 name: deps-planner
-description: Turns one slice of the dependency audit (NuGet, frontend, or infra pins) into a classified update plan — semver batches, risk flags, pinned-pair constraints — for the dependency-refresh orchestrator. Launched one per surface, in parallel. Read-only.
+description: Turns one slice of the dependency audit (NuGet or infra pins) into a classified update plan — semver batches, risk flags, pinned-pair constraints — for the dependency-refresh orchestrator. Launched one per surface, in parallel. Read-only. (The pnpm/frontend surface moved to net-examples-frontend with the SPA.)
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -10,12 +10,11 @@ STRICTLY READ-ONLY: use Read/Grep/Glob and read-only commands (`dotnet list`, `p
 
 Method:
 
-1. Read the manifests your surface touches, in full: for NuGet that is `Directory.Packages.props` plus the `Sdk="Aspire.AppHost.Sdk/..."` pin in `src/AppHost/AspireQuotesPoc.AppHost.csproj`; for the frontend it is `frontend/package.json`, `frontend/pnpm-workspace.yaml` and the shape of `frontend/pnpm-lock.yaml`; for infra it is `Dockerfile.build`, `.github/workflows/ci.yml`, `src/AppHost/AppHost.cs` and `scripts/images.env`.
+1. Read the manifests your surface touches, in full: for NuGet that is `Directory.Packages.props` plus the `Sdk="Aspire.AppHost.Sdk/..."` pin in `src/AppHost/AspireQuotesPoc.AppHost.csproj`; for infra it is `Dockerfile.build`, `.github/workflows/ci.yml`, `src/AppHost/AppHost.cs` and `scripts/images.env`. (The frontend manifests are the `frontend` submodule's — its dependency refresh is that repository's workflow; here a pin bump is the integration step.)
 2. Classify every candidate from your audit slice into a batch: **patch**, **minor**, **major**, or **infra pin**. Preview tags and floating tags (e.g. a `-preview` image tag) are their own row, never silently folded into a minor.
 3. Flag every constraint you can state factually:
    - The **same-line rule**: the AppHost SDK pin and the `Aspire.Hosting.*` pins (including `Aspire.Hosting.Testing`) move together — one version line for all of them. An Aspire bump that changes a pinned container tag updates `scripts/images.env` in the same batch (`scripts/check-image-tags.sh` gates it).
    - Version pairs that the manifests deliberately keep in step (test SDK vs runner, Reqnroll generator vs adapter).
-   - `frontend/pnpm-workspace.yaml` security posture: `minimumReleaseAge` refuses releases younger than 24h; `overrides` pins transitive `postcss`; `allowBuilds` is the only install-script allowlist. A target younger than the gate is a fact to report, not a reason to bypass the gate.
    - Anything the audit marked PARTIAL or FAILED — the affected packages are *unknown*, not current.
 4. Report, structured and in English:
    - The **batch table**: `Package | Current | Target | Class | Risk | Note` — one row per candidate, risk from your evidence only (major = possible breaking changes; patch behind a transitive vuln = security-driven; "no advisory" is also a fact).

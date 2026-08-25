@@ -68,8 +68,8 @@ and a tip that matches the independently verified end state.
 ## CI runs only the jobs a change can affect
 
 `ci` gates every job (except path detection, secrets hygiene and conventions) on the
-areas the PR touches: a markdown-only change runs neither the backend nor the frontend matrix, and a
-backend-only change skips the frontend job. The gates live in the `changes` job of
+areas the PR touches: a markdown-only change runs neither the backend nor the e2e
+matrix, and a backend-only change skips the e2e job. The gates live in the `changes` job of
 `.github/workflows/ci.yml` — a PR that adds a job or a load-bearing file extends the
 filters in the same PR. The `ci:full-build` PR label forces the full matrix; pushes to
 `main` always run it, and so does any change under `.github/workflows/**`.

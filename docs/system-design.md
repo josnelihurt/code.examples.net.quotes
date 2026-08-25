@@ -310,7 +310,7 @@ understanding rather than just running:
 - **Release is the real gate.** `TreatWarningsAsErrors` is set only for `Configuration == Release`
   in [`Directory.Build.props`](../Directory.Build.props), so the local Debug loop is fast and CI is
   strict. Both iterate per project rather than over the solution, because the solution contains
-  `frontend/frontend.esproj`, which a clean .NET SDK checkout cannot build.
+  the frontend submodule, whose build is its own repository's business.
 - **The OpenAPI contracts are product, and drift fails the build.**
   [`Dockerfile.build`](../Dockerfile.build) restores and builds both API hosts inside the SDK image,
   starts them on fixed ports, GETs `/openapi/v0.json` and `/openapi/v1.json`, normalises `servers`

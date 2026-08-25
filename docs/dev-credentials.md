@@ -28,7 +28,7 @@ dotnet user-secrets set "Jwt:SigningKey" "AspireQuotesPoc-Dev-Signing-Key-32char
 
 | Variable | Used by | Rule |
 |----------|---------|------|
-| `E2E_SIGNING_KEY` | `frontend/playwright.config.ts` (via `scripts/e2e.sh`) | Any value of at least 32 characters. Required — the config fails fast without it. CI generates a per-run value; locally export anything 32+ chars. |
+| `E2E_SIGNING_KEY` | `frontend/playwright.fullstack.config.ts` (via `scripts/e2e.sh`) | Any value of at least 32 characters. Required — the config fails fast without it. CI generates a per-run value; locally export anything 32+ chars. |
 | `E2E_PG_*` | Standalone e2e catalog — `scripts/e2e.sh`, the CI e2e job and `playwright.config.ts` all read the one file | Throwaway loopback-only values, committed deliberately in [`scripts/e2e.env`](../scripts/e2e.env) because they guard nothing. Never real credentials — those belong to the AppHost or an `AddParameter` secret (see [data storage](data-storage.md)). |
 | `Jwt__SigningKey` (in-image) | `Dockerfile.build` OpenAPI export | Generated randomly inside the image at build time; never matches the development key. |
 | `Parameters:jwt-signing-key` | BDD stack (`AspireStack`) | Random per test run. |

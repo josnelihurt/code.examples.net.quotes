@@ -6,7 +6,6 @@ Static analysis runs against a **Podman** SonarQube Community Build. The scanner
 
 - Podman machine with enough RAM (script bumps to **6 GB** if below 4 GB, with a prompt)
 - `curl`, `python3`
-- Node modules under `frontend/` for TypeScript coverage (`pnpm install`)
 
 ## Start the server
 
@@ -46,13 +45,7 @@ If you already have a local Sonar volume from the previous `aspire-quotes-poc` k
 ./scripts/sonar-scan.sh
 ```
 
-Pipeline: frontend Vitest + LCOV → `sonarscanner begin` → `dotnet build` → `dotnet test` (OpenCover) → `sonarscanner end`.
-
-Skip frontend coverage:
-
-```bash
-SONAR_SKIP_FRONTEND=1 ./scripts/sonar-scan.sh
-```
+Pipeline (C# only — TypeScript coverage moved to net-examples-frontend with the SPA): `sonarscanner begin` → `dotnet build` → `dotnet test` (OpenCover) → `sonarscanner end`.
 
 Dashboard after upload:
 

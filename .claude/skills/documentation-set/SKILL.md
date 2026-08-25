@@ -19,7 +19,7 @@ Background, the pipeline diagram, and the recorded first run live in [docs/docum
 | Root [`README.md`](../../../README.md) | Intention, the layering table, the domain glossary, conventions, how to run | Per-project detail |
 | [`docs/*.md`](../../../docs/) | Policy — the rules, the contracts, the process pages | Per-project detail |
 | [`docs/system-design.md`](../../../docs/system-design.md) | The whole-system diagrams and the component index | Rules already stated in `architecture.md` |
-| `src/**/README.md`, `frontend/README.md` | Types, invariants, wiring, call flows, DDD rationale for **one** project | Policy already stated above |
+| `src/**/README.md` | Types, invariants, wiring, call flows, DDD rationale for **one** project | Policy already stated above |
 
 Everything links; nothing is restated. Duplication is the failure mode this split exists to prevent.
 
@@ -32,7 +32,7 @@ Agents run with the Agent tool. Stages 2 and 4 launch their agents **in parallel
    - Decide the mode: **full pass** (every component) or **targeted** (a new or changed component, plus the general page's affected sections).
    - Note anything untracked on another branch. A document must not link to a file that does not exist on *this* branch — say so in the report instead.
 
-2. **Map (Cartographers, parallel).** Split the tree into 2–4 slices that do not overlap — the natural split is one per bounded context plus one for the platform, orchestrator, frontend, build and CI. Launch one `doc-cartographer` per slice. Each brief is self-contained: absolute repo root, the exact paths to read, the inventory to produce, and the facts-only rule. Collect the fact sheets.
+2. **Map (Cartographers, parallel).** Split the tree into 2–4 slices that do not overlap — the natural split is one per bounded context plus one for the platform, orchestrator, build and CI (the frontend's docs live in the net-examples-frontend submodule's own repository). Launch one `doc-cartographer` per slice. Each brief is self-contained: absolute repo root, the exact paths to read, the inventory to produce, and the facts-only rule. Collect the fact sheets.
 
 3. **Read the spine yourself.** While the cartographers run, read the files the general page depends on directly: the AppHost, the architecture test suite, one domain in full, the CI workflow, and every existing `docs/*.md`. You cannot verify a writer's output against a summary — only against the code.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs the Playwright BDD suite for the SPA. Builds both APIs in Release first —
-# playwright.config.ts points webServer at their DLLs on loopback ports — starts a
+# playwright.fullstack.config.ts points webServer at their DLLs on loopback ports — starts a
 # throwaway PostgreSQL for the quotes catalog (the API migrates + seeds it at boot), then
 # hands over to Playwright, which boots the APIs and the Vite dev server itself.
 #
@@ -22,8 +22,8 @@ source "${ROOT}/scripts/images.env"
 PG_IMAGE="${POSTGRES_IMAGE}"
 
 # The catalog's throwaway connection values also have one copy (user, password,
-# database — and the fixed port CI and playwright.config.ts use as their fallback).
-# CI sources this same file and playwright.config.ts parses it directly. An
+# database — and the fixed port CI and playwright.fullstack.config.ts use as their fallback).
+# CI sources this same file and playwright.fullstack.config.ts parses it directly. An
 # operator-pinned E2E_PG_PORT is captured first: this script's ephemeral per-worktree
 # port (below) must keep winning over the file's fixed port on local runs.
 PINNED_PG_PORT="${E2E_PG_PORT:-}"
@@ -58,7 +58,7 @@ fi
 # Honors ASPIRE_CONTAINER_RUNTIME (podman by default here); both CLIs accept these args.
 RUNTIME="${ASPIRE_CONTAINER_RUNTIME:-podman}"
 
-# playwright.config.ts refuses to boot without a 32+ char signing key; check here so the
+# playwright.fullstack.config.ts refuses to boot without a 32+ char signing key; check here so the
 # failure names the fix instead of surfacing as a Playwright config error (CI sets its own
 # ephemeral value; locally export one — see docs/dev-credentials.md).
 if [ -z "${E2E_SIGNING_KEY:-}" ]; then
@@ -89,7 +89,7 @@ else
   PG_PORT="${PG_PORT##*:}"
 fi
 
-# Hand the per-worktree values to playwright.config.ts, which reads them with these
+# Hand the per-worktree values to playwright.fullstack.config.ts, which reads them with these
 # scripts' historical fixed ports as fallbacks.
 export E2E_PG_PORT="${PG_PORT}"
 export E2E_AUTH_PORT="${AUTH_PORT}"
