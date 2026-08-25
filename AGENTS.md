@@ -60,7 +60,7 @@ The recipe (proven on the two-layer PostgreSQL-catalog stack — EF Core catalog
    itself (stack layers atomically, everything below included) — see
    `.github/workflows/merge-me.yml` and `scripts/merge-me.sh`. Label the top layer
    only: one label lands the whole chain, and labeling several layers starts
-   concurrent merges that race (issue #61).
+   concurrent merges that race (issue #10).
 
 What matters most: every intermediate level green, per-level evidence in the PR bodies,
 and a tip that matches the independently verified end state.

@@ -4,11 +4,11 @@ name: merge-me
 # merge it once it is green, and to keep re-evaluating until then. Every evaluation
 # corresponds to a real event — the label, a push, a reopen, the ci workflow
 # completing — nothing runs on a timer (the scheduled sweep this design started
-# with was removed in review; see issue #33). Removing the label disarms any armed
-# auto-merge: unlabeled evaluations run the script's --disarm mode (issue #61).
+# with was removed in review; see issue #7). Removing the label disarms any armed
+# auto-merge: unlabeled evaluations run the script's --disarm mode (issue #10).
 # Red PRs are held — the decision table
 # and the rejected alternatives (classic merge API and marketplace automerge actions
-# both break on stacked PRs) are documented in scripts/merge-me.sh and issue #33.
+# both break on stacked PRs) are documented in scripts/merge-me.sh and issue #7.
 on:
   pull_request:
     types: [labeled, synchronize, reopened, unlabeled]
@@ -22,7 +22,7 @@ on:
         required: false
 
 # Ephemeral per-run token: no stored credentials, and it cannot bypass branch
-# protection — if that is ever added, revisit with a merge queue (see issue #33).
+# protection — if that is ever added, revisit with a merge queue (see issue #7).
 permissions:
   contents: write
   pull-requests: write
@@ -44,7 +44,7 @@ jobs:
 
       # Unlabeled pushes exit immediately inside the script; the bounded wait covers
       # this repo's ~5-minute CI. A removed label takes the --disarm path instead:
-      # an armed auto-merge must not outlive the intent that armed it (issue #61).
+      # an armed auto-merge must not outlive the intent that armed it (issue #10).
       - name: Evaluate the labeled PR
         env:
           GH_TOKEN: ${{ github.token }}

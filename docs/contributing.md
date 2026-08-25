@@ -90,7 +90,7 @@ does **not** require approvals, "up to date" branches, or a merge queue: the
 [merge-me automation](../README.md#merging-the-merge-me-label) merges with
 `GITHUB_TOKEN`, which cannot bypass branch protection, and stacked layers are
 rebased server-side when a lower layer merges. The merge-queue revisit is
-tracked in [issue #33](https://github.com/josnelihurt/code.examples.net.quotes/issues/33).
+tracked in [issue #7](https://github.com/josnelihurt/code.examples.net.quotes/issues/7).
 
 To recreate the ruleset after a repository reset:
 

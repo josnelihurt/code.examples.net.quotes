@@ -2,7 +2,7 @@
 
 **Dependency refresh** is this repository's reproducible library-update workflow: a mechanical audit of every dependency surface, a batched update plan produced by a read-only planner agent, a mandatory **owner gate** where the proposed updates are approved question by question, and the repo's full verification gate run against every applied batch. It exists because dependencies age silently: nothing in the build fails when a package stops being current, so the failure arrives later — as a security advisory you cannot patch quickly because you are three majors behind, or as a wall of accumulated breaking changes. Regular, small, validated refreshes are the cheapest way to hold both risks down.
 
-The workflow was introduced for [code.examples.net.quotes issue #5](https://github.com/josnelihurt/code.examples.net.quotes/issues/5).
+The workflow was introduced for [code.examples.net.quotes issue #1](https://github.com/josnelihurt/code.examples.net.quotes/issues/1).
 
 ## Grounding
 

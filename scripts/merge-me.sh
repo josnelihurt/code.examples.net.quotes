@@ -5,7 +5,7 @@
 # (red stays labeled; the next event re-evaluates). Nothing here runs on a timer —
 # every evaluation is triggered by a real event: the label, a push, a reopen, the ci
 # workflow completing, or a manual dispatch (the scheduled sweep this design started
-# with was removed in review; see issue #33 for the investigation, the rejected
+# with was removed in review; see issue #7 for the investigation, the rejected
 # alternatives — the classic merge API and marketplace automerge actions both break
 # on this repo's stacked PRs — and the tradeoffs).
 #
@@ -16,7 +16,7 @@
 #       zero-minute wait, by its ci-completion trigger (checks already finished).
 #
 #   ./scripts/merge-me.sh <pr-number> --disarm
-#       The label was removed: disarm any armed server-side auto-merge (issue #61 —
+#       The label was removed: disarm any armed server-side auto-merge (issue #10 —
 #       an armed auto-merge survived unlabeling and merged by surprise). Used by the
 #       workflow's unlabeled trigger.
 #
@@ -139,7 +139,7 @@ merge() {
     case "${status}" in
       merged) printf '#%s merged\n' "$1"; return 0 ;;
       # The poll response carries the failure's actual reason; swallowing it is how
-      # "#N: merge failed" became a mystery on an early review stack (issue #61).
+      # "#N: merge failed" became a mystery on an early review stack (issue #10).
       failed) printf '#%s: merge failed — %s\n' "$1" "$(jq -c . <<<"${resp}")" >&2; return 1 ;;
     esac
   done
@@ -147,7 +147,7 @@ merge() {
   return 1
 }
 
-# The squash-merge stack wedge (issue #61): when the bottom PR of a stack squash-merges,
+# The squash-merge stack wedge (issue #10): when the bottom PR of a stack squash-merges,
 # the layers above still carry it as a real commit while the base carries the same diff
 # as the squash, so GitHub reports them CONFLICTING and every atomic merge fails. This
 # recipe — replaying only a branch's own commits onto the new base, bottom-up — is the
@@ -166,7 +166,7 @@ RECIPE
 # lower_layer_conflicts PR -> 0 (printed and holding) | 1 (nothing conflicting below).
 # The atomic merge lands every stack member below the labeled PR, so a CONFLICTING
 # lower layer fails the whole attempt — detecting it first turns "#N: merge failed"
-# into an instruction (issue #61). Walks the open-PR chain: the PR whose head branch
+# into an instruction (issue #10). Walks the open-PR chain: the PR whose head branch
 # is this one's base, then that PR's base, down toward the trunk.
 lower_layer_conflicts() {
   local pr="$1" base lower_pr lower_mergeable
