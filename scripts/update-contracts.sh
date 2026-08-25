@@ -28,12 +28,13 @@ echo "==> Copying frozen YAML to docs/openapi"
 "${DOCKER}" cp "${cid}:/quotes-v0.openapi.yaml" "${OUT_DIR}/quotes-v0.openapi.yaml"
 "${DOCKER}" cp "${cid}:/quotes-v1.openapi.yaml" "${OUT_DIR}/quotes-v1.openapi.yaml"
 
-echo "==> Regenerating the SPA API types (frontend/src/api/schema.d.ts)"
-(cd "${ROOT}/frontend" && pnpm run gen:api)
-
 echo "Updated:"
 echo "  ${OUT_DIR}/auth.openapi.yaml"
 echo "  ${OUT_DIR}/quotes-v0.openapi.yaml"
 echo "  ${OUT_DIR}/quotes-v1.openapi.yaml"
-echo "  frontend/src/api/schema.d.ts"
 echo "Done. Review the diff before committing."
+echo
+echo "The SPA's generated types (src/api/schema.d.ts) live in the frontend"
+echo "submodule's repository now: after committing a contract change here, its"
+echo "contract-sync workflow picks the new frozen document up (raw URL diff) and"
+echo "opens the sync PR there; bump this repo's submodule pin when it lands."

@@ -27,13 +27,6 @@ packages/
 **/aspire-output/
 .aspire/
 
-# Node / frontend
-node_modules/
-dist/
-*.local
-.vite/
-coverage/
-
 # IDE / OS
 .vs/
 .vscode/*
@@ -64,10 +57,6 @@ TestResults/
 .sonar/
 .sonarqube/
 .scannerwork/
-
-# Generated MSBuild / Aspire frontend props (any path shape)
-**/package.g.props
-**/obj*/
 
 # ZCode agent session artifacts
 .zcode/

@@ -41,7 +41,6 @@ jobs:
       run_build_and_test: ${{ steps.decide.outputs.run_build_and_test }}
       run_lint: ${{ steps.decide.outputs.run_lint }}
       run_codeql: ${{ steps.decide.outputs.run_codeql }}
-      run_dependency_review: ${{ steps.decide.outputs.run_dependency_review }}
       run_specs: ${{ steps.decide.outputs.run_specs }}
       run_e2e: ${{ steps.decide.outputs.run_e2e }}
       run_contract_drift: ${{ steps.decide.outputs.run_contract_drift }}
@@ -66,10 +65,11 @@ jobs:
               - '.config/**'
               - '.editorconfig'
             frontend:
-              # The SPA tree plus the frozen OpenAPI documents its types are generated
-              # from; it gates dependency review (pnpm lockfile) and full-stack e2e.
-              - 'frontend/**'
-              - 'docs/openapi/**'
+              # The submodule pointer (the gitlink at frontend/). The SPA's own
+              # lint/unit/build gates live in net-examples-frontend's CI; a pointer
+              # move here means new SPA code runs against this backend in the
+              # full-stack e2e job.
+              - 'frontend'
             contracts:
               # Everything that can drift docs/openapi: the APIs that generate the
               # contracts, the hermetic export image with the root build files it
@@ -121,7 +121,6 @@ jobs:
             out "run_build_and_test=true"
             out "run_lint=true"
             out "run_codeql=true"
-            out "run_dependency_review=true"
             out "run_specs=true"
             out "run_e2e=true"
             out "run_contract_drift=true"
@@ -144,17 +143,15 @@ jobs:
 
           # The Postgres-backed tests parse scripts/images.env at runtime, so a pin
           # move must reach build-and-test too, not just the jobs that pull images.
-          # dependency-review reads only the pnpm lockfile (NuGet is CodeQL's SBOM
-          # pass), so it follows the frontend flag. The frontend's own lint/unit/
-          # build gates moved to net-examples-frontend with its extraction; what
-          # stays here is what crosses the boundary: dependency review of the
-          # lockfile and the full-stack e2e integration.
+          # The frontend flag now means one thing only: the submodule pointer moved,
+          # so the full-stack e2e integration must re-run. The SPA's own gates
+          # (lint, unit, mocked e2e, pnpm dependency review) live in
+          # net-examples-frontend's CI on every commit there.
           run_build_and_test="false"
           if [ "${backend}" = "true" ] || [ "${pins}" = "true" ]; then run_build_and_test="true"; fi
           out "run_build_and_test=${run_build_and_test}"
           out "run_lint=${backend}"
           out "run_codeql=${backend}"
-          out "run_dependency_review=${frontend}"
           out "run_specs=${run_specs}"
           out "run_e2e=${run_e2e}"
           out "run_contract_drift=${contracts}"
@@ -280,9 +277,9 @@ jobs:
           set -euo pipefail
           pattern='supersecret|readsecret|Dev-Signing-Key|AspireQuotes-Local2!'
           hits=$(git grep -nE "$pattern" \
-            ':!**/bin/**' ':!**/obj/**' ':!frontend/pnpm-lock.yaml' \
+            ':!**/bin/**' ':!**/obj/**' \
             ':!.github/workflows/ci.yml' \
-            ':!tests/**' ':!**/*.test.ts' ':!**/*.test.tsx' ':!frontend/e2e/**' \
+            ':!tests/**' \
             ':!docs/dev-credentials.md' \
             ':!src/Auth/Auth.Infrastructure/HardcodedCredentialStore.cs' \
             ':!src/Auth/Auth.Infrastructure/README.md' \
@@ -339,9 +336,9 @@ jobs:
         with:
           languages: csharp
 
-      # The C# extractor needs a build between init and analyze. Explicit projects rather
-      # than the solution (it contains the VS-only frontend.esproj a clean SDK checkout
-      # cannot build); the two APIs pull in ServiceDefaults and both bounded contexts.
+      # The C# extractor needs a build between init and analyze. Explicit projects
+      # (matching scripts/lint.sh); the two APIs pull in ServiceDefaults and both
+      # bounded contexts.
       - name: Build for analysis
         run: |
           dotnet restore src/Auth/Auth.Api/Auth.Api.csproj
@@ -351,42 +348,18 @@ jobs:
 
       - uses: github/codeql-action/analyze@42947a340483f03ba47bb1a039b2c519aab3df85 # v3
 
-  dependency-review:
-    name: security (dependency review)
-    runs-on: ubuntu-latest
-    needs: [changes]
-    if: github.event_name == 'pull_request' && needs.changes.outputs.run_dependency_review == 'true'
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      # The review action hard-fails when the repository's dependency graph is disabled
-      # (a setting the API will not flip for this repository). Probe the graph first:
-      # gate when it is available, emit a notice instead of a failure when it is not, so
-      # enabling the feature in Settings is the only step needed to turn this into a gate.
-      - name: Is the dependency graph enabled?
-        id: graph
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh api "repos/${{ github.repository }}/dependency-graph/sbom" >/dev/null 2>&1; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Dependency graph is disabled for this repository; skipping dependency review. Enable it in Settings → Code security and analysis."
-          fi
-
-      # Fails the PR when a changed lockfile introduces a known-vulnerable or unlicensed
-      # dependency (pnpm-lock.yaml; NuGet is covered by CodeQL's SBOM pass).
-      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
-        if: steps.graph.outputs.enabled == 'true'
-
   specs:
     name: specs (BDD against the Aspire stack)
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.run_specs == 'true'
     steps:
+      # The AppHost model (AddViteApp at ../../frontend) is constructed even though
+      # the spec harness removes the web resource before startup — the submodule
+      # must be present for the model to resolve.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
 
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
@@ -422,7 +395,7 @@ jobs:
           path: '**/TestResults/*.trx'
 
   e2e:
-    name: e2e (Playwright + playwright-bdd)
+    name: e2e (full-stack Playwright + playwright-bdd)
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.run_e2e == 'true'
@@ -431,7 +404,11 @@ jobs:
       # local-development key is documented in docs/dev-credentials.md, never committed.
       E2E_SIGNING_KEY: ci-run-${{ github.run_id }}-${{ github.run_attempt }}-0123456789abcdef
     steps:
+      # The SPA under test is the frontend submodule; its default e2e is the mocked
+      # suite (that repository's CI), this job runs the full-stack config.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
 
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
@@ -487,7 +464,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
         working-directory: frontend
 
-      - run: pnpm run test:e2e
+      - run: pnpm run test:e2e:fullstack
         working-directory: frontend
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

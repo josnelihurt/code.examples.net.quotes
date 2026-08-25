@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.0.0
 MinimumVisualStudioVersion = 17.8.0.0
-Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "frontend", "frontend\frontend.esproj", "{7C525BB2-662B-4DE8-9295-EF54689C9E47}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Auth", "Auth", "{E134C235-D229-4C0D-6747-D71D21D31FBE}"
@@ -71,14 +69,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{7C525BB2-662B-4DE8-9295-EF54689C9E47}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7C525BB2-662B-4DE8-9295-EF54689C9E47}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7C525BB2-662B-4DE8-9295-EF54689C9E47}.Debug|x64.ActiveCfg = Debug|x64
-		{7C525BB2-662B-4DE8-9295-EF54689C9E47}.Debug|x86.ActiveCfg = Debug|x86
-		{7C525BB2-662B-4DE8-9295-EF54689C9E47}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7C525BB2-662B-4DE8-9295-EF54689C9E47}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7C525BB2-662B-4DE8-9295-EF54689C9E47}.Release|x64.ActiveCfg = Release|x64
-		{7C525BB2-662B-4DE8-9295-EF54689C9E47}.Release|x86.ActiveCfg = Release|x86
 		{07437001-83E5-4E4B-BB5C-7A69E287BBE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{07437001-83E5-4E4B-BB5C-7A69E287BBE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{07437001-83E5-4E4B-BB5C-7A69E287BBE3}.Debug|x64.ActiveCfg = Debug|Any CPU

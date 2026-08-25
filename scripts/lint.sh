@@ -10,9 +10,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "${ROOT}"
 
-# The solution includes frontend/frontend.esproj (VS JavaScript SDK), which a clean .NET
-# SDK checkout cannot build, so format the SDK projects individually. CI runs this same
-# script; there is no second, divergent lint invocation.
+# Format the SDK projects individually (the pre-extraction solution once carried a
+# VS-only .esproj here; the SPA is now the frontend submodule and builds itself).
+# CI runs this same script; there is no second, divergent lint invocation.
 PROJECTS=()
 while IFS= read -r -d '' project; do
   PROJECTS+=("${project}")

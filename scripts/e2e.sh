@@ -107,5 +107,8 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 
+# The submodule's default e2e is the MSW-mocked suite (self-contained, its own CI);
+# this orchestration is the full-stack one — real APIs, throwaway PostgreSQL, the
+# Release DLLs built above — which only makes sense from this checkout.
 cd "${ROOT}/frontend"
-pnpm run test:e2e
+pnpm run test:e2e:fullstack
