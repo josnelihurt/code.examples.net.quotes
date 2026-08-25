@@ -58,7 +58,8 @@ The recipe (proven on the two-layer PostgreSQL-catalog stack — EF Core catalog
    repair in README is the one exception). Never merge by hand: labeling a
    reviewed PR `merge-me` hands it to the merge-me workflow, which merges green PRs
    itself (stack layers atomically, everything below included) — see
-   `.github/workflows/merge-me.yml` and `scripts/merge-me.sh`. Label the top layer
+   the thin [.github/workflows/merge-me.yml](.github/workflows/merge-me.yml) wrapper and the shared
+   [code.examples.ci](https://github.com/josnelihurt/code.examples.ci) `merge-me` action it pins. Label the top layer
    only: one label lands the whole chain, and labeling several layers starts
    concurrent merges that race (issue #10).
 
