@@ -21,12 +21,11 @@ permissions:
 # Actions are pinned to commit SHAs (tag in the trailing comment) so a mutable-tag
 # takeover cannot run third-party code against the repository.
 jobs:
-  # Path detection plumbing: classifies the PR diff into areas so later layers can
-  # gate jobs on what actually changed (no job consumes these outputs yet). When the
-  # gates land, the skip must stay at the job level: skipped check runs still satisfy
-  # the branch-protection checks, and the workflow still completes success so
-  # merge-me's ci-completion trigger keeps firing. A workflow-level paths filter
-  # would break both.
+  # Path gating: the optional checks run only when the diff touches the areas they
+  # consume; the branch-protection checks (build-and-test, frontend, contract-drift)
+  # stay ungated until the next layer. The skip happens at the job level on purpose:
+  # skipped check runs still satisfy the branch-protection checks, and the workflow
+  # still completes success so merge-me's ci-completion trigger keeps firing.
   changes:
     name: detect changed paths
     runs-on: ubuntu-latest
@@ -182,6 +181,8 @@ jobs:
   lint:
     name: lint (dotnet format)
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.run_lint == 'true'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -194,6 +195,8 @@ jobs:
       - name: Format check
         run: ./scripts/lint.sh
 
+  # Ungated on purpose: the grep covers the whole tree (the docs allowlist included)
+  # and costs seconds — markdown edits are exactly its business.
   secrets-hygiene:
     name: secrets hygiene (credential literals stay in the allowlist)
     runs-on: ubuntu-latest
@@ -230,6 +233,8 @@ jobs:
   codeql:
     name: security (CodeQL)
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.run_codeql == 'true'
     permissions:
       # Required by CodeQL to upload the analysis; everything else stays read-only.
       security-events: write
@@ -260,7 +265,8 @@ jobs:
   dependency-review:
     name: security (dependency review)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    needs: [changes]
+    if: github.event_name == 'pull_request' && needs.changes.outputs.run_dependency_review == 'true'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -327,6 +333,8 @@ jobs:
   specs:
     name: specs (BDD against the Aspire stack)
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.run_specs == 'true'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -366,6 +374,8 @@ jobs:
   e2e:
     name: e2e (Playwright + playwright-bdd)
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.run_e2e == 'true'
     env:
       # Ephemeral per-run key for the two local API processes Playwright boots; the
       # local-development key is documented in docs/dev-credentials.md, never committed.
@@ -450,6 +460,8 @@ jobs:
   image-pins:
     name: container image pin drift
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.run_image_pins == 'true'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
