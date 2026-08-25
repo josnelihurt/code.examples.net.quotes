@@ -47,3 +47,18 @@ The recipe (proven on the PostgreSQL-catalog stack, PRs #13 → #14):
 
 What matters most: every intermediate level green, per-level evidence in the PR bodies,
 and a tip that matches the independently verified end state.
+
+## CI runs only the jobs a change can affect
+
+`ci` gates every job (except path detection and secrets hygiene) on the areas the PR
+touches: a markdown-only change runs neither the backend nor the frontend matrix, and a
+backend-only change skips the frontend job. The gates live in the `changes` job of
+`.github/workflows/ci.yml` — a PR that adds a job or a load-bearing file extends the
+filters in the same PR. The `ci:full-build` PR label forces the full matrix; pushes to
+`main` always run it, and so does any change under `.github/workflows/**`.
+
+Skips happen at the job level on purpose: skipped check runs still satisfy the
+branch-protection checks, and the workflow still completes success so merge-me's
+ci-completion trigger keeps firing. A workflow-level `paths:` filter would break both.
+Verify a new gate with a throwaway probe PR (docs-only, backend-only, …) before
+labeling `merge-me`.
