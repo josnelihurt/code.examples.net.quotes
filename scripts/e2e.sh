@@ -21,6 +21,15 @@ source "${ROOT}/scripts/env.sh"
 source "${ROOT}/scripts/images.env"
 PG_IMAGE="${POSTGRES_IMAGE}"
 
+# The catalog's throwaway connection values also have one copy (user, password,
+# database — and the fixed port CI and playwright.config.ts use as their fallback).
+# CI sources this same file and playwright.config.ts parses it directly. An
+# operator-pinned E2E_PG_PORT is captured first: this script's ephemeral per-worktree
+# port (below) must keep winning over the file's fixed port on local runs.
+PINNED_PG_PORT="${E2E_PG_PORT:-}"
+# shellcheck source=e2e.env
+source "${ROOT}/scripts/e2e.env"
+
 SUFFIX="$(printf '%s' "${ROOT}" | shasum | cut -c1-8)"
 PG_NAME="aspirequotes-e2e-pg-${SUFFIX}"
 
@@ -38,9 +47,10 @@ VITE_PORT="${E2E_VITE_PORT:-$(( PORT_BASE + 2 ))}"
 
 # The database publishes on an ephemeral loopback port picked by the runtime (empty host
 # port in the -p mapping), so two worktrees can never collide on it; the assigned port is
-# read back from the container below. Set E2E_PG_PORT to pin it instead.
-if [[ -n "${E2E_PG_PORT:-}" ]]; then
-  PG_PUBLISH="127.0.0.1:${E2E_PG_PORT}:5432"
+# read back from the container below. Set E2E_PG_PORT to pin it instead (captured before
+# scripts/e2e.env was sourced, so its fixed port never pins a local run).
+if [[ -n "${PINNED_PG_PORT}" ]]; then
+  PG_PUBLISH="127.0.0.1:${PINNED_PG_PORT}:5432"
 else
   PG_PUBLISH="127.0.0.1::5432"
 fi
@@ -65,13 +75,14 @@ dotnet build "${ROOT}/src/Quotes/Quotes.Api/Quotes.Api.csproj" --configuration R
 # Only ever removes this worktree's own leftover from a crashed previous run.
 "${RUNTIME}" rm -f "${PG_NAME}" >/dev/null 2>&1 || true
 "${RUNTIME}" run -d --name "${PG_NAME}" \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=quotesdb \
+  -e POSTGRES_USER="${E2E_PG_USER}" \
+  -e POSTGRES_PASSWORD="${E2E_PG_PASSWORD}" \
+  -e POSTGRES_DB="${E2E_PG_DATABASE}" \
   -p "${PG_PUBLISH}" \
   "${PG_IMAGE}"
 
-if [[ -n "${E2E_PG_PORT:-}" ]]; then
-  PG_PORT="${E2E_PG_PORT}"
+if [[ -n "${PINNED_PG_PORT}" ]]; then
+  PG_PORT="${PINNED_PG_PORT}"
 else
   # podman/docker port prints e.g. "127.0.0.1:49153"; keep only what follows the colon.
   PG_PORT="$("${RUNTIME}" port "${PG_NAME}" 5432)"
@@ -90,7 +101,7 @@ export E2E_VITE_PORT="${VITE_PORT}"
 # no exec on the pnpm call, or the trap would never fire.
 trap '"${RUNTIME}" rm -f "${PG_NAME}" >/dev/null 2>&1 || true' EXIT
 for _ in $(seq 1 60); do
-  if "${RUNTIME}" exec "${PG_NAME}" pg_isready -U postgres -d quotesdb >/dev/null 2>&1; then
+  if "${RUNTIME}" exec "${PG_NAME}" pg_isready -U "${E2E_PG_USER}" -d "${E2E_PG_DATABASE}" >/dev/null 2>&1; then
     break
   fi
   sleep 1

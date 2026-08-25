@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
@@ -17,12 +18,32 @@ if (!JWT_KEY || JWT_KEY.length < 32) {
   );
 }
 
+// scripts/e2e.env is the one copy of the throwaway catalog's connection values — the
+// same file scripts/e2e.sh and the CI e2e job source when they start the container —
+// parsed here so this config and the container can never drift apart. The environment
+// wins over the file: that is how scripts/e2e.sh hands over its per-worktree ports and
+// how any E2E_PG_* value can override a single run.
+function parseE2eEnv(): Record<string, string> {
+  return Object.fromEntries(
+    readFileSync(new URL('../scripts/e2e.env', import.meta.url), 'utf8')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#'))
+      .map((line) => {
+        const sep = line.indexOf('=');
+        return [line.slice(0, sep), line.slice(sep + 1)] as [string, string];
+      }),
+  );
+}
+const e2eEnv = parseE2eEnv();
+const e2eValue = (key: string) => process.env[key] ?? e2eEnv[key] ?? '';
+
 // scripts/e2e.sh namespaces every port per worktree (several agents/worktrees can share
 // one machine without deleting each other's containers or reusing each other's servers)
-// and exports the E2E_* values. The fallbacks are the historical fixed ports, kept so
-// CI — which starts its own PostgreSQL on 55432 — and standalone `pnpm run test:e2e`
-// runs keep working unchanged.
-const PG_PORT = process.env.E2E_PG_PORT ?? '55432';
+// and exports the E2E_* values. The API/Vite fallbacks are the historical fixed ports;
+// the PostgreSQL fallback is scripts/e2e.env's value — the same file CI starts its
+// container from — so standalone `pnpm run test:e2e` runs and CI keep agreeing with it.
+const PG_PORT = e2eValue('E2E_PG_PORT');
 const AUTH_PORT = process.env.E2E_AUTH_PORT ?? '5201';
 const QUOTES_PORT = process.env.E2E_QUOTES_PORT ?? '5202';
 const VITE_PORT = process.env.E2E_VITE_PORT ?? '5173';
@@ -32,9 +53,12 @@ const QUOTES_HTTP = `http://127.0.0.1:${QUOTES_PORT}`;
 const VITE_HTTP = `http://127.0.0.1:${VITE_PORT}`;
 
 // The quotes catalog database scripts/e2e.sh (locally) / ci.yml (in CI) starts before the
-// run: fixed loopback port, throwaway credentials. The API migrates + seeds it at boot.
+// run, described end to end by scripts/e2e.env: fixed loopback port, throwaway
+// credentials. The API migrates + seeds it at boot.
 const QUOTES_DB =
-  `Host=127.0.0.1;Port=${PG_PORT};Username=postgres;Password=postgres;Database=quotesdb`;
+  `Host=127.0.0.1;Port=${PG_PORT};` +
+  `Username=${e2eValue('E2E_PG_USER')};Password=${e2eValue('E2E_PG_PASSWORD')};` +
+  `Database=${e2eValue('E2E_PG_DATABASE')}`;
 
 export default defineConfig({
   testDir,
