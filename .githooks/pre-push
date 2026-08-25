@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# pre-push hook: blocks pushing a branch that breaks the naming rule or commits
+# whose subjects break the commit rule. Everything not on origin/main is checked,
+# so stacked branches validate their whole delta. Exemptions match the written
+# rules (docs/contributing.md): main itself, local-only backup/* branches, and
+# tags. Opt in with scripts/setup-git-hooks.sh; CI enforces the same rules anyway.
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+branch="$(git rev-parse --abbrev-ref HEAD)"
+
+status=0
+if [[ "${branch}" == "main" || "${branch}" == "HEAD" || "${branch}" == "backup/"* ]]; then
+  exit 0
+fi
+
+"${ROOT}/scripts/check-conventions.sh" --branch "${branch}" || status=1
+if git rev-parse --verify -q refs/remotes/origin/main >/dev/null; then
+  "${ROOT}/scripts/check-conventions.sh" --range "origin/main..HEAD" || status=1
+fi
+exit "${status}"

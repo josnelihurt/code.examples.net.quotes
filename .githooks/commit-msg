@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# commit-msg hook: validates the subject of the commit being created against the
+# branch-and-commit rules. Opt in with scripts/setup-git-hooks.sh; the same rules
+# run in CI's conventions job either way (docs/contributing.md).
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+subject="$(head -n 1 "$1")"
+exec "${ROOT}/scripts/check-conventions.sh" --title "${subject}"
