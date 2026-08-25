@@ -4,12 +4,14 @@ name: merge-me
 # merge it once it is green, and to keep re-evaluating until then. Every evaluation
 # corresponds to a real event — the label, a push, a reopen, the ci workflow
 # completing — nothing runs on a timer (the scheduled sweep this design started
-# with was removed in review; see issue #33). Red PRs are held — the decision table
+# with was removed in review; see issue #33). Removing the label disarms any armed
+# auto-merge: unlabeled evaluations run the script's --disarm mode (issue #61).
+# Red PRs are held — the decision table
 # and the rejected alternatives (classic merge API and marketplace automerge actions
 # both break on stacked PRs) are documented in scripts/merge-me.sh and issue #33.
 on:
   pull_request:
-    types: [labeled, synchronize, reopened]
+    types: [labeled, synchronize, reopened, unlabeled]
   workflow_run:
     workflows: [ci]
     types: [completed]
@@ -34,18 +36,26 @@ concurrency:
 jobs:
   merge:
     if: github.event_name == 'pull_request'
-    name: evaluate (label / push / reopen)
+    name: evaluate (label / push / reopen / unlabel)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # Unlabeled pushes exit immediately inside the script; the bounded wait covers
-      # this repo's ~5-minute CI.
+      # this repo's ~5-minute CI. A removed label takes the --disarm path instead:
+      # an armed auto-merge must not outlive the intent that armed it (issue #61).
       - name: Evaluate the labeled PR
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./scripts/merge-me.sh "${{ github.event.pull_request.number }}"
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          ACTION: ${{ github.event.action }}
+        run: |
+          if [[ "${ACTION}" == "unlabeled" ]]; then
+            ./scripts/merge-me.sh "${PR_NUMBER}" --disarm
+          else
+            ./scripts/merge-me.sh "${PR_NUMBER}"
+          fi
 
   on-ci-completion:
     # The moment mergeability can change is the moment CI finishes. workflow_run

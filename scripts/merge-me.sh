@@ -15,6 +15,11 @@
 #       pull_request trigger (labeled / synchronize / reopened) and, with a
 #       zero-minute wait, by its ci-completion trigger (checks already finished).
 #
+#   ./scripts/merge-me.sh <pr-number> --disarm
+#       The label was removed: disarm any armed server-side auto-merge (issue #61 —
+#       an armed auto-merge survived unlabeling and merged by surprise). Used by the
+#       workflow's unlabeled trigger.
+#
 #   ./scripts/merge-me.sh --all [--dry-run]
 #       Instant evaluation of every open labeled PR — no waiting: green PRs merge,
 #       pending ordinary PRs get auto-merge armed, everything else is left for the
@@ -32,19 +37,30 @@ cd "${ROOT}"
 DRY_RUN=false
 WAIT_MINUTES=15
 ALL=false
+DISARM=false
 PR=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --all)          ALL=true; shift ;;
     --dry-run)      DRY_RUN=true; shift ;;
+    --disarm)       DISARM=true; shift ;;
     --wait-minutes) WAIT_MINUTES="${2:?--wait-minutes needs a value}"; shift 2 ;;
     [0-9]*)         PR="$1"; shift ;;
-    *) echo "usage: $0 <pr-number> [--wait-minutes N] [--dry-run] | --all [--dry-run]" >&2; exit 2 ;;
+    *) echo "usage: $0 <pr-number> [--wait-minutes N] [--dry-run] | <pr-number> --disarm | --all [--dry-run]" >&2; exit 2 ;;
   esac
 done
 if [[ "${ALL}" == false && -z "${PR}" ]]; then
-  echo "usage: $0 <pr-number> [--wait-minutes N] [--dry-run] | --all [--dry-run]" >&2
+  echo "usage: $0 <pr-number> [--wait-minutes N] [--dry-run] | <pr-number> --disarm | --all [--dry-run]" >&2
   exit 2
+fi
+
+if [[ "${DISARM}" == true ]]; then
+  if gh pr merge "${PR}" --disable-auto >/dev/null 2>&1; then
+    printf '#%s: merge-me label removed — armed auto-merge disarmed\n' "${PR}"
+  else
+    printf '#%s: merge-me label removed — no armed auto-merge to disarm\n' "${PR}"
+  fi
+  exit 0
 fi
 
 REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"

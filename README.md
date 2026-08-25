@@ -278,7 +278,20 @@ What happens per state:
 - **Green** → merged in that run, via GitHub's asynchronous merge endpoint — the only merge path that also works for stacked PRs.
 - **Pending** → an ordinary PR gets GitHub's server-side auto-merge armed (it merges the moment checks pass, surviving any number of fix pushes); a stacked layer gets a bounded 15-minute wait, re-armed by the next push or by CI completing.
 - **Red** → nothing merges and the label stays: approval of *intent* is separate from merge *state*. Push the fix and the PR merges itself.
-- **Stack semantics**: merging a labeled layer lands every stack member below it atomically — labeling the top PR of a reviewed stack lands the whole chain.
+- **Stack semantics**: merging a labeled layer lands every stack member below it atomically — labeling the top PR of a reviewed stack lands the whole chain. **Label the top layer only**: one label lands everything below, and labeling several layers starts concurrent merges that race each other ([issue #61](https://github.com/josnelihurt/net-examples/issues/61)).
+- **Unlabeling** disarms: removing `merge-me` runs an `unlabeled` evaluation that undoes any armed auto-merge — the label's intent does not outlive the label.
+
+### The squash-merge stack wedge
+
+When the bottom PR of a stack squash-merges, the layer above is retargeted but still carries the bottom layer as a real commit while the base carries the same diff as the squash — GitHub then reports the upper PR **CONFLICTING**, `gh pr update-branch` refuses, and every atomic merge of the layers above fails ([issue #61](https://github.com/josnelihurt/net-examples/issues/61); merge-me holds with this recipe instead of a bare "merge failed"). The repair — the one sanctioned exception to "never force-push mid-stack branches" — replays only a branch's own commits onto the new base, bottom-up:
+
+```bash
+git fetch origin
+git rebase --onto origin/<base> <old-base-tip> <branch>
+git push --force-with-lease origin <branch>
+```
+
+The next event (push, CI completion) re-evaluates and merge-me lands the layer normally.
 
 Anyone who can label a PR could already merge it manually, so the label adds audit trail, not privilege. The workflow's token is the ephemeral per-run `GITHUB_TOKEN`; it cannot bypass branch protection.
 
