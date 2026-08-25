@@ -63,7 +63,7 @@ Order matters twice here: `UseCorrelationId()` runs before `UseRateLimiter()` so
 | `POST /api/v1/auth/login` (`WithName("Login")`) | `200 LoginResponseDto` | `400` validation problem (example keyed on `Username`), `401` with `auth.invalid_credentials`, `429` with `auth.rate_limited` |
 | `POST /api/v1/auth/validate` (`WithName("ValidateToken")`) | `200 ValidateResponseDto` — for valid **and** invalid tokens | `400` with `auth.token_missing`, `429` with `auth.rate_limited` |
 
-Each declared problem carries a `.WithProblemExample(...)` so the rendered reference shows a real body rather than a bare schema; the 401 and 400 examples are built from `AuthErrors.InvalidCredentials` and `AuthErrors.MissingToken` themselves, which means the documented `errorCode` cannot drift from the emitted one. The conventions behind those helpers are documented in [docs/api.md](../../../docs/api.md#documenting-operations) and are not repeated here.
+Each declared problem carries a `.WithProblemExample(...)` so the rendered reference shows a real body rather than a bare schema; the 401 and 400 examples are built from `AuthErrors.InvalidCredentials` and the handler's `TokenMissing` (keyed on `JwtAuthExtensions.TokenMissingErrorCode`) themselves, which means the documented `errorCode` cannot drift from the emitted one. The conventions behind those helpers are documented in [docs/api.md](../../../docs/api.md#documenting-operations) and are not repeated here.
 
 The introspection endpoint's shape is the part worth reading twice. The token is taken from the JSON body when present and otherwise from the `Authorization` header via `BearerToken.TryParse`; the body wins when both are supplied. A token that is expired, tampered with, signed by another key or plain garbage answers `200 { "valid": false }` with no username. The *only* error on this route is the absence of a token, which is a malformed request rather than a verdict about a token, and answers `400` with `auth.token_missing`. A 401 would be wrong twice over: the endpoint is unauthenticated by design, and "your token is bad" is the answer the caller asked for.
 
@@ -127,7 +127,7 @@ sequenceDiagram
 7. **Application.** `AuthService` runs the sequence described in [Auth.Application](../Auth.Application/README.md#walkthrough) and returns `ErrorOr<LoginResult>`.
 8. **Mapping.** The handler's `Match` turns a value into `Results.Ok(new LoginResponseDto { … })` — token, correlation id, lifetime, username — and errors into `errors.ToProblem(http)`, the single edge mapping that produces the RFC 9457 body with `errorCode` and `correlationId`. `ErrorType.Unauthorized` is what makes the bad-credentials case a 401.
 
-Introspection follows the same pipeline with one branch before the service: the handler resolves the token from body or header, and if there is none it records the failure measurement itself, logs `"Token validation request carried no token"`, and returns `AuthErrors.MissingToken.ToProblem(http)` — a 400 that never reaches `IAuthService`.
+Introspection follows the same pipeline with one branch before the service: the handler resolves the token from body or header, and if there is none it records the failure measurement itself, logs `"Token validation request carried no token"`, and returns `TokenMissing.ToProblem(http)` — a 400 error keyed on `JwtAuthExtensions.TokenMissingErrorCode`, which never reaches `IAuthService`.
 
 ## Rules enforced mechanically
 

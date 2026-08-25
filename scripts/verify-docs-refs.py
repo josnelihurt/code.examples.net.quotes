@@ -38,6 +38,11 @@ ALLOW = {
     'ClaimsPrincipal',   # return type of JwtSecurityTokenHandler.ValidateToken, hidden behind `var`
     'Resilience',        # Microsoft.Extensions.Http.Resilience: a package to add, absent by design
     'ExistsAsync',       # a port method the repository design chose NOT to expose
+    'INSERT',            # SQL keywords quoted in prose about what the EF provider emits
+    'OFFSET',            # (same: the paging clauses of the generated catalog query)
+    'LIMIT',             # (same)
+    'COUNT',             # (same)
+    'NpgsqlDataSource',  # external Npgsql API; the data source is configured in Program.cs behind it
 }
 
 

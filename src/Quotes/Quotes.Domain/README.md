@@ -36,8 +36,8 @@ inbound arrows are references *to* this project; the project itself points nowhe
 
 The rules in this project are the only thing in the Quotes context that is not replaceable. The
 transport is replaceable — the seed proves it by serving the same catalog twice, as MVC controllers
-and as minimal APIs. The store is replaceable — `InMemoryQuoteRepository` is one adapter behind a
-port, and the contract suite exists so a second one can be dropped in. If "text must end with `.`,
+and as minimal APIs. The store is replaceable — `PostgresQuoteRepository` is the one adapter behind a
+port today, and the contract suite exists so a second one can be dropped in. If "text must end with `.`,
 `!` or `?`" lived in a request DTO's `[RegularExpression]`, adding v2 would fork the rule; if it
 lived in the repository, swapping to a database adapter would lose it. Putting it here means the
 rule is stated once, in the only project both other layers already depend on.
