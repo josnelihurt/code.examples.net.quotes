@@ -49,6 +49,11 @@ public static class ApiServiceExtensions
                 }
             };
         });
+
+        // Hosts call the parameterless UseExceptionHandler(); this handler makes unreadable
+        // JSON bodies answer the shared 400 envelope on both transports instead of a 500.
+        builder.Services.AddExceptionHandler<JsonBodyValidationExceptionHandler>();
+
         builder.Services.AddSingleton(new ApiDocumentNames(names));
 
         return builder;

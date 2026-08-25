@@ -1,10 +1,13 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using AspireQuotesPoc.ServiceDefaults.Errors;
 using Auth.Api.Contracts;
 using Auth.Application.Abstractions;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 
 namespace Auth.Api.Tests;
@@ -197,6 +200,59 @@ public class AuthApiFullPipelineTests : IClassFixture<AuthApiFactory>
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Login_with_an_empty_body_returns_a_validation_problem()
+    {
+        // A client that sends Content-Type: application/json and no payload is the
+        // null-body adversarial case.
+        using var client = _factory.CreateClient();
+        using var content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
+
+        using var response = await client.PostAsync(
+            new Uri("/api/v1/auth/login", UriKind.Relative),
+            content,
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.GetProperty("errorCode").GetString().ShouldBe(ProblemDetailsBuilder.RequestValidationErrorCode);
+        problem.GetProperty("correlationId").GetString().ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Login_with_a_malformed_json_body_returns_a_validation_problem()
+    {
+        using var client = _factory.CreateClient();
+        using var content = new StringContent("{ this is not json", Encoding.UTF8, "application/json");
+
+        using var response = await client.PostAsync(
+            new Uri("/api/v1/auth/login", UriKind.Relative),
+            content,
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.GetProperty("errorCode").GetString().ShouldBe(ProblemDetailsBuilder.RequestValidationErrorCode);
+        problem.GetProperty("correlationId").GetString().ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void The_scaffolding_credential_store_refuses_to_boot_in_production()
+    {
+        // The Production fail-fast was only unit-asserted before; this boots the real
+        // composition root in the Production environment and proves the host cannot come
+        // up on the scaffolding credential store.
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment(Environments.Production);
+        });
+
+        Should.Throw<InvalidOperationException>(() => factory.CreateClient())
+            .Message.ShouldContain("Production");
     }
 
     [Fact]

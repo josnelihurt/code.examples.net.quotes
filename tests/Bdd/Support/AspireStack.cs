@@ -20,6 +20,9 @@ public static class AspireStack
 {
     private static DistributedApplication? _app;
 
+    /// <summary>Stamped before boot; only containers created after this belong to this run.</summary>
+    public static DateTimeOffset SuiteStartUtc { get; private set; }
+
     /// <summary>Throws when the stack is not running, so a hook failure surfaces as a scenario failure.</summary>
     public static DistributedApplication Application =>
         _app ?? throw new InvalidOperationException("The distributed application is not running.");
@@ -38,9 +41,22 @@ public static class AspireStack
     public static HttpClient CreateServiceClient(string resourceName) =>
         Application.CreateHttpClient(resourceName, "http");
 
+    /// <summary>
+    /// The runtime container name of this stack's PostgreSQL container. Identity comes
+    /// from creation time: DCP publishes no host port for it (the connection string is
+    /// served through DCP's own proxy), so name or port scans cannot distinguish this
+    /// run's container from leftovers of crashed previous runs. Only containers created
+    /// after the suite booted belong to this run.
+    /// </summary>
+    public static string GetPostgresContainerName() => ContainerRuntime.FindPostgresContainer(SuiteStartUtc);
+
+    /// <summary>Diagnostic: every running container, for failure messages.</summary>
+    public static string DescribeRunningContainers() => ContainerRuntime.DescribeRunningContainers();
+
     [BeforeTestRun]
     public static async Task StartAsync()
     {
+        SuiteStartUtc = DateTimeOffset.UtcNow;
         var builder = await DistributedApplicationTestingBuilder
             .CreateAsync<Projects.AspireQuotesPoc_AppHost>();
 

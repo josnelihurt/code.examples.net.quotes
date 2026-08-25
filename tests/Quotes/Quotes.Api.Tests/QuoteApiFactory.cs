@@ -34,6 +34,9 @@ public sealed class QuoteApiFactory : WebApplicationFactory<Program>, IAsyncLife
 
     public string SigningKey { get; } = $"integration-key-{Guid.NewGuid():N}{Guid.NewGuid():N}";
 
+    /// <summary>The backing container's id, for the health-degradation test's pause/resume.</summary>
+    public static string ContainerId => _container.Id;
+
     public async ValueTask InitializeAsync()
     {
         await _containerStarted;

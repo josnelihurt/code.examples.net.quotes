@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using AspireQuotesPoc.ServiceDefaults.Errors;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Quotes.Api.V1.Contracts;
@@ -299,6 +301,168 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         problem.GetProperty("errorCode").GetString().ShouldBe("quote.invalid_page_request");
+    }
+
+    [Fact]
+    public async Task List_returns_a_400_problem_when_the_page_size_exceeds_the_maximum()
+    {
+        // pageSize > 100 was only proven at application-unit level before; pin it at the
+        // pipeline level so the transport mapping cannot regress silently.
+        using var client = CreateClient();
+
+        using var response = await client.GetAsync(
+            new Uri("/api/v1/quotes?page=1&pageSize=101", UriKind.Relative),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.GetProperty("errorCode").GetString().ShouldBe("quote.invalid_page_request");
+    }
+
+    [Fact]
+    public async Task Concurrent_creates_of_the_same_quote_produce_exactly_one_winner()
+    {
+        // The flagship atomicity guarantee — unique fingerprint index + 23505 mapping —
+        // proven under actual concurrency. A regression to check-then-insert passes every
+        // sequential duplicate test but cannot pass this one.
+        const int attempts = 6;
+        var text = $"Concurrent publishers deserve exactly one winner {Guid.NewGuid():N}.";
+        using var client = CreateClient();
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, attempts).Select(_ =>
+            client.PostAsJsonAsync(
+                new Uri("/api/v1/quotes", UriKind.Relative),
+                new CreateQuoteRequestDto { Text = text, Author = "Concurrency Suite" },
+                TestContext.Current.CancellationToken)));
+
+        var statuses = responses.Select(static r => r.StatusCode).OrderBy(static s => s).ToArray();
+        statuses.Count(static s => s == HttpStatusCode.Created).ShouldBe(1);
+        statuses.Count(static s => s == HttpStatusCode.Conflict).ShouldBe(attempts - 1);
+    }
+
+    [Theory]
+    [InlineData("/api/v1/quotes")]
+    [InlineData("/api/v0/quotes")]
+    public async Task Create_with_an_empty_body_returns_a_validation_problem(string path)
+    {
+        // A client that sends Content-Type: application/json and no payload is the
+        // null-body adversarial case; both transports must answer the shared envelope.
+        using var client = CreateClient();
+        using var content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
+
+        using var response = await client.PostAsync(
+            new Uri(path, UriKind.Relative),
+            content,
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.GetProperty("errorCode").GetString().ShouldBe(ProblemDetailsBuilder.RequestValidationErrorCode);
+        problem.GetProperty("correlationId").GetString().ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Theory]
+    [InlineData("/api/v1/quotes")]
+    [InlineData("/api/v0/quotes")]
+    public async Task Create_with_a_malformed_json_body_returns_a_validation_problem(string path)
+    {
+        using var client = CreateClient();
+        using var content = new StringContent("{ this is not json", Encoding.UTF8, "application/json");
+
+        using var response = await client.PostAsync(
+            new Uri(path, UriKind.Relative),
+            content,
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.GetProperty("errorCode").GetString().ShouldBe(ProblemDetailsBuilder.RequestValidationErrorCode);
+        problem.GetProperty("correlationId").GetString().ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void The_public_development_signing_key_refuses_to_boot_quotes_api_in_production()
+    {
+        // The Production fail-fast guards were only unit-asserted before; this boots the
+        // real composition root in the Production environment and proves the host cannot
+        // come up on the public development key.
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment(Environments.Production);
+            builder.UseSetting("Jwt:SigningKey", JwtAuthExtensions.DevelopmentSigningKey);
+        });
+
+        Should.Throw<InvalidOperationException>(() => factory.CreateClient())
+            .Message.ShouldContain("development key");
+    }
+
+    [Fact]
+    public async Task Health_degrades_while_the_catalog_database_is_paused()
+    {
+        // Readiness that cannot fail is worse than no probe: pause the real backing
+        // container and prove /health leaves 200. The try/finally resumes and waits for
+        // recovery so the rest of the suite never inherits a frozen database.
+        using var client = CreateClient();
+
+        using var baseline = await client.GetAsync(
+            new Uri("/health", UriKind.Relative),
+            TestContext.Current.CancellationToken);
+        baseline.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+#pragma warning disable xUnit1051 // per-request timeouts are deliberate here: the paused database must not stall the whole test
+        ContainerCli.Pause(QuoteApiFactory.ContainerId);
+        try
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(40);
+            while (true)
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(30));
+                using var response = await client.GetAsync(
+                    new Uri("/health", UriKind.Relative),
+                    cts.Token);
+                if (response.StatusCode is not HttpStatusCode.OK)
+                {
+                    break;
+                }
+
+                if (DateTime.UtcNow > deadline)
+                {
+                    throw new Exception("/health stayed 200 for 40s while the backing PostgreSQL container was paused.");
+                }
+
+                await Task.Delay(500);
+            }
+        }
+        finally
+        {
+            ContainerCli.Unpause(QuoteApiFactory.ContainerId);
+
+            var recovered = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+            while (true)
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(20));
+                using var response = await client.GetAsync(
+                    new Uri("/health", UriKind.Relative),
+                    cts.Token);
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    break;
+                }
+
+                if (DateTime.UtcNow > recovered)
+                {
+                    throw new Exception("/health did not recover within 30s after the container was resumed.");
+                }
+
+                await Task.Delay(500);
+            }
+        }
+#pragma warning restore xUnit1051
     }
 
     [Fact]

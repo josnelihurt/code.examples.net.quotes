@@ -19,8 +19,15 @@ public static class DependencyInjection
     /// </remarks>
     public static IHostApplicationBuilder AddQuotesInfrastructure(this IHostApplicationBuilder builder)
     {
-        builder.AddNpgsqlDbContext<QuotesDbContext>("quotesdb");
+        // The integration's default check opens a connection and can stall without a
+        // deadline against a frozen database; the deliberate round-trip check below is
+        // strictly better (bounded, proof of an actual answer), so the default is off.
+        builder.AddNpgsqlDbContext<QuotesDbContext>("quotesdb", settings =>
+            settings.DisableHealthChecks = true);
         builder.Services.AddScoped<IQuoteRepository, PostgresQuoteRepository>();
+        builder.Services.AddHealthChecks()
+            .AddCheck<QuotesDatabaseHealthCheck>("quotesdb-roundtrip");
+
         return builder;
     }
 }
