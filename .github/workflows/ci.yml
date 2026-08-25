@@ -21,8 +21,10 @@ permissions:
 # Actions are pinned to commit SHAs (tag in the trailing comment) so a mutable-tag
 # takeover cannot run third-party code against the repository.
 jobs:
-  # Path gating: every job except this one and secrets-hygiene (a whole-tree grep
-  # that costs seconds) runs only when the diff touches the areas it consumes — a
+  # Path gating: every job except this one, secrets-hygiene (a whole-tree grep
+  # that costs seconds) and conventions (branch and commit rules describe the
+  # PR itself, not the files it touches) runs only when the diff touches the
+  # areas it consumes — a
   # docs-only change should not pay for the full matrix. The skip happens at the job
   # level on purpose: skipped check runs still satisfy the branch-protection checks,
   # and the workflow still completes success so merge-me's ci-completion trigger
@@ -95,6 +97,7 @@ jobs:
               - '.github/workflows/**'
               - 'scripts/lint.sh'
               - 'scripts/check-image-tags.sh'
+              - 'scripts/check-conventions.sh'
 
       - name: Decide which jobs run
         id: decide
@@ -156,6 +159,62 @@ jobs:
           out "run_contract_drift=${contracts}"
           out "run_image_pins=${pins}"
           flush
+
+  # Branch names, commit subjects and PR titles are rules about the change itself,
+  # not about the files it touches — no path gate (same posture as secrets-hygiene).
+  # Squash merges make the PR title the canonical commit on main, so the title is
+  # held to the commit rule; the (#N) suffix GitHub appends at merge time is the
+  # only difference, allowed by the push-side invocation. The same script backs the
+  # opt-in local hooks (scripts/setup-git-hooks.sh); the rules live in
+  # docs/contributing.md.
+  conventions:
+    name: conventions (branch names + commit messages)
+    runs-on: ubuntu-latest
+    permissions:
+      # The PR's commit list comes from the pulls API — the same read the changes
+      # job needs for path filtering.
+      contents: read
+      pull-requests: read
+    steps:
+      # Full history for the push-to-main range (event.before..HEAD below); the
+      # PR path reads no local history at all.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Check branch name
+        if: github.event_name == 'pull_request'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: ./scripts/check-conventions.sh --branch "${HEAD_REF}"
+
+      - name: Check commit subjects and PR title
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            # GitHub's own list of the PR's commits. Stacked layers retargeted after
+            # a lower PR merges carry that layer as a commit with the squash subject
+            # ("type: ... (#N)") — the server-side rebase puts it on the branch — so
+            # such artifacts are skipped rather than failed; they are the base
+            # branch's history, not this PR's contribution.
+            subjects="$(mktemp)"
+            gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits" \
+              --jq '.[].commit.message | split("\n")[0]' > "${subjects}"
+            ./scripts/check-conventions.sh --subjects-file "${subjects}" --skip-pr-numbers --title "${PR_TITLE}"
+            rm -f "${subjects}"
+          else
+            # Push to main: the new commits are squash results ("type: ... (#N)").
+            if [[ "${BEFORE_SHA}" =~ ^0+$ ]]; then
+              BEFORE_SHA="$(git rev-parse HEAD^)"
+            fi
+            ./scripts/check-conventions.sh --range "${BEFORE_SHA}..HEAD" --allow-pr-number
+          fi
 
   build-and-test:
     name: build & test (Release + coverage)

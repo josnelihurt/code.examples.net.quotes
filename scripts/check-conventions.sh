@@ -7,11 +7,14 @@
 #   ./scripts/check-conventions.sh --branch <name>     # pushed-branch naming rule
 #   ./scripts/check-conventions.sh --range <a>..<b>    # every commit subject in the range
 #   ./scripts/check-conventions.sh --title <text>      # a PR title (it becomes the squash commit)
+#   ./scripts/check-conventions.sh --subjects-file <f> # one subject per line (CI's PR mode)
 #
 # Modes combine (--branch x --range a..b checks both). Append --allow-pr-number
 # to tolerate one trailing " (#N)": squash-merge results pushed to main carry it,
-# PR titles and in-stack commits must not. Exit 0 = clean, 1 = violations
-# (all reported), 2 = usage error.
+# PR titles and in-stack commits must not. --skip-pr-numbers instead skips such
+# commits entirely (no pass, no fail): GitHub's server-side stack rebase
+# materializes already-merged lower layers on upper branches exactly like that.
+# Exit 0 = clean, 1 = violations (all reported), 2 = usage error.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -27,13 +30,15 @@ SUBJECT_REGEX="^(${TYPES})(\([a-z0-9/._-]+\))?(!)?: (.+)$"
 MAX_SUBJECT=72
 
 ALLOW_PR_NUMBER=0
+SKIP_PR_NUMBERS=0
 failures=0
 
 usage() {
   cat >&2 <<'USAGE'
 Usage: scripts/check-conventions.sh [--branch NAME] [--range A..B] [--title TEXT]
-                                    [--allow-pr-number]
-At least one of --branch / --range / --title is required. See docs/contributing.md.
+                                    [--subjects-file PATH] [--allow-pr-number]
+                                    [--skip-pr-numbers]
+At least one check mode is required. See docs/contributing.md.
 USAGE
 }
 
@@ -52,6 +57,10 @@ check_subject() {
   local label="$1" subject="$2" why=""
   if [[ "${ALLOW_PR_NUMBER}" == "1" && "${subject}" =~ ^(.*)\ \(#[0-9]+\)$ ]]; then
     subject="${BASH_REMATCH[1]}"
+  fi
+  if [[ "${ALLOW_PR_NUMBER}" == "0" && "${SKIP_PR_NUMBERS}" == "1" && "${subject}" =~ \ \(#[0-9]+\)$ ]]; then
+    echo "skipped (base-branch merge artifact): ${subject}"
+    return 0
   fi
   if [[ "${ALLOW_PR_NUMBER}" == "0" && "${subject}" =~ \ \(#[0-9]+\)$ ]]; then
     why="${why}  - trailing ' (#N)' only belongs on squash-merged commits on main\n"
@@ -87,29 +96,51 @@ check_range() {
   done < <(git log --no-merges --format='%s' "${range}")
 }
 
+check_subjects_file() {
+  local file="$1" subject
+  while IFS= read -r subject; do
+    [[ -n "${subject}" ]] || continue
+    check_subject "commit" "${subject}"
+  done < "${file}"
+}
+
 checked=0
+do_branch=""
+do_range=""
+do_title=""
+do_subjects_file=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --branch)
       [[ $# -ge 2 ]] || { usage; exit 2; }
-      check_branch "$2"
+      do_branch="$2"
       checked=1
       shift 2
       ;;
     --range)
       [[ $# -ge 2 ]] || { usage; exit 2; }
-      check_range "$2"
+      do_range="$2"
       checked=1
       shift 2
       ;;
     --title)
       [[ $# -ge 2 ]] || { usage; exit 2; }
-      check_subject "title" "$2"
+      do_title="$2"
+      checked=1
+      shift 2
+      ;;
+    --subjects-file)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      do_subjects_file="$2"
       checked=1
       shift 2
       ;;
     --allow-pr-number)
       ALLOW_PR_NUMBER=1
+      shift
+      ;;
+    --skip-pr-numbers)
+      SKIP_PR_NUMBERS=1
       shift
       ;;
     -h|--help)
@@ -122,6 +153,21 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Checks run only after the whole command line is parsed, so modifier flags
+# (--allow-pr-number, --skip-pr-numbers) take effect regardless of position.
+if [[ -n "${do_branch}" ]]; then
+  check_branch "${do_branch}"
+fi
+if [[ -n "${do_range}" ]]; then
+  check_range "${do_range}"
+fi
+if [[ -n "${do_subjects_file}" ]]; then
+  check_subjects_file "${do_subjects_file}"
+fi
+if [[ -n "${do_title}" ]]; then
+  check_subject "title" "${do_title}"
+fi
 
 if [[ "${checked}" -eq 0 ]]; then
   usage
