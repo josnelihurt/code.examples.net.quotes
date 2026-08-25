@@ -169,50 +169,20 @@ jobs:
     name: conventions (branch names + commit messages)
     runs-on: ubuntu-latest
     permissions:
-      # The PR's commit list comes from the pulls API — the same read the changes
-      # job needs for path filtering.
+      # The action reads the PR's commit list from the pulls API.
       contents: read
       pull-requests: read
     steps:
-      # Full history for the push-to-main range (event.before..HEAD below); the
-      # PR path reads no local history at all.
+      # fetch-depth 0 because the action's push-to-main range mode reads history.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
-      - name: Check branch name
-        if: github.event_name == 'pull_request'
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-        run: ./scripts/check-conventions.sh --branch "${HEAD_REF}"
-
-      - name: Check commit subjects and PR title
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          BEFORE_SHA: ${{ github.event.before }}
-        run: |
-          set -euo pipefail
-          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
-            # GitHub's own list of the PR's commits. Stacked layers retargeted after
-            # a lower PR merges carry that layer as a commit with the squash subject
-            # ("type: ... (#N)") — the server-side rebase puts it on the branch — so
-            # such artifacts are skipped rather than failed; they are the base
-            # branch's history, not this PR's contribution.
-            subjects="$(mktemp)"
-            gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits" \
-              --jq '.[].commit.message | split("\n")[0]' > "${subjects}"
-            ./scripts/check-conventions.sh --subjects-file "${subjects}" --skip-pr-numbers --title "${PR_TITLE}"
-            rm -f "${subjects}"
-          else
-            # Push to main: the new commits are squash results ("type: ... (#N)").
-            if [[ "${BEFORE_SHA}" =~ ^0+$ ]]; then
-              BEFORE_SHA="$(git rev-parse HEAD^)"
-            fi
-            ./scripts/check-conventions.sh --range "${BEFORE_SHA}..HEAD" --allow-pr-number
-          fi
+      # The canonical rules live in the shared toolkit; the exemption covers
+      # dependabot's automation branches (their names are not ours to choose).
+      - uses: josnelihurt/code.examples.ci/conventions@914ce2f68120ace140da1a445d44e854c97fb168 # v1
+        with:
+          branch-exempt-regex: '^dependabot/'
 
   build-and-test:
     name: build & test (Release + coverage)
