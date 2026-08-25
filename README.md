@@ -74,7 +74,7 @@ A screenshot tour of every surface below — app screens, the Aspire dashboard a
 
 1. **Auth API** issues a JWT for hardcoded local users — the maintainer holds `quotes:read` + `quotes:write`, the reader holds `quotes:read` only (users and passwords live in [docs/dev-credentials.md](docs/dev-credentials.md)) — and can validate tokens via `/api/v1/auth/validate` (optional introspection). Login and validate are rate-limited (fixed window per client IP, 429 as ProblemDetails), and the scaffolding credential store refuses to register in Production.
 2. **Quotes API** serves the catalog from PostgreSQL (container in the AppHost; schema migrated + seeded at boot) after JwtBearer validates the bearer token: `GET /api/v1/quotes/random`, `GET /api/v1/quotes/{id}`, `GET /api/v1/quotes?page=&pageSize=` (the ratified offset-pagination pattern), and `POST /api/v1/quotes` (requires `quotes:write`; rejects invalid and near-duplicate quotes — the latter by a unique fingerprint index). The same four operations are also served at `/api/v0/quotes/...` by MVC controllers — one core, two transport styles, held to byte-level response parity by tests. See [docs/architecture.md](docs/architecture.md#api-versions-and-transport-styles).
-3. **React SPA** logs in, stores token + `X-Correlation-Id`, then fetches quotes through the Vite proxy: a random quote, the paginated catalog (`/quotes`), and publishing a new quote (`/publish`, maintainer scope only). Its API types are generated from the frozen OpenAPI document, and its components have Storybook stories smoke-built in CI.
+3. **React SPA** logs in, stores token + `X-Correlation-Id`, then fetches quotes through the Vite proxy: a random quote, the paginated catalog (`/quotes`), and publishing a new quote (`/publish`, maintainer scope only). Its API types are generated from the frozen OpenAPI document, and its components have Storybook stories smoke-built in the frontend repository's CI.
 4. **Aspire AppHost** starts everything, wires service discovery, exports OpenTelemetry to the dashboard, and publishes a **YARP** gateway (no Traefik).
 
 ```text
@@ -197,7 +197,7 @@ Static YAML: `docs/openapi/auth.openapi.yaml`, `docs/openapi/quotes-v0.openapi.y
 
 - **Serilog** → console + OTLP (Aspire structured logs), enriched with `CorrelationId`
 - **Traces** → ASP.NET + HttpClient instrumentation
-- **Metrics** (meter `AspireQuotesPoc`): `auth.login.count` (`outcome=success|failure`), `auth.validate.count` (`outcome=success|failure`), `quotes.random.count` (`outcome=success|not_found`), `quotes.getbyid.count` (`outcome=success|not_found`), `quotes.list.count` (`outcome=success|invalid`), `quotes.create.count` (`outcome=success|invalid|conflict|error`)
+- **Metrics** (meter `AspireQuotesPoc`): `auth.login.count` (`outcome=success|failure`), `auth.validate.count` (`outcome=success|failure`), `quotes.random.count` (`outcome=success|not_found|error`), `quotes.getbyid.count` (`outcome=success|not_found|error`), `quotes.list.count` (`outcome=success|invalid|error`), `quotes.create.count` (`outcome=success|invalid|conflict|error`)
 
 See [docs/observability.md](docs/observability.md).
 

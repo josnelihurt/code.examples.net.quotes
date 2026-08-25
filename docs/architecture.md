@@ -19,12 +19,12 @@ This page states the **rules**. The diagrams and the per-project detail live els
 
 | Path / resource | Role |
 |-----------------|------|
-| `src/AppHost` (`auth` orchestration) | Aspire AppHost |
+| `src/AppHost` (stack orchestration) | Aspire AppHost |
 | `src/ServiceDefaults` | Shared Serilog, OTEL, Scalar/OpenAPI, JwtBearer auth + scope policies, ErrorOr→ProblemDetails mapping, correlation |
 | `src/Auth` → `auth-api` | Login + JWT issue/validate (DDD layers) |
 | `src/Quotes` → `quotes-api` | Random quote; JwtBearer protects `/api/v1/quotes` |
 | `web` | React + TypeScript Vite SPA |
-| `gateway` | YARP routes `/api/v1/auth` and `/api/v1/quotes`; serves static SPA on publish |
+| `gateway` | YARP routes `/api/v1/auth` and both quote API versions (`/api/v0/quotes`, `/api/v1/quotes`); serves static SPA on publish |
 | `docs` | Docsify + combined Scalar reference |
 
 ## Correlation

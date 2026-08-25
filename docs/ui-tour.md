@@ -25,7 +25,7 @@ The `web` resource is a React + TypeScript SPA served by Vite. It opens on the s
 
 ## Aspire dashboard
 
-The dashboard URL (with its login token) is printed to the console when the AppHost starts. The **Resources** view is the control tower: every resource with its state, source, and endpoints. `postgres` migrates and seeds `quotesdb` at boot, `pgweb` browses it, YARP (`gateway`) fronts the SPA, and the `docs` resource serves this Docsify site.
+The dashboard URL (with its login token) is printed to the console when the AppHost starts. The **Resources** view is the control tower: every resource with its state, source, and endpoints. `quotes-api` migrates and seeds `quotesdb` at boot, `pgweb` browses it, YARP (`gateway`) fronts the SPA, and the `docs` resource serves this Docsify site.
 
 ![Aspire dashboard — resources view](images/aspire-dashboard-resources.png)
 

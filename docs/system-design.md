@@ -281,27 +281,30 @@ flowchart TD
   push["push to main or pull_request"]
   bt["build-and-test"]
   lint["lint"]
-  fe["frontend"]
+  codeql["codeql"]
   specs["specs"]
-  e2e["e2e"]
+  e2e["e2e (full-stack)"]
   drift["contract-drift"]
+  pins["image-pins"]
 
   push --> bt
   push --> lint
-  push --> fe
+  push --> codeql
   push --> specs
   push --> e2e
   push --> drift
+  push --> pins
 
   bt --> btd["dotnet test -c Release per project, OpenCover coverage"]
   lint --> lintd["scripts/lint.sh - dotnet format --verify-no-changes"]
-  fe --> fed["pnpm install, lint, test, build"]
+  codeql --> codeqld["CodeQL analysis of the C# tree"]
   specs --> specsd["Reqnroll against the real Aspire stack"]
-  e2e --> e2ed["Playwright BDD in Chromium"]
+  e2e --> e2ed["Playwright BDD: the frontend submodule's SPA against the real APIs"]
   drift --> driftd["rebuild contracts, diff against docs/openapi"]
+  pins --> pinsd["container image pins match the Aspire packages"]
 ```
 
-Six independent gates in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). The two BDD
+Seven path-gated jobs in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), plus the ungated `conventions` and `secrets-hygiene` checks; the path gating itself lives in the `changes` job. The two BDD
 gates run out of process — `specs` boots the AppHost through `Aspire.Hosting.Testing` and drives the
 real gateway, `e2e` drives the SPA in Chromium — which is why they are separate jobs rather than part
 of `build-and-test`; see [Testing](testing.md) for the layer split. Two further points are worth
@@ -309,8 +312,9 @@ understanding rather than just running:
 
 - **Release is the real gate.** `TreatWarningsAsErrors` is set only for `Configuration == Release`
   in [`Directory.Build.props`](../Directory.Build.props), so the local Debug loop is fast and CI is
-  strict. Both iterate per project rather than over the solution, because the solution contains
-  the frontend submodule, whose build is its own repository's business.
+  strict. Both iterate per project rather than over the solution, so the fast loop never
+  sweeps in `tests/Bdd` (it needs a container runtime); the SPA builds itself in
+  the frontend submodule's own repository.
 - **The OpenAPI contracts are product, and drift fails the build.**
   [`Dockerfile.build`](../Dockerfile.build) restores and builds both API hosts inside the SDK image,
   starts them on fixed ports, GETs `/openapi/v0.json` and `/openapi/v1.json`, normalises `servers`

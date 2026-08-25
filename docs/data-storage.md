@@ -109,7 +109,7 @@ Every surface that hands a database connection to a service:
 | Surface | Connection source | Credentials |
 |---------|-------------------|-------------|
 | AppHost `WithReference(quotesDb)` | Aspire generates the address and password at run time and injects `ConnectionStrings__quotesdb` | The model for real secrets: never a literal; published output exposes it as a variable operators must fill |
-| Standalone e2e | [`scripts/e2e.env`](../scripts/e2e.env) — the one copy of the throwaway catalog's port, user, password and database. `scripts/e2e.sh` and the CI e2e job source it to start the container; `playwright.config.ts` parses it for its webServer env | Deliberately disposable (loopback-only, guards nothing), committed on purpose. Never put a real credential in this file |
+| Standalone e2e | [`scripts/e2e.env`](../scripts/e2e.env) — the one copy of the throwaway catalog's port, user, password and database. `scripts/e2e.sh` and the CI e2e job source it to start the container; `playwright.fullstack.config.ts` parses it for its webServer env | Deliberately disposable (loopback-only, guards nothing), committed on purpose. Never put a real credential in this file |
 | `Dockerfile.build` export stage | A distro PostgreSQL cluster started inside the hermetic build container | Throwaway; created and consumed without ever leaving the image |
 | Testcontainers fixtures (`PostgresTestDatabase`, `QuoteApiFactory`) | `_container.GetConnectionString()` from per-run containers | Random per run |
 

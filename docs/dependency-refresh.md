@@ -67,7 +67,7 @@ docs/dependency-refresh.md            ← this document
 scripts/audit-deps.sh                 ← the mechanical audit (run it standalone any time)
 .claude/skills/dependency-refresh/    ← SKILL.md: the orchestration recipe (invoke /dependency-refresh)
 .claude/agents/deps-planner.md        ← the read-only planner (one per surface, in parallel)
-docs/dependency-refresh/runs/         ← audit + run records, newest last
+docs/dependency-refresh/runs/         ← audit + run records, newest last (created by the first run)
 ```
 
 1. Invoke the skill (`/dependency-refresh`) or ask the agent to refresh dependencies.
