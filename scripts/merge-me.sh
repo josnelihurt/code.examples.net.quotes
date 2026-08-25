@@ -131,6 +131,45 @@ merge() {
   return 1
 }
 
+# The squash-merge stack wedge (issue #61): when the bottom PR of a stack squash-merges,
+# the layers above still carry it as a real commit while the base carries the same diff
+# as the squash, so GitHub reports them CONFLICTING and every atomic merge fails. This
+# recipe — replaying only a branch's own commits onto the new base, bottom-up — is the
+# one sanctioned exception to "never force-push mid-stack branches".
+wedge_recipe() {
+  cat <<'RECIPE'
+  repair (bottom-up, one layer at a time):
+    git fetch origin
+    git rebase --onto origin/<base> <old-base-tip> <branch>
+    git push --force-with-lease origin <branch>
+  then the next event re-evaluates and merge-me lands the layer.
+  See README "Merging: the merge-me label" — the squash-merge stack wedge.
+RECIPE
+}
+
+# lower_layer_conflicts PR -> 0 (printed and holding) | 1 (nothing conflicting below).
+# The atomic merge lands every stack member below the labeled PR, so a CONFLICTING
+# lower layer fails the whole attempt — detecting it first turns "#N: merge failed"
+# into an instruction (issue #61). Walks the open-PR chain: the PR whose head branch
+# is this one's base, then that PR's base, down toward the trunk.
+lower_layer_conflicts() {
+  local pr="$1" base lower_pr lower_mergeable
+  base="$(gh pr view "${pr}" --json baseRefName --jq .baseRefName)"
+  while [[ -n "${base}" && "${base}" != "${DEFAULT_BRANCH}" ]]; do
+    lower_pr="$(gh pr list --head "${base}" --state open --json number --jq '.[0].number // empty' 2>/dev/null || true)"
+    if [[ -z "${lower_pr}" ]]; then return 1; fi
+    lower_mergeable="$(gh pr view "${lower_pr}" --json mergeable --jq .mergeable)"
+    if [[ "${lower_mergeable}" == "CONFLICTING" ]]; then
+      printf '#%s: lower layer #%s (%s) is CONFLICTING — holding instead of attempting the merge\n' \
+        "${pr}" "${lower_pr}" "${base}"
+      wedge_recipe
+      return 0
+    fi
+    base="$(gh pr view "${lower_pr}" --json baseRefName --jq .baseRefName)"
+  done
+  return 1
+}
+
 # evaluate PR WAIT_MINUTES — the per-PR decision table. Never merges anything that is
 # not green; on red it exits 0 holding the label for the next re-evaluation.
 evaluate() {
@@ -144,9 +183,11 @@ evaluate() {
   base="$(jq -r .base <<<"${view}")"
   mergeable="$(jq -r .mergeable <<<"${view}")"
   if [[ "${mergeable}" == "CONFLICTING" ]]; then
-    printf '#%s has conflicts — a human needs to rebase the stack\n' "${pr}"
+    printf '#%s has conflicts with its base — a human needs to rebase the stack\n' "${pr}"
+    wedge_recipe
     return 0
   fi
+  if lower_layer_conflicts "${pr}"; then return 0; fi
 
   local checks
   checks="$(checks_state "${pr}")"
