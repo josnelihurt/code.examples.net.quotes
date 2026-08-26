@@ -203,6 +203,11 @@ public class OpenApiParityTests(QuoteApiFactory factory) : IClassFixture<QuoteAp
         var title = document["info"]!["title"]!.GetValue<string>();
         document["info"]!["title"] = title.Split('|')[0].Trim();
 
+        // Each version owns a self-contained narrative (OpenApiDocs): the prose describes the
+        // transport, so it is a label here, not contract substance. What must match is
+        // everything the narrative describes — paths, parameters, schemas, responses.
+        document["info"]!["description"] = "<per-version narrative>";
+
         document.AsObject().Remove("tags");
 
         var paths = document["paths"]!.AsObject();

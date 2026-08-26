@@ -9,6 +9,13 @@ namespace AspireQuotesPoc.ServiceDefaults.OpenApi;
 /// description (the narrative consumers read first in Scalar) and the tag descriptions shown
 /// next to each operation group.
 /// </summary>
+/// <remarks>
+/// Multi-version hosts register one <see cref="OpenApiDocumentInfo"/> per document name so
+/// every contract describes only its own version — adding a transport must not edit the
+/// frozen contracts of the versions beside it. Single-version hosts keep registering one
+/// un-keyed <see cref="OpenApiDocumentInfo"/>; this transformer prefers the per-document
+/// entry and falls back to that shared one.
+/// </remarks>
 internal sealed class DocumentInfoTransformer(IServiceProvider serviceProvider) : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(
@@ -16,7 +23,11 @@ internal sealed class DocumentInfoTransformer(IServiceProvider serviceProvider) 
         OpenApiDocumentTransformerContext context,
         CancellationToken cancellationToken)
     {
-        var info = serviceProvider.GetService<OpenApiDocumentInfo>();
+        var perDocument = serviceProvider
+            .GetService<IReadOnlyDictionary<string, OpenApiDocumentInfo>>();
+        var info = perDocument is not null && perDocument.TryGetValue(context.DocumentName, out var keyed)
+            ? keyed
+            : serviceProvider.GetService<OpenApiDocumentInfo>();
         if (info is null)
         {
             return Task.CompletedTask;

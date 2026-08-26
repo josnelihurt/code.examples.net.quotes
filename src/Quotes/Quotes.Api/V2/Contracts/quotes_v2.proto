@@ -1,10 +1,10 @@
-// Single contract-first source of truth for the v2 quote transport. The HTTP extensions
-// (google.api.http) below describe the REST surface this version serves; Grpc.Tools generates
-// the C# messages and service skeleton from this file, and the v2 endpoints + service
+// Single contract-first source of truth for this quote transport. The HTTP extensions
+// (google.api.http) below describe the REST surface it serves; Grpc.Tools generates
+// the C# messages and service skeleton from this file, and the endpoints + service
 // implementation mirror it. A conformance test fails when the two drift apart.
 //
-// Field names use proto style (snake_case); their JSON-PB camelCase renderings are
-// byte-identical to the JSON v0/v1 already serve, so all versions share one wire shape.
+// Field names use proto style (snake_case); their JSON-PB camelCase renderings are the
+// JSON this transport serves.
 syntax = "proto3";
 
 package quotes.v2;

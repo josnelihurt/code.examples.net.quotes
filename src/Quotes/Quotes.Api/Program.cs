@@ -32,9 +32,7 @@ try
         QuotesController.DocumentName,
         QuoteEndpoints.DocumentName,
         V2.Endpoints.QuoteEndpoints.DocumentName);
-    builder.Services.AddSingleton(new OpenApiDocumentInfo(
-        Description: OpenApiDocs.Description,
-        TagDescriptions: OpenApiDocs.TagDescriptions));
+    builder.Services.AddSingleton<IReadOnlyDictionary<string, OpenApiDocumentInfo>>(OpenApiDocs.Documents);
     // Literal document names are mandatory: the XML-comment source generator only intercepts
     // AddOpenApi calls whose document name is a string literal, so a loop or a constant field
     // would silently drop every /// summary and response description from the documents.
