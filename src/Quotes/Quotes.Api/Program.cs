@@ -1,19 +1,12 @@
 using AspireQuotesPoc.ServiceDefaults.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using Quotes.Api;
+using Quotes.Api.ApiModules;
 using Quotes.Api.Telemetry;
-using Quotes.Api.V0.Controllers;
-using Quotes.Api.V1.Endpoints;
 using Quotes.Application;
 using Quotes.Infrastructure;
 using Quotes.Infrastructure.Persistence;
 using Serilog;
-
-// The v2/v3 namespaces are reached through aliases: the top-level Program cannot see
-// sibling sub-namespace names through the root using above, and a plain using would make
-// QuoteEndpoints ambiguous against the v1 one.
-using V2 = Quotes.Api.V2;
-using V3 = Quotes.Api.V3;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -24,29 +17,21 @@ try
     var builder = WebApplication.CreateBuilder(args);
 
     builder.AddServiceDefaults();
-    // Four transports, three OpenAPI documents: v0 is controller-based, v1 is minimal APIs,
-    // v2 binds the proto contract through an adapter. v3 is served by stock gRPC-JSON
-    // transcoding, which ApiExplorer cannot see — the proto file is its contract of record,
-    // so there is no v3 document on purpose.
-    builder.AddStandardApiServices(
-        QuotesController.DocumentName,
-        QuoteEndpoints.DocumentName,
-        V2.Endpoints.QuoteEndpoints.DocumentName,
-        "v3");
-    builder.Services.AddSingleton<IReadOnlyDictionary<string, OpenApiDocumentInfo>>(OpenApiDocs.Documents);
-    // Literal document names are mandatory: the XML-comment source generator only intercepts
-    // AddOpenApi calls whose document name is a string literal, so a loop or a constant field
-    // would silently drop every /// summary and response description from the documents.
-    builder.Services.AddOpenApi("v0", options => options.ConfigureStandardOpenApi("v0"));
-    builder.Services.AddOpenApi("v1", options => options.ConfigureStandardOpenApi("v1"));
-    // The v2 document's schemas come from the proto descriptors, not CLR reflection.
-    builder.Services.AddOpenApi("v2", options =>
+    // The API versions live in their own folders, one IApiModule each; ApiModuleRegistry
+    // lists them, so this file stays agnostic of which transports exist. Each module owns
+    // its literal AddOpenApi call, because the XML-comment source generator only intercepts
+    // calls whose document name is a string literal.
+    var modules = ApiModuleRegistry.Modules;
+    builder.AddStandardApiServices([.. modules.Select(module => module.DocumentName).OfType<string>()]);
+    builder.Services.AddSingleton<IReadOnlyDictionary<string, OpenApiDocumentInfo>>(
+        modules
+            .Where(module => module.DocumentName is not null && module.DocumentInfo is not null)
+            .ToDictionary(module => module.DocumentName!, module => module.DocumentInfo!));
+    foreach (var module in modules)
     {
-        options.ConfigureStandardOpenApi("v2");
-        options.AddSchemaTransformer<V2.OpenApi.ProtoSchemaTransformer>();
-    });
-    // v3: the platform runtime serves the annotated proto directly over JSON.
-    builder.Services.AddGrpc().AddJsonTranscoding();
+        module.AddServices(builder.Services);
+    }
+
     builder.AddStandardJwtAuthentication(
         (QuoteScopes.ReadPolicy, QuoteScopes.ReadScope),
         (QuoteScopes.WritePolicy, QuoteScopes.WriteScope));
@@ -55,12 +40,6 @@ try
     builder.Services.AddQuotesApplication();
     builder.AddQuotesInfrastructure();
     builder.Services.AddQuotesUseCaseTelemetry();
-    builder.Services.AddValidation();
-    builder.Services.AddStandardControllers();
-    // The v2 adapter invokes the generated service in-process; both resolve the same
-    // decorated use cases from the same container as v0/v1. Scoped, because the use
-    // cases are scoped and the adapter resolves it per request.
-    builder.Services.AddScoped<V2.Services.QuoteGrpcService>();
 
     var app = builder.Build();
 
@@ -80,15 +59,12 @@ try
     app.UseStandardAuthentication();
     app.MapDefaultEndpoints();
     app.MapStandardApiDocumentation();
-    // v3's document is generated from its proto by the freeze pipeline, not by the runtime.
-    app.MapGet("/openapi/v3.json", () => Results.Content(V3.OpenApi.V3OpenApiDocument.Json, "application/json"))
-        .ExcludeFromDescription(); // it is itself a document, not an operation
 
-    // All four transports resolve the same decorated use cases from the same container.
-    QuoteEndpoints.Map(app);
-    V2.Endpoints.QuoteEndpoints.Map(app);
-    app.MapGrpcService<V3.Services.QuoteGrpcService>();
-    app.MapControllers();
+    // Every transport resolves the same decorated use cases from the same container.
+    foreach (var module in modules)
+    {
+        module.MapEndpoints(app);
+    }
 
     await app.RunAsync();
 }
