@@ -28,7 +28,7 @@ flowchart LR
   spa -->|"auth calls"| gw
   spa -->|"quote calls"| gw
   gw -->|"/api/v1/auth"| auth
-  gw -->|"/api/v0/quotes and /api/v1/quotes"| quotes
+  gw -->|"/api/v0..v3/quotes"| quotes
   auth -->|OTLP| dash
   quotes -->|OTLP| dash
   gw -->|OTLP| dash
@@ -54,7 +54,7 @@ dashboard.
 | — `Quotes.Domain` | Aggregate, value objects, ports | [`src/Quotes/Quotes.Domain/`](../src/Quotes/Quotes.Domain/) | [README](../src/Quotes/Quotes.Domain/README.md) |
 | — `Quotes.Application` | Four use cases | [`src/Quotes/Quotes.Application/`](../src/Quotes/Quotes.Application/) | [README](../src/Quotes/Quotes.Application/README.md) |
 | — `Quotes.Infrastructure` | EF Core + PostgreSQL catalog adapter | [`src/Quotes/Quotes.Infrastructure/`](../src/Quotes/Quotes.Infrastructure/) | [README](../src/Quotes/Quotes.Infrastructure/README.md) |
-| — `Quotes.Api` (`quotes-api`) | Host, MVC `v0` + minimal `v1` | [`src/Quotes/Quotes.Api/`](../src/Quotes/Quotes.Api/) | [README](../src/Quotes/Quotes.Api/README.md) |
+| — `Quotes.Api` (`quotes-api`) | Host, MVC `v0` + minimal `v1` + proto `v2`/`v3` | [`src/Quotes/Quotes.Api/`](../src/Quotes/Quotes.Api/) | [README](../src/Quotes/Quotes.Api/README.md) |
 | `web` | React + TypeScript SPA | [`frontend/`](../frontend/) | [README](../frontend/README.md) |
 | `gateway` | YARP reverse proxy (publish) | declared in [`src/AppHost/AppHost.cs`](../src/AppHost/AppHost.cs) | [README](../src/AppHost/README.md) |
 | `docs` | Docsify site + combined Scalar | [`docs/`](.) | this site |
@@ -129,7 +129,7 @@ flowchart LR
   client --> gw
   gw --> static
   gw -->|"/api/v1/auth"| auth
-  gw -->|"/api/v0/quotes"| quotes
+  gw -->|"/api/v0..v3/quotes"| quotes
   gw -->|"/api/v1/quotes"| quotes
   auth -->|OTLP| dash
   quotes -->|OTLP| dash
@@ -317,7 +317,7 @@ understanding rather than just running:
   the frontend submodule's own repository.
 - **The OpenAPI contracts are product, and drift fails the build.**
   [`Dockerfile.build`](../Dockerfile.build) restores and builds both API hosts inside the SDK image,
-  starts them on fixed ports, GETs `/openapi/v0.json` and `/openapi/v1.json`, normalises `servers`
+  starts them on fixed ports, GETs each runtime `/openapi/{v0,v1,v2}.json` (v3's document is generated from its proto in the same image), normalises `servers`
   to `/`, and writes YAML. CI regenerates that hermetically and diffs it against
   [`docs/openapi/`](openapi/); `./scripts/update-contracts.sh` is the same flow locally.
 

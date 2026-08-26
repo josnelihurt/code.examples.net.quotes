@@ -50,29 +50,39 @@ The two contexts must answer every structural question the same way; these rules
 
 ## API versions and transport styles
 
-The quote catalog is served twice, from one core:
+The quote catalog is served four times, from one core:
 
-| | `v0` | `v1` |
-|---|---|---|
-| Transport | ASP.NET MVC controllers | Minimal APIs |
-| Entry point | `V0/Controllers/QuotesController.cs` | `V1/Endpoints/QuoteEndpoints.cs` |
-| Routing | `[Route]` / `[HttpGet]` attributes | `MapGroup` + `MapGet`/`MapPost` |
-| Result type | `ActionResult<T>` | `IResult` |
-| Error mapping | `ToActionResult` | `ToProblem` |
-| OpenAPI document | `/openapi/v0.json` | `/openapi/v1.json` |
+| | `v0` | `v1` | `v2` | `v3` |
+|---|---|---|---|---|
+| Transport | ASP.NET MVC controllers | Minimal APIs | Generated gRPC service + HTTP adapter | Stock gRPC-JSON transcoding |
+| Contract source | C# DTOs | C# DTOs | `V2/Contracts/quotes_v2.proto` (Grpc.Tools codegen) | `V3/Contracts/quotes_v3.proto` (annotations drive routing) |
+| Entry point | `V0/Controllers/QuotesController.cs` | `V1/Endpoints/QuoteEndpoints.cs` | `V2/Endpoints/QuoteEndpoints.cs` | `V3/Services/QuoteGrpcService.cs` |
+| Routing | `[Route]` / `[HttpGet]` attributes | `MapGroup` + `MapGet`/`MapPost` | Adapter mirrors the `google.api.http` rules | The `google.api.http` rules themselves |
+| Result type | `ActionResult<T>` | `IResult` | `IResult` (JSON-PB formatted) | transcoded `IMessage` replies |
+| Error mapping | `ToActionResult` | `ToProblem` | `RpcException` bridge → `ToProblem` | `RpcException` → gRPC status envelope |
+| Create answers | `201` + `Location` | `201` + `Location` | `201` + `Location` | `200`, no `Location` |
+| OpenAPI document | `/openapi/v0.json` | `/openapi/v1.json` | `/openapi/v2.json` (descriptor-built schemas) | `/openapi/v3.json`, generated from the proto and served verbatim |
 
 `v0` is not an earlier release. It is the older *style*, kept alongside `v1` so the two can be
 compared on identical behaviour — the React client has a version switch for exactly this. Read
-`v0` as "the way a classic MVC service does it", not "the deprecated one".
+`v0` as "the way a classic MVC service does it", not "the deprecated one". `v2` and `v3` are the
+proto-first pair — same contract artifact, two runtimes — compared in detail in
+[proto-transports.md](proto-transports.md): `v2` keeps byte-level parity with v0/v1 through an
+explicit adapter, while `v3` shows what the platform runtime does by itself (and where it
+deliberately drifts).
 
 Everything below the transport is shared verbatim: the same four use cases, the same decorator
 chain, the same repository, the same JWT scope policies. Neither version's DTOs nor mappers are
 visible to the other — versions own their contracts, so one can change shape without dragging the
 other along, which is the point of versioning them separately in the first place.
 
-What makes this more than a curiosity is that the two are held to *byte-level* response parity by
-`tests/Quotes/Quotes.Api.Tests/VersionParityTests.cs`, which drives both versions through the real
-host and compares status, media type and body. Two details are load-bearing there:
+What makes this more than a curiosity is that v0, v1 and v2 are held to *byte-level* response parity by
+`tests/Quotes/Quotes.Api.Tests/VersionParityTests.cs`, which drives every version pair through the
+real host and compares status, media type and body. `v2` earns its place in that set through the
+proto adapter: errors thrown as `RpcException` carry every ErrorOr field across the service
+boundary (trailer metadata), and the adapter rebuilds them through the same shared factory, so the
+problem bodies cannot drift. `v3` is deliberately outside the parity set — its drift is pinned by
+its own wire tests and the `TranscodedQuotes.feature` spec. Two details are load-bearing there:
 
 - `ErrorOrMvcExtensions.ToActionResult` builds its payload from the same
   `ProblemDetailsFactory` as `ToProblem`, and writes it through the same `IProblemDetailsService`
@@ -81,13 +91,18 @@ host and compares status, media type and body. Two details are load-bearing ther
 - `AddStandardControllers` replaces the `[ApiController]` automatic 400 via **`PostConfigure`**,
   because MVC's own `ApiBehaviorOptionsSetup` would otherwise overwrite a plain `Configure`.
 
-Adding a version means: a folder under the API host with its own contracts, mappers and entry
-points; a group name tagging it into its own OpenAPI document (`.WithGroupName` for minimal APIs,
-`[ApiExplorerSettings(GroupName = ...)]` for controllers); the name passed to
-`AddStandardApiServices` plus a literal `AddOpenApi("...", o => o.ConfigureStandardOpenApi("..."))`
-call in Program.cs (literals are what the XML-comment source generator intercepts); a gateway
-route in `AppHost.cs`; and a frozen contract under
-`docs/openapi/`. No Application, Domain or Infrastructure change is involved — if one turns out to
+Adding a version means: a folder under the API host with its own contracts, mappers, entry
+points and an `IApiModule` (see `ApiModules/`) plus one line in `ApiModuleRegistry`'s
+explicit list; `Program.cs` needs no edit. The module owns a group name tagging the version into its own
+OpenAPI document (`.WithGroupName` for minimal APIs, `[ApiExplorerSettings(GroupName = ...)]`
+for controllers) and its own literal `AddOpenApi("...", o => o.ConfigureStandardOpenApi("..."))`
+call — the literal is what the XML-comment source generator intercepts, so it cannot be looped
+over. Then: a gateway route in `AppHost.cs`; and a frozen contract under `docs/openapi/` — a
+document-serving version regenerates its YAML there via `./scripts/update-contracts.sh`; a
+transcoding version generates its document from its proto in the same pipeline (buf +
+protoc-gen-openapiv2, see the v3 contract). Each contract is self-contained: a new version
+does not touch the frozen documents of the versions beside it.
+No Application, Domain or Infrastructure change is involved — if one turns out to
 be needed, the layering has sprung a leak.
 
 ## Authentication
