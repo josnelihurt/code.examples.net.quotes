@@ -3,6 +3,7 @@
 * [System design](system-design.md)
 * [Architecture](architecture.md)
 * [API](api.md)
+* [Proto transports (v2/v3)](proto-transports.md)
 * [Data storage](data-storage.md)
 * [Scalar (combined)](scalar/)
 * [Local development](local-dev.md)

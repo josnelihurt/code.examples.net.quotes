@@ -24,6 +24,17 @@ Canonical YAML (do not edit by hand):
 - [auth.openapi.yaml](openapi/auth.openapi.yaml)
 - [quotes-v0.openapi.yaml](openapi/quotes-v0.openapi.yaml) — controller transport
 - [quotes-v1.openapi.yaml](openapi/quotes-v1.openapi.yaml) — minimal-API transport
+- [quotes-v2.openapi.yaml](openapi/quotes-v2.openapi.yaml) — proto contract served through the adapter
+
+- [quotes-v3.openapi.json](openapi/quotes-v3.openapi.json) — generated from the v3 proto by
+  the freeze pipeline (buf + protoc-gen-openapiv2; Swagger 2.0 — no maintained generator
+  emits OpenAPI 3 from `google.api.http` rules), served verbatim at `/openapi/v3.json`.
+  Unlike the runtime-exported YAML files above it stays JSON on purpose: the committed
+  artifact is the single representation — the bytes the pipeline generates are the bytes
+  the drift job diffs and the bytes the API embeds and serves, with no conversion step
+  that could drift from what clients actually receive.
+
+See [proto-transports.md](proto-transports.md) for the v2/v3 comparison.
 
 ### How to refresh
 
@@ -95,3 +106,4 @@ Every error response is RFC 9457 ProblemDetails (`application/problem+json`), in
 - `GET /api/v1/quotes/{id}` — requires Bearer JWT with `quotes:read`; 404 ProblemDetails for unknown ids
 - `GET /api/v1/quotes?page=1&pageSize=20` — requires Bearer JWT with `quotes:read`; the ratified pagination pattern: 1-based page, `pageSize` between 1 and 100 (defaults 1 / 20), 400 ProblemDetails (`quote.invalid_page_request`) outside the range; 200 returns `{ items, page, pageSize, totalItems, totalPages }` in stable catalog order, with an empty `items` array beyond the last page
 - `POST /api/v1/quotes` — requires Bearer JWT **with the `quotes:write` scope** (403 otherwise); 400 for invalid catalog rules, 409 for near-duplicate fingerprints; 201 returns the `Location` header of the created quote
+- The same four operations exist under `/api/v0/quotes` (MVC), `/api/v2/quotes` (proto contract + adapter; byte-identical wire) and `/api/v3/quotes` (gRPC-JSON transcoding; error bodies are the gRPC status envelope, create answers 200 without `Location`) — see [proto-transports.md](proto-transports.md)

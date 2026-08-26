@@ -9,7 +9,7 @@ processes. The frontend's coverage is emitted as LCOV in its own repository's pi
 | Layer | Lives in | Proves | Style |
 |---|---|---|---|
 | Domain / Application units | `tests/{Auth,Quotes}/*.{Domain,Application}.Tests` | Invariants, error codes, paging arithmetic, ErrorOr branches | TDD, exhaustive, microseconds |
-| API pipeline tests | `tests/{Auth,Quotes}/*.Api.Tests` | Transport mapping, status codes, ProblemDetails shape, `Location`, `WWW-Authenticate`, v0/v1 parity, OpenAPI parity | TDD, exhaustive per endpoint, in-process |
+| API pipeline tests | `tests/{Auth,Quotes}/*.Api.Tests` | Transport mapping, status codes, ProblemDetails shape, `Location`, `WWW-Authenticate`, v0/v1/v2 parity (v3 drift is pinned separately), OpenAPI parity | TDD, exhaustive per endpoint, in-process |
 | Specs | `tests/Bdd` | Journeys that cross a process boundary, in business language | BDD, few, out-of-process (the real Aspire stack) |
 | E2E | `frontend/e2e` | What a human does in a browser | BDD, fewest, real Chromium |
 
@@ -163,7 +163,7 @@ server state) and `scripts/export-bundle.sh` (writes `~/repo.bundle`).
 - **ServiceDefaults** — correlation middleware, metrics (all six counters), ErrorOr→ProblemDetails mapping, dev-key Production guard, host wiring (health/OpenAPI/Scalar in every environment)
 - **Architecture** — NetArchTest suite (`tests/Architecture.Tests`) enforcing the layering table: dependency direction per layer, no Api→Domain, no cross-context references, ServiceDefaults isolated
 - **Auth rate limiting** — slim-pipeline suite with a two-request window proving the 429 ProblemDetails shape (`auth.rate_limited`), plus the Production refusal of the scaffolding credential store at the DI boundary
-- **Specs (tests/Bdd)** — cross-service journeys through the gateway: sign in → token → random quote, create → `Location` round trip, near-duplicate 409, rejected text 400, reader-scope 403, v0/v1 transport parity, token introspection, OpenAPI/Scalar surfaces
+- **Specs (tests/Bdd)** — cross-service journeys through the gateway: sign in → token → random quote, create → `Location` round trip, near-duplicate 409, rejected text 400, reader-scope 403, v0/v1/v2 transport parity, the v3 transcoded-drift journeys, token introspection, OpenAPI/Scalar surfaces
 - **Frontend** — `api/client` (session, login, random, catalog paging, publish — every failure path parsed out of the RFC 9457 body into `ApiError`), `LoginPage`, `QuotePage`, `QuotesListPage` (first page, next/previous bounds, version switch refetch, empty catalog), `PublishQuotePage` (success confirmation + form reset, validation/conflict/forbidden alerts, in-flight disabling), routing/`RequireAuth` over `/quote`, `/quotes` and `/publish` (Vitest); browser journeys across signing-in, reading-quotes, browsing-quotes and publishing-quotes (Playwright BDD); Storybook stories for the extracted presentational components — all in [code.examples.frontend.quotes](https://github.com/josnelihurt/code.examples.frontend.quotes) and gated in its CI
 
 ## CI
