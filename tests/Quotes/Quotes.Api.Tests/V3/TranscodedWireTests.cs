@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Quotes.Application.Abstractions;
 
@@ -271,17 +272,38 @@ public class TranscodedWireTests(QuoteApiFactory factory) : IClassFixture<QuoteA
     }
 
     [Fact]
-    public async Task No_v3_openapi_document_exists_on_purpose()
+    public async Task The_v3_openapi_document_is_served_from_the_proto_generated_artifact()
     {
-        // ApiExplorer cannot see transcoded routes, so the proto file is v3's contract of
-        // record. This pins the deliberate absence: a v3 document appearing would mean the
-        // platform learned to describe transcoding, and the docs should be revisited.
+        // ApiExplorer cannot see transcoded routes, so no runtime document exists. Instead,
+        // the freeze pipeline generates one FROM the contract (comments, google.api.http
+        // rules and openapiv2 options in the proto) and the host serves those exact bytes —
+        // what Scalar shows is what the contract-drift job diffs. Swagger 2.0, because no
+        // maintained generator emits OpenAPI 3 from google.api.http rules.
         using var client = CreateClient();
 
         using var response = await client.GetAsync(
             new Uri("/openapi/v3.json", UriKind.Relative),
             TestContext.Current.CancellationToken);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/json");
+
+        var document = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        document.GetProperty("swagger").GetString().ShouldBe("2.0");
+        document.GetProperty("info").GetProperty("title").GetString().ShouldBe("Quotes.Api | v3");
+        foreach (var path in (IEnumerable<string>)["/api/v3/quotes", "/api/v3/quotes/random", "/api/v3/quotes/{id}"])
+        {
+            document.GetProperty("paths").TryGetProperty(path, out _).ShouldBeTrue($"generated paths cover {path}");
+        }
+
+        // The summaries come from the proto's own leading comments.
+        var list = document.GetProperty("paths").GetProperty("/api/v3/quotes").GetProperty("get");
+        var summary = list.GetProperty("summary").GetString();
+        summary.ShouldNotBeNull();
+        summary.ShouldContain("Lists one page of the quote catalog");
+
+        // The bearer requirement is declared in the contract's openapiv2 options.
+        document.GetProperty("securityDefinitions").TryGetProperty("Bearer", out _).ShouldBeTrue();
+        document.GetProperty("security").GetArrayLength().ShouldBeGreaterThan(0);
     }
 }
