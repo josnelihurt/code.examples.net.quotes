@@ -73,13 +73,15 @@ wait_for() {
   return 1
 }
 
-# Auth serves one document; Quotes serves one per API version (v0 controllers, v1 minimal APIs).
+# Auth serves one document; Quotes serves one per API version (v0 controllers, v1 minimal
+# APIs, v2 the proto contract via the adapter).
 wait_for http://127.0.0.1:18081/openapi/v1.json
 wait_for http://127.0.0.1:18082/openapi/v1.json
 
 curl -fsS http://127.0.0.1:18081/openapi/v1.json -o /tmp/auth.json
 curl -fsS http://127.0.0.1:18082/openapi/v0.json -o /tmp/quotes-v0.json
 curl -fsS http://127.0.0.1:18082/openapi/v1.json -o /tmp/quotes-v1.json
+curl -fsS http://127.0.0.1:18082/openapi/v2.json -o /tmp/quotes-v2.json
 
 python3 <<'PY'
 import json
@@ -87,7 +89,7 @@ from pathlib import Path
 
 import yaml
 
-for name in ("auth", "quotes-v0", "quotes-v1"):
+for name in ("auth", "quotes-v0", "quotes-v1", "quotes-v2"):
     doc = json.loads(Path(f"/tmp/{name}.json").read_text())
     doc["servers"] = [{"url": "/"}]
     Path(f"/out/{name}.openapi.yaml").write_text(
@@ -103,3 +105,4 @@ FROM scratch AS contracts
 COPY --from=export /out/auth.openapi.yaml /auth.openapi.yaml
 COPY --from=export /out/quotes-v0.openapi.yaml /quotes-v0.openapi.yaml
 COPY --from=export /out/quotes-v1.openapi.yaml /quotes-v1.openapi.yaml
+COPY --from=export /out/quotes-v2.openapi.yaml /quotes-v2.openapi.yaml

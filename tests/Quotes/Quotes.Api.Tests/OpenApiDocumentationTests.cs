@@ -17,6 +17,7 @@ public class OpenApiDocumentationTests(QuoteApiFactory factory) : IClassFixture<
     [Theory]
     [InlineData("v0")]
     [InlineData("v1")]
+    [InlineData("v2")]
     public async Task Every_quote_operation_is_fully_documented(string documentName)
     {
         var document = await FetchDocumentAsync(documentName);
@@ -47,6 +48,7 @@ public class OpenApiDocumentationTests(QuoteApiFactory factory) : IClassFixture<
     [Theory]
     [InlineData("v0")]
     [InlineData("v1")]
+    [InlineData("v2")]
     public async Task Pagination_parameters_carry_descriptions_and_examples(string documentName)
     {
         var document = await FetchDocumentAsync(documentName);
@@ -66,6 +68,7 @@ public class OpenApiDocumentationTests(QuoteApiFactory factory) : IClassFixture<
     [Theory]
     [InlineData("v0")]
     [InlineData("v1")]
+    [InlineData("v2")]
     public async Task Request_bodies_carry_the_body_param_description(string documentName)
     {
         // The XML-comment generator maps the LAST <param> tag to the request body, so the
@@ -78,16 +81,18 @@ public class OpenApiDocumentationTests(QuoteApiFactory factory) : IClassFixture<
     }
 
     [Theory]
-    [InlineData("v0")]
-    [InlineData("v1")]
-    public async Task Schemas_carry_examples_and_errors_carry_samples(string documentName)
+    [InlineData("v0", "CreateQuoteRequestDto", "QuoteResponseDto", "QuotePageResponseDto")]
+    [InlineData("v1", "CreateQuoteRequestDto", "QuoteResponseDto", "QuotePageResponseDto")]
+    [InlineData("v2", "CreateQuoteRequest", "Quote", "ListQuotesResponse")]
+    public async Task Schemas_carry_examples_and_errors_carry_samples(
+        string documentName, string requestSchema, string quoteSchema, string pageSchema)
     {
         var document = await FetchDocumentAsync(documentName);
 
         var schemas = document["components"]!["schemas"]!.AsObject();
-        schemas["CreateQuoteRequestDto"]!["example"].ShouldNotBeNull();
-        schemas["QuoteResponseDto"]!["example"].ShouldNotBeNull();
-        schemas["QuotePageResponseDto"]!["example"].ShouldNotBeNull();
+        schemas[requestSchema]!["example"].ShouldNotBeNull();
+        schemas[quoteSchema]!["example"].ShouldNotBeNull();
+        schemas[pageSchema]!["example"].ShouldNotBeNull();
 
         var create = document["paths"]![$"/api/{documentName}/quotes"]!["post"]!;
         create["responses"]!["409"]!["description"]!.GetValue<string>()

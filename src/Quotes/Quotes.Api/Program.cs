@@ -9,6 +9,11 @@ using Quotes.Infrastructure;
 using Quotes.Infrastructure.Persistence;
 using Serilog;
 
+// The v2 namespace is reached through an alias: the top-level Program cannot see sibling
+// sub-namespace names through the root using above, and a plain using would make
+// QuoteEndpoints ambiguous against the v1 one.
+using V2 = Quotes.Api.V2;
+
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateBootstrapLogger();
@@ -18,8 +23,12 @@ try
     var builder = WebApplication.CreateBuilder(args);
 
     builder.AddServiceDefaults();
-    // Two transports, two OpenAPI documents: v0 is controller-based, v1 is minimal APIs.
-    builder.AddStandardApiServices(QuotesController.DocumentName, QuoteEndpoints.DocumentName);
+    // Three transports, three OpenAPI documents: v0 is controller-based, v1 is minimal
+    // APIs, v2 binds the proto contract through an adapter.
+    builder.AddStandardApiServices(
+        QuotesController.DocumentName,
+        QuoteEndpoints.DocumentName,
+        V2.Endpoints.QuoteEndpoints.DocumentName);
     builder.Services.AddSingleton(new OpenApiDocumentInfo(
         Description: OpenApiDocs.Description,
         TagDescriptions: OpenApiDocs.TagDescriptions));
@@ -28,7 +37,12 @@ try
     // would silently drop every /// summary and response description from the documents.
     builder.Services.AddOpenApi("v0", options => options.ConfigureStandardOpenApi("v0"));
     builder.Services.AddOpenApi("v1", options => options.ConfigureStandardOpenApi("v1"));
-    builder.AddStandardJwtAuthentication(
+    // The v2 document's schemas come from the proto descriptors, not CLR reflection.
+    builder.Services.AddOpenApi("v2", options =>
+    {
+        options.ConfigureStandardOpenApi("v2");
+        options.AddSchemaTransformer<V2.OpenApi.ProtoSchemaTransformer>();
+    }); builder.AddStandardJwtAuthentication(
         (QuoteScopes.ReadPolicy, QuoteScopes.ReadScope),
         (QuoteScopes.WritePolicy, QuoteScopes.WriteScope));
 
@@ -38,6 +52,10 @@ try
     builder.Services.AddQuotesUseCaseTelemetry();
     builder.Services.AddValidation();
     builder.Services.AddStandardControllers();
+    // The v2 adapter invokes the generated service in-process; both resolve the same
+    // decorated use cases from the same container as v0/v1. Scoped, because the use
+    // cases are scoped and the adapter resolves it per request.
+    builder.Services.AddScoped<V2.Services.QuoteGrpcService>();
 
     var app = builder.Build();
 
@@ -58,8 +76,9 @@ try
     app.MapDefaultEndpoints();
     app.MapStandardApiDocumentation();
 
-    // Both transports resolve the same decorated use cases from the same container.
+    // All three transports resolve the same decorated use cases from the same container.
     QuoteEndpoints.Map(app);
+    V2.Endpoints.QuoteEndpoints.Map(app);
     app.MapControllers();
 
     await app.RunAsync();
