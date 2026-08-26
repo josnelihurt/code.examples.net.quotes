@@ -19,3 +19,6 @@ Feature: API documentation
     Then the response status is 200
     When I open "/openapi/v1.json" on the "quotes-api" service
     Then the response status is 200
+    When I open "/openapi/v2.json" on the "quotes-api" service
+    Then the response status is 200
+

@@ -1,6 +1,6 @@
 openapi: 3.1.1
 info:
-  title: Quotes.Api | v0
+  title: Quotes.Api | v2
   description: "Quote catalog for the Aspire Quotes platform.\n\n**Three transports,\
     \ one contract**: `v0` (MVC controllers), `v1` (minimal APIs)\nand `v2` (a proto\
     \ contract served through an adapter) publish the same operations,\npayloads and\
@@ -22,10 +22,10 @@ info:
 servers:
 - url: /
 paths:
-  /api/v0/quotes/random:
+  /api/v2/quotes/random:
     get:
       tags:
-      - Quotes
+      - Quotes v2
       summary: Returns a random quote from the catalog.
       description: 'Requires a bearer JWT issued by the Auth API with the `quotes:read`
         scope
@@ -40,6 +40,7 @@ paths:
         it
 
         is echoed on every response and embedded in problem details.'
+      operationId: GetRandomQuoteV2
       responses:
         '401':
           description: Missing or invalid bearer token (errorCode `auth.token_missing`
@@ -55,24 +56,12 @@ paths:
                 detail: A valid bearer token is required.
                 errorCode: auth.token_invalid
                 correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
-        '403':
-          description: The token lacks the `quotes:read` scope.
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-              example:
-                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
-                title: Forbidden
-                status: 403
-                detail: The access token is missing the required scope (quotes:read
-                  or quotes:write).
         '200':
           description: A random quote.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteResponseDto'
+                $ref: '#/components/schemas/Quote'
         '404':
           description: The catalog is empty (errorCode `quote.not_found`).
           content:
@@ -86,12 +75,24 @@ paths:
                 detail: Quote not found.
                 errorCode: quote.not_found
                 correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
+        '403':
+          description: The token lacks the `quotes:read` scope.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
+                title: Forbidden
+                status: 403
+                detail: The access token is missing the required scope (quotes:read
+                  or quotes:write).
       security:
       - Bearer: []
-  /api/v0/quotes:
+  /api/v2/quotes:
     get:
       tags:
-      - Quotes
+      - Quotes v2
       summary: Lists one page of the quote catalog in stable order.
       description: 'Requires a bearer JWT issued by the Auth API with the `quotes:read`
         scope
@@ -107,7 +108,7 @@ paths:
         `items` array, not an error. Send `X-Correlation-Id` to correlate calls;
 
         it is echoed on every response and embedded in problem details.'
-      operationId: ListQuotesV0
+      operationId: ListQuotesV2
       parameters:
       - name: page
         in: query
@@ -146,25 +147,13 @@ paths:
                 detail: A valid bearer token is required.
                 errorCode: auth.token_invalid
                 correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
-        '403':
-          description: The token lacks the `quotes:read` scope.
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-              example:
-                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
-                title: Forbidden
-                status: 403
-                detail: The access token is missing the required scope (quotes:read
-                  or quotes:write).
         '200':
           description: The requested page as `{ items, page, pageSize, totalItems,
             totalPages }`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuotePageResponseDto'
+                $ref: '#/components/schemas/ListQuotesResponse'
         '400':
           description: Page or pageSize outside the allowed range (errorCode `quote.invalid_page_request`).
           content:
@@ -180,11 +169,23 @@ paths:
                 errors:
                   quote.invalid_page_request:
                   - The requested page or page size is outside the allowed range.
+        '403':
+          description: The token lacks the `quotes:read` scope.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
+                title: Forbidden
+                status: 403
+                detail: The access token is missing the required scope (quotes:read
+                  or quotes:write).
       security:
       - Bearer: []
     post:
       tags:
-      - Quotes
+      - Quotes v2
       summary: Adds a quote to the catalog.
       description: 'Requires a bearer JWT issued by the Auth API with the `quotes:write`
         scope
@@ -206,18 +207,13 @@ paths:
         `X-Correlation-Id` to correlate calls; it is echoed on every response and
 
         embedded in problem details.'
+      operationId: CreateQuoteV2
       requestBody:
         description: The quote text and its author.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateQuoteRequestDto'
-          text/json:
-            schema:
-              $ref: '#/components/schemas/CreateQuoteRequestDto'
-          application/*+json:
-            schema:
-              $ref: '#/components/schemas/CreateQuoteRequestDto'
+              $ref: '#/components/schemas/CreateQuoteRequest'
         required: true
       responses:
         '401':
@@ -234,24 +230,12 @@ paths:
                 detail: A valid bearer token is required.
                 errorCode: auth.token_invalid
                 correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
-        '403':
-          description: The token lacks the `quotes:write` scope.
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-              example:
-                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
-                title: Forbidden
-                status: 403
-                detail: The access token is missing the required scope (quotes:read
-                  or quotes:write).
         '201':
           description: Quote created; the `Location` header addresses the new quote.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteResponseDto'
+                $ref: '#/components/schemas/Quote'
         '400':
           description: Catalog rule violation (errorCode `quote.text_too_short`, `quote.text_too_long`,
             `quote.text_needs_more_words`, `quote.text_must_end_with_punctuation`,
@@ -283,12 +267,24 @@ paths:
                 detail: A quote with the same meaning already exists.
                 errorCode: quote.duplicate_fingerprint
                 correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
+        '403':
+          description: The token lacks the `quotes:write` scope.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
+                title: Forbidden
+                status: 403
+                detail: The access token is missing the required scope (quotes:read
+                  or quotes:write).
       security:
       - Bearer: []
-  /api/v0/quotes/{id}:
+  /api/v2/quotes/{id}:
     get:
       tags:
-      - Quotes
+      - Quotes v2
       summary: Returns one quote by id.
       description: 'Requires a bearer JWT issued by the Auth API with the `quotes:read`
         scope
@@ -299,7 +295,7 @@ paths:
         come from create responses and list items. Send `X-Correlation-Id` to
 
         correlate calls; it is echoed on every response and embedded in problem details.'
-      operationId: GetQuoteByIdV0
+      operationId: GetQuoteByIdV2
       parameters:
       - name: id
         in: path
@@ -323,24 +319,12 @@ paths:
                 detail: A valid bearer token is required.
                 errorCode: auth.token_invalid
                 correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
-        '403':
-          description: The token lacks the `quotes:read` scope.
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-              example:
-                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
-                title: Forbidden
-                status: 403
-                detail: The access token is missing the required scope (quotes:read
-                  or quotes:write).
         '200':
           description: The requested quote.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteResponseDto'
+                $ref: '#/components/schemas/Quote'
         '404':
           description: No quote matches the id (errorCode `quote.not_found`).
           content:
@@ -354,11 +338,23 @@ paths:
                 detail: Quote not found.
                 errorCode: quote.not_found
                 correlationId: 5c1f4a0e9d2b7386a4c0b1e8d3f69a27
+        '403':
+          description: The token lacks the `quotes:read` scope.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: https://tools.ietf.org/html/rfc9110#section-15.5.4
+                title: Forbidden
+                status: 403
+                detail: The access token is missing the required scope (quotes:read
+                  or quotes:write).
       security:
       - Bearer: []
 components:
   schemas:
-    CreateQuoteRequestDto:
+    CreateQuoteRequest:
       required:
       - text
       - author
@@ -407,33 +403,7 @@ components:
             type: array
             items:
               type: string
-    ProblemDetails:
-      type: object
-      properties:
-        type:
-          type:
-          - 'null'
-          - string
-        title:
-          type:
-          - 'null'
-          - string
-        status:
-          pattern: ^-?(?:0|[1-9]\d*)$
-          type:
-          - 'null'
-          - integer
-          - string
-          format: int32
-        detail:
-          type:
-          - 'null'
-          - string
-        instance:
-          type:
-          - 'null'
-          - string
-    QuotePageResponseDto:
+    ListQuotesResponse:
       required:
       - items
       - page
@@ -445,7 +415,25 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/QuoteResponseDto'
+            required:
+            - id
+            - text
+            - author
+            type: object
+            properties:
+              id:
+                type: string
+                description: Stable quote identifier.
+              text:
+                type: string
+                description: Quote body text.
+              author:
+                type: string
+                description: Attributed author of the quote.
+            example:
+              id: 3f2b8a9c1d4e5f6a7b8c9d0e1f2a3b4c
+              text: Talk is cheap. Show me the code.
+              author: Linus Torvalds
           description: Quotes on this page, in stable catalog order.
         page:
           pattern: ^-?(?:0|[1-9]\d*)$
@@ -484,7 +472,33 @@ components:
         pageSize: 20
         totalItems: 1
         totalPages: 1
-    QuoteResponseDto:
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type:
+          - 'null'
+          - string
+        title:
+          type:
+          - 'null'
+          - string
+        status:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+          - 'null'
+          - integer
+          - string
+          format: int32
+        detail:
+          type:
+          - 'null'
+          - string
+        instance:
+          type:
+          - 'null'
+          - string
+    Quote:
       required:
       - id
       - text
@@ -511,13 +525,12 @@ components:
       scheme: bearer
       bearerFormat: JWT
 tags:
-- name: Quotes
+- name: Quotes v2
+  description: 'Proto-first transport: a contract-first .proto with google.api.http
+    annotations, served byte-identical to v0/v1 through a generated-service adapter.'
 - name: Quotes v0
   description: Controller transport of the quote catalog; same contract as v1, kept
     to demonstrate the transport swap.
 - name: Quotes v1
   description: Minimal-API transport of the quote catalog; the preferred integration
     surface.
-- name: Quotes v2
-  description: 'Proto-first transport: a contract-first .proto with google.api.http
-    annotations, served byte-identical to v0/v1 through a generated-service adapter.'

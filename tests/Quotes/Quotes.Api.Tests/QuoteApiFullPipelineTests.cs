@@ -347,10 +347,12 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
     [Theory]
     [InlineData("/api/v1/quotes")]
     [InlineData("/api/v0/quotes")]
+    [InlineData("/api/v2/quotes")]
     public async Task Create_with_an_empty_body_returns_a_validation_problem(string path)
     {
         // A client that sends Content-Type: application/json and no payload is the
-        // null-body adversarial case; both transports must answer the shared envelope.
+        // null-body adversarial case; the transports that share the problem+json
+        // envelope must all answer it.
         using var client = CreateClient();
         using var content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
 
@@ -369,6 +371,7 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
     [Theory]
     [InlineData("/api/v1/quotes")]
     [InlineData("/api/v0/quotes")]
+    [InlineData("/api/v2/quotes")]
     public async Task Create_with_a_malformed_json_body_returns_a_validation_problem(string path)
     {
         using var client = CreateClient();
@@ -384,6 +387,43 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         problem.GetProperty("errorCode").GetString().ShouldBe(ProblemDetailsBuilder.RequestValidationErrorCode);
         problem.GetProperty("correlationId").GetString().ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Theory]
+    [InlineData("/api/v0/quotes/random")]
+    [InlineData("/api/v1/quotes/random")]
+    [InlineData("/api/v2/quotes/random")]
+    public async Task An_unauthenticated_read_is_rejected_by_the_shared_middleware_on_every_transport(string path)
+    {
+        // Authorization runs before any transport code.
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync(
+            new Uri(path, UriKind.Relative),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        response.Headers.WwwAuthenticate.ShouldNotBeEmpty();
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        problem.GetProperty("errorCode").GetString().ShouldBe(JwtAuthExtensions.TokenMissingErrorCode);
+    }
+
+    [Theory]
+    [InlineData("/api/v0/quotes")]
+    [InlineData("/api/v1/quotes")]
+    [InlineData("/api/v2/quotes")]
+    public async Task Create_without_the_write_scope_is_forbidden_on_every_transport(string path)
+    {
+        // Scope enforcement is transport-agnostic; the status is the comparable part.
+        using var client = CreateClient(["quotes:read"]);
+
+        using var response = await client.PostAsJsonAsync(
+            new Uri(path, UriKind.Relative),
+            new CreateQuoteRequestDto { Text = "Scope enforcement is transport agnostic.", Author = "Seed Author" },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]

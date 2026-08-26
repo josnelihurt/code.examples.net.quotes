@@ -448,6 +448,7 @@ jobs:
           diff -u docs/openapi/auth.openapi.yaml out/auth.openapi.yaml
           diff -u docs/openapi/quotes-v0.openapi.yaml out/quotes-v0.openapi.yaml
           diff -u docs/openapi/quotes-v1.openapi.yaml out/quotes-v1.openapi.yaml
+          diff -u docs/openapi/quotes-v2.openapi.yaml out/quotes-v2.openapi.yaml
 
   image-pins:
     name: container image pin drift

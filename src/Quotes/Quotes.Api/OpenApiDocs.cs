@@ -9,10 +9,10 @@ internal static class OpenApiDocs
     internal const string Description = """
         Quote catalog for the Aspire Quotes platform.
 
-        **Two transports, one contract**: `v0` (MVC controllers) and `v1` (minimal APIs)
-        publish the same operations, payloads and error envelope; parity is enforced by
-        tests. `v0` exists to demonstrate that transport style is a swappable detail of the
-        architecture — new integrations should prefer `v1`.
+        **Three transports, one contract**: `v0` (MVC controllers), `v1` (minimal APIs)
+        and `v2` (a proto contract served through an adapter) publish the same operations,
+        payloads and error envelope; parity is enforced by tests. New integrations should
+        prefer `v1`.
 
         Typical use:
 
@@ -25,7 +25,7 @@ internal static class OpenApiDocs
         3. The catalog boots seeded (eight quotes), so reads serve data from the first
            call: browse with `GET /api/v1/quotes`, `GET /api/v1/quotes/{id}` or
            `GET /api/v1/quotes/random`, then add your own with `POST /api/v1/quotes`.
-           The same operations exist under `/api/v0/quotes`.
+           The same operations exist under `/api/v0/quotes` and `/api/v2/quotes`.
 
         Cross-cutting behavior:
 
@@ -40,5 +40,6 @@ internal static class OpenApiDocs
         {
             ["Quotes v0"] = "Controller transport of the quote catalog; same contract as v1, kept to demonstrate the transport swap.",
             ["Quotes v1"] = "Minimal-API transport of the quote catalog; the preferred integration surface.",
+            ["Quotes v2"] = "Proto-first transport: a contract-first .proto with google.api.http annotations, served byte-identical to v0/v1 through a generated-service adapter.",
         };
 }

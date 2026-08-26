@@ -72,9 +72,10 @@ builder.AddYarp("gateway")
     .WithConfiguration(yarp =>
     {
         yarp.AddRoute("/api/v1/auth/{**catch-all}", auth);
-        // Both quote API versions live in the same service; the SPA picks one at request time.
+        // All quote API versions live in the same service; the SPA picks one at request time.
         yarp.AddRoute("/api/v0/quotes/{**catch-all}", quotes);
         yarp.AddRoute("/api/v1/quotes/{**catch-all}", quotes);
+        yarp.AddRoute("/api/v2/quotes/{**catch-all}", quotes);
     })
     .WithExternalHttpEndpoints()
     .PublishWithStaticFiles(web);
