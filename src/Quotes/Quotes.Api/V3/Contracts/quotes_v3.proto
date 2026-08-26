@@ -1,12 +1,12 @@
-// Contract for the v3 quote transport, served by ASP.NET Core's stock gRPC-JSON transcoding
+// Contract for this quote transport, served by ASP.NET Core's stock gRPC-JSON transcoding
 // (Microsoft.AspNetCore.Grpc.JsonTranscoding): the google.api.http rules below drive the
-// routing themselves — no adapter endpoints exist for this version.
-//
-// v3 demonstrates the platform runtime next to v2's parity-preserving adapter; the drift
-// between them (error envelope, 201/Location, absent OpenAPI document) is deliberate and
-// pinned by tests. Paging scalars are declared `optional` so transcoding's JSON writer emits
-// them even at proto defaults (page = 1); without explicit presence they would be omitted
-// from every first-page response.
+// routing themselves — no adapter endpoints exist. The behavior is the platform runtime's
+// own and is pinned by tests: error bodies are the gRPC status envelope
+// ({"code","message","details"}) and create answers 200 without a Location header, and
+// there is no runtime-generated OpenAPI document — this file is the contract of record.
+// Paging scalars are declared `optional` so transcoding's JSON writer emits them even at
+// proto defaults (page = 1); without explicit presence they would be omitted from every
+// first-page response.
 syntax = "proto3";
 
 package quotes.v3;
