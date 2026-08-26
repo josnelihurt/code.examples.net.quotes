@@ -22,11 +22,23 @@
     <PackageReference Include="Microsoft.AspNetCore.Grpc.JsonTranscoding" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The v3 contract's OpenAPI document is generated from its proto by the freeze
+         pipeline (Dockerfile.build + scripts/update-contracts.sh) and committed here; the
+         API embeds and serves it verbatim at /openapi/v3.json, so what Scalar shows is
+         exactly what the drift job diffs. -->
+    <EmbeddedResource Include="..\..\..\docs\openapi\quotes-v3.openapi.json" Link="quotes-v3.openapi.json" LogicalName="quotes-v3.openapi.json" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- Distinct file names on purpose: Grpc.Tools derives the generated file name from the
          proto's basename, so two contracts named quotes.proto would overwrite each other's
          output in obj/. -->
     <Protobuf Include="V2\Contracts\quotes_v2.proto" ProtoRoot="V2\Contracts" GrpcServices="Server" />
     <Protobuf Include="V3\Contracts\quotes_v3.proto" ProtoRoot="V3\Contracts" GrpcServices="Server" />
+    <!-- The openapiv2 option protos must be compiled (not just importable): the generated
+         quotes_v3 code references their AnnotationsReflection descriptor, and unlike
+         google/api (supplied by Google.Api.CommonProtos) no package ships them. -->
+    <Protobuf Include="V3\Contracts\protoc-gen-openapiv2\options\annotations.proto" ProtoRoot="V3\Contracts" GrpcServices="None" />
+    <Protobuf Include="V3\Contracts\protoc-gen-openapiv2\options\openapiv2.proto" ProtoRoot="V3\Contracts" GrpcServices="None" />
   </ItemGroup>
   <ItemGroup>
     <!-- Design-time only: lets `dotnet ef migrations` author migrations with this project

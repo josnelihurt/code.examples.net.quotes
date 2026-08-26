@@ -1,0 +1,11 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package
+      value: example.invalid/unused
+plugins:
+  - local: protoc-gen-openapiv2
+    out: /tmp
+    opt:
+      - logtostderr=true

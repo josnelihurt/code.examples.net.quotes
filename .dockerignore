@@ -5,6 +5,7 @@
 **/node_modules
 frontend
 docs
+!docs/openapi/quotes-v3.openapi.json
 tests
 src/AppHost
 scripts

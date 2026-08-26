@@ -9,6 +9,9 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e1ffd2a92ae84c1291bc1b6887501f8af9
 WORKDIR /src
 
 COPY Directory.Build.props Directory.Packages.props nuget.config ./
+# The embedded v3 document: generated output, committed by scripts/update-contracts.sh and
+# re-verified by the contract-drift job; the build only needs it present to embed.
+COPY docs/openapi/quotes-v3.openapi.json ./docs/openapi/quotes-v3.openapi.json
 COPY src/ServiceDefaults ./src/ServiceDefaults
 COPY src/Auth ./src/Auth
 COPY src/Quotes ./src/Quotes
@@ -23,8 +26,35 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends curl python3-yaml postgresql \
  && rm -rf /var/lib/apt/lists/*
 
+# The v3 OpenAPI document is generated from its proto (comments + google.api.http rules +
+# openapiv2 options) rather than served by the runtime: buf feeds the descriptors to
+# protoc-gen-openapiv2. Both tools are pinned; the plugin's checksum is verified because
+# the binary travels over the network at build time.
+ARG BUF_VERSION=v1.50.0
+ARG OPENAPIV2_VERSION=v2.30.0
+RUN case "$(uname -m)" in \
+      x86_64) GOARCH=x86_64;; \
+      aarch64) GOARCH=arm64;; \
+      *) echo "unsupported arch $(uname -m)" >&2; exit 1;; \
+    esac \
+ && curl -fsSL -o /usr/local/bin/buf \
+      "https://github.com/bufbuild/buf/releases/download/${BUF_VERSION}/buf-Linux-$(uname -m)" \
+ && chmod +x /usr/local/bin/buf \
+ && curl -fsSL -o /usr/local/bin/protoc-gen-openapiv2 \
+      "https://github.com/grpc-ecosystem/grpc-gateway/releases/download/v${OPENAPIV2_VERSION#v}/protoc-gen-openapiv2-v${OPENAPIV2_VERSION#v}-linux-${GOARCH}" \
+ && chmod +x /usr/local/bin/protoc-gen-openapiv2 \
+ && test "$(sha256sum /usr/local/bin/protoc-gen-openapiv2 | cut -d' ' -f1)" = \
+        "$(curl -fsSL "https://github.com/grpc-ecosystem/grpc-gateway/releases/download/v${OPENAPIV2_VERSION#v}/grpc-gateway_${OPENAPIV2_VERSION#v}_checksums.txt" | grep "protoc-gen-openapiv2-v${OPENAPIV2_VERSION#v}-linux-${GOARCH}" | cut -d' ' -f1)"
+
 RUN bash -euo pipefail <<'EOF'
 mkdir -p /out /tmp/logs
+
+# The v3 contract generates its own OpenAPI document (comments + google.api.http rules +
+# openapiv2 options in the proto); every other version exports its runtime document below.
+cd /src/src/Quotes/Quotes.Api/V3/Contracts
+buf generate --path quotes_v3.proto
+cp /tmp/quotes_v3.swagger.json /out/quotes-v3.openapi.json
+cd /src
 
 # Throwaway key for the export only: both APIs must agree on it, and it must never
 # match the committed development key (the Production guard would reject it, and
@@ -107,3 +137,4 @@ COPY --from=export /out/auth.openapi.yaml /auth.openapi.yaml
 COPY --from=export /out/quotes-v0.openapi.yaml /quotes-v0.openapi.yaml
 COPY --from=export /out/quotes-v1.openapi.yaml /quotes-v1.openapi.yaml
 COPY --from=export /out/quotes-v2.openapi.yaml /quotes-v2.openapi.yaml
+COPY --from=export /out/quotes-v3.openapi.json /quotes-v3.openapi.json

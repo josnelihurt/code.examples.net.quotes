@@ -31,7 +31,8 @@ try
     builder.AddStandardApiServices(
         QuotesController.DocumentName,
         QuoteEndpoints.DocumentName,
-        V2.Endpoints.QuoteEndpoints.DocumentName);
+        V2.Endpoints.QuoteEndpoints.DocumentName,
+        "v3");
     builder.Services.AddSingleton<IReadOnlyDictionary<string, OpenApiDocumentInfo>>(OpenApiDocs.Documents);
     // Literal document names are mandatory: the XML-comment source generator only intercepts
     // AddOpenApi calls whose document name is a string literal, so a loop or a constant field
@@ -79,6 +80,9 @@ try
     app.UseStandardAuthentication();
     app.MapDefaultEndpoints();
     app.MapStandardApiDocumentation();
+    // v3's document is generated from its proto by the freeze pipeline, not by the runtime.
+    app.MapGet("/openapi/v3.json", () => Results.Content(V3.OpenApi.V3OpenApiDocument.Json, "application/json"))
+        .ExcludeFromDescription(); // it is itself a document, not an operation
 
     // All four transports resolve the same decorated use cases from the same container.
     QuoteEndpoints.Map(app);
