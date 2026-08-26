@@ -270,8 +270,9 @@ seed's default for use cases and their chains.
 
 | File | Type | Role | Key constants / signatures |
 |---|---|---|---|
-| [`Program.cs`](Program.cs) | top-level program | Composition root and pipeline; `try`/`catch`/`finally` around the host | `AddStandardApiServices(QuotesController.DocumentName, QuoteEndpoints.DocumentName)`; two literal `AddOpenApi` calls; `public partial class Program;` |
-| [`OpenApiDocs.cs`](OpenApiDocs.cs) | `internal static class` | Document narrative and tag descriptions | `const string Description`; `IReadOnlyDictionary<string, string> TagDescriptions` for `"Quotes v0"` and `"Quotes v1"` |
+| [`Program.cs`](Program.cs) | top-level program | Composition root and pipeline; `try`/`catch`/`finally` around the host | discovers the `IApiModule`s and loops over them; `public partial class Program;` |
+| [`ApiModules/IApiModule.cs`](ApiModules/IApiModule.cs) | `internal interface` | One API version: its document name, its narrative, its services, its endpoints | `DocumentName`, `DocumentInfo`, `AddServices(IServiceCollection)`, `MapEndpoints(WebApplication)`; listed explicitly in [`ApiModules/ApiModuleRegistry.cs`](ApiModules/ApiModuleRegistry.cs) |
+| [`V0/V0ApiModule.cs`](V0/V0ApiModule.cs) · [`V1/V1ApiModule.cs`](V1/V1ApiModule.cs) · [`V2/V2ApiModule.cs`](V2/V2ApiModule.cs) · [`V3/V3ApiModule.cs`](V3/V3ApiModule.cs) | `sealed class : IApiModule` | The four versions, each owning its literal `AddOpenApi` call and self-contained document narrative (v3 has none — its document is generated from its proto) | |
 | [`V0/Controllers/QuotesController.cs`](V0/Controllers/QuotesController.cs) | `sealed class : ControllerBase` | v0 transport | `DocumentName = "v0"`; `GetByIdRouteName = "GetQuoteByIdV0"`; `_problemContentType = "application/problem+json"`; `_jsonContentType = "application/json"`; four `ActionResult<T>` actions |
 | [`V0/Contracts/*.cs`](V0/Contracts) | 3 `sealed class` | v0 request and response shapes | `CreateQuoteRequestDto` (`[Required]`, `[MaxLength(QuoteRules.*)]`), `QuoteResponseDto`, `QuotePageResponseDto` (all `required init`) |
 | [`V0/Mapping/QuoteMappingExtensions.cs`](V0/Mapping/QuoteMappingExtensions.cs) | `static class` | v0 translation, hand-written | `ToCommand(this CreateQuoteRequestDto)`, `ToResponse(this QuoteDto)`, `ToResponse(this QuotePageDto)` |
