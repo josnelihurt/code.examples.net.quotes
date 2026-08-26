@@ -7,6 +7,7 @@ This folder no longer holds OpenAPI YAML. Use the Docsify docs instead:
 | Frozen OpenAPI YAML | [`docs/openapi/`](../docs/openapi/) (`auth.openapi.yaml`, `quotes-v0.openapi.yaml`, `quotes-v1.openapi.yaml`, `quotes-v2.openapi.yaml`) |
 | How to refresh contracts / API notes | [`docs/api.md`](../docs/api.md) |
 | Architecture / auth overview | [`docs/architecture.md`](../docs/architecture.md) |
+| v3 (transcoded) contract of record | `src/Quotes/Quotes.Api/V3/Contracts/quotes_v3.proto` (no OpenAPI document, by design) |
 
 After changing Api DTOs or endpoints:
 

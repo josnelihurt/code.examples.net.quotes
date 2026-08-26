@@ -1,23 +1,28 @@
 openapi: 3.1.1
 info:
   title: Quotes.Api | v2
-  description: "Quote catalog for the Aspire Quotes platform.\n\n**Three transports,\
-    \ one contract**: `v0` (MVC controllers), `v1` (minimal APIs)\nand `v2` (a proto\
-    \ contract served through an adapter) publish the same operations,\npayloads and\
-    \ error envelope; parity is enforced by tests. New integrations should\nprefer\
-    \ `v1`.\n\nTypical use:\n\n1. Obtain a bearer JWT from the Auth API: `POST /api/v1/auth/login`\n\
-    \   (development users: see the repository's dev-credentials documentation;\n\
-    \   the maintainer holds both scopes, the reader is read-only).\n2. Send `Authorization:\
-    \ Bearer {accessToken}` to every operation below — reads\n   require the `quotes:read`\
-    \ scope claim, create requires `quotes:write`; a valid\n   token without the scope\
-    \ answers 403.\n3. The catalog boots seeded (eight quotes), so reads serve data\
-    \ from the first\n   call: browse with `GET /api/v1/quotes`, `GET /api/v1/quotes/{id}`\
-    \ or\n   `GET /api/v1/quotes/random`, then add your own with `POST /api/v1/quotes`.\n\
-    \   The same operations exist under `/api/v0/quotes` and `/api/v2/quotes`.\n\n\
-    Cross-cutting behavior:\n\n- Every error response is RFC 9457 `application/problem+json`\
-    \ with `errorCode` and\n  `correlationId` extensions.\n- Pagination is 1-based\
-    \ (`page` from 1, `pageSize` between 1 and 100, default 20).\n- Send `X-Correlation-Id`\
-    \ to correlate calls; it is echoed on every response."
+  description: "Quote catalog for the Aspire Quotes platform.\n\n**Three JSON documents,\
+    \ four transports**: `v0` (MVC controllers), `v1` (minimal\nAPIs) and `v2` (a\
+    \ proto contract served through an adapter) publish the same\noperations, payloads\
+    \ and error envelope; parity is enforced by tests. `v3` serves\nthe same shape\
+    \ through stock gRPC-JSON transcoding and deliberately drifts (gRPC\nstatus error\
+    \ bodies, 200 on create, no OpenAPI document) — its contract of record is\nthe\
+    \ proto file under `src/Quotes/Quotes.Api/V3/Contracts`. New integrations should\n\
+    prefer `v1`.\n\nTypical use:\n\n1. Obtain a bearer JWT from the Auth API: `POST\
+    \ /api/v1/auth/login`\n   (development users: see the repository's dev-credentials\
+    \ documentation;\n   the maintainer holds both scopes, the reader is read-only).\n\
+    2. Send `Authorization: Bearer {accessToken}` to every operation below — reads\n\
+    \   require the `quotes:read` scope claim, create requires `quotes:write`; a valid\n\
+    \   token without the scope answers 403.\n3. The catalog boots seeded (eight quotes),\
+    \ so reads serve data from the first\n   call: browse with `GET /api/v1/quotes`,\
+    \ `GET /api/v1/quotes/{id}` or\n   `GET /api/v1/quotes/random`, then add your\
+    \ own with `POST /api/v1/quotes`.\n   The same operations exist under `/api/v0/quotes`,\
+    \ `/api/v2/quotes` and\n   `/api/v3/quotes`.\n\nCross-cutting behavior:\n\n- Every\
+    \ error response is RFC 9457 `application/problem+json` with `errorCode` and\n\
+    \  `correlationId` extensions (v3 excepted: transcoding answers with the gRPC\
+    \ status\n  envelope).\n- Pagination is 1-based (`page` from 1, `pageSize` between\
+    \ 1 and 100, default 20).\n- Send `X-Correlation-Id` to correlate calls; it is\
+    \ echoed on every response."
   version: 1.0.0
 servers:
 - url: /

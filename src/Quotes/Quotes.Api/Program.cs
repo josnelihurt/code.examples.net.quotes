@@ -9,10 +9,11 @@ using Quotes.Infrastructure;
 using Quotes.Infrastructure.Persistence;
 using Serilog;
 
-// The v2 namespace is reached through an alias: the top-level Program cannot see sibling
-// sub-namespace names through the root using above, and a plain using would make
+// The v2/v3 namespaces are reached through aliases: the top-level Program cannot see
+// sibling sub-namespace names through the root using above, and a plain using would make
 // QuoteEndpoints ambiguous against the v1 one.
 using V2 = Quotes.Api.V2;
+using V3 = Quotes.Api.V3;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -23,8 +24,10 @@ try
     var builder = WebApplication.CreateBuilder(args);
 
     builder.AddServiceDefaults();
-    // Three transports, three OpenAPI documents: v0 is controller-based, v1 is minimal
-    // APIs, v2 binds the proto contract through an adapter.
+    // Four transports, three OpenAPI documents: v0 is controller-based, v1 is minimal APIs,
+    // v2 binds the proto contract through an adapter. v3 is served by stock gRPC-JSON
+    // transcoding, which ApiExplorer cannot see — the proto file is its contract of record,
+    // so there is no v3 document on purpose.
     builder.AddStandardApiServices(
         QuotesController.DocumentName,
         QuoteEndpoints.DocumentName,
@@ -42,7 +45,10 @@ try
     {
         options.ConfigureStandardOpenApi("v2");
         options.AddSchemaTransformer<V2.OpenApi.ProtoSchemaTransformer>();
-    }); builder.AddStandardJwtAuthentication(
+    });
+    // v3: the platform runtime serves the annotated proto directly over JSON.
+    builder.Services.AddGrpc().AddJsonTranscoding();
+    builder.AddStandardJwtAuthentication(
         (QuoteScopes.ReadPolicy, QuoteScopes.ReadScope),
         (QuoteScopes.WritePolicy, QuoteScopes.WriteScope));
 
@@ -76,9 +82,10 @@ try
     app.MapDefaultEndpoints();
     app.MapStandardApiDocumentation();
 
-    // All three transports resolve the same decorated use cases from the same container.
+    // All four transports resolve the same decorated use cases from the same container.
     QuoteEndpoints.Map(app);
     V2.Endpoints.QuoteEndpoints.Map(app);
+    app.MapGrpcService<V3.Services.QuoteGrpcService>();
     app.MapControllers();
 
     await app.RunAsync();

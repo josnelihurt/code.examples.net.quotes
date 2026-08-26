@@ -70,14 +70,25 @@ public sealed class QuoteSteps(ApiWorld world)
     [When("I publish a quote with the text {string}")]
     public Task WhenIPublishAQuoteWithTheText(string text) => PublishAsync(text, "Specification Suite");
 
-    private async Task PublishAsync(string text, string author)
+    [When("I publish a quote with unique text attributed to {string} through the {string} transport")]
+    public Task WhenIPublishAQuoteWithUniqueTextAttributedToThroughTheTransport(string author, string version) =>
+        PublishAsync(world.UniqueText, author, version);
+
+    [When("I publish a quote with the text {string} through the {string} transport")]
+    public Task WhenIPublishAQuoteWithTheTextThroughTheTransport(string text, string version) =>
+        PublishAsync(text, "Specification Suite", version);
+
+    // The v1 default keeps every existing scenario unchanged; the versioned overloads serve
+    // the transports whose create contract differs (v3 answers 200, not 201).
+    private async Task PublishAsync(string text, string author, string version = "v1")
     {
         var response = await world.Client.PostAsync(
-            "/api/v1/quotes",
+            $"/api/{version}/quotes",
             ApiWorld.JsonBody(JsonSerializer.Serialize(new { text, author })));
         await world.RecordAsync(response);
 
-        if (response.StatusCode == HttpStatusCode.Created)
+        // 201 (v0/v1/v2) and 200 (v3) both return the created quote in the body.
+        if (response.StatusCode is HttpStatusCode.Created or HttpStatusCode.OK)
         {
             world.LastCreatedId = world.LastBody?.GetProperty("id").GetString();
         }

@@ -73,8 +73,9 @@ wait_for() {
   return 1
 }
 
-# Auth serves one document; Quotes serves one per API version (v0 controllers, v1 minimal
-# APIs, v2 the proto contract via the adapter).
+# Auth serves one document; Quotes serves one per JSON-documented API version (v0
+# controllers, v1 minimal APIs, v2 the proto contract via the adapter). v3 is transcoding:
+# ApiExplorer cannot see it, so it has no document — its proto file is the contract.
 wait_for http://127.0.0.1:18081/openapi/v1.json
 wait_for http://127.0.0.1:18082/openapi/v1.json
 

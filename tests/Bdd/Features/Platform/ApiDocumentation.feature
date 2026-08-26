@@ -22,3 +22,8 @@ Feature: API documentation
     When I open "/openapi/v2.json" on the "quotes-api" service
     Then the response status is 200
 
+  Scenario: The transcoded transport has no OpenAPI document
+    Transcoded routes are invisible to ApiExplorer, so v3 documents itself with its proto
+    file instead; the absent document is part of the contract, not an oversight.
+    When I open "/openapi/v3.json" on the "quotes-api" service
+    Then the response status is 404

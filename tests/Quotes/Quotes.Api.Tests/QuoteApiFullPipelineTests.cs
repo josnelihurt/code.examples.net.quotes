@@ -352,7 +352,8 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
     {
         // A client that sends Content-Type: application/json and no payload is the
         // null-body adversarial case; the transports that share the problem+json
-        // envelope must all answer it.
+        // envelope must all answer it. (v3 is exempt: transcoding answers with the
+        // gRPC status envelope — see TranscodedWireTests.)
         using var client = CreateClient();
         using var content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
 
@@ -393,9 +394,11 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
     [InlineData("/api/v0/quotes/random")]
     [InlineData("/api/v1/quotes/random")]
     [InlineData("/api/v2/quotes/random")]
+    [InlineData("/api/v3/quotes/random")]
     public async Task An_unauthenticated_read_is_rejected_by_the_shared_middleware_on_every_transport(string path)
     {
-        // Authorization runs before any transport code.
+        // Authorization runs before any transport code — including v3, where the gRPC
+        // pipeline takes over only after the JWT middleware has authenticated the caller.
         using var client = _factory.CreateClient();
 
         using var response = await client.GetAsync(
@@ -413,9 +416,11 @@ public class QuoteApiFullPipelineTests : IClassFixture<QuoteApiFactory>
     [InlineData("/api/v0/quotes")]
     [InlineData("/api/v1/quotes")]
     [InlineData("/api/v2/quotes")]
+    [InlineData("/api/v3/quotes")]
     public async Task Create_without_the_write_scope_is_forbidden_on_every_transport(string path)
     {
-        // Scope enforcement is transport-agnostic; the status is the comparable part.
+        // Scope enforcement is transport-agnostic; v3's 403 body is empty by platform
+        // default, so the status is the comparable part (pinned in TranscodedWireTests).
         using var client = CreateClient(["quotes:read"]);
 
         using var response = await client.PostAsJsonAsync(

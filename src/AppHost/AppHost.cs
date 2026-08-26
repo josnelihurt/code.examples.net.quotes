@@ -73,9 +73,11 @@ builder.AddYarp("gateway")
     {
         yarp.AddRoute("/api/v1/auth/{**catch-all}", auth);
         // All quote API versions live in the same service; the SPA picks one at request time.
+        // v3 is gRPC-JSON transcoding — plain HTTP/1.1 JSON, so YARP proxies it like the rest.
         yarp.AddRoute("/api/v0/quotes/{**catch-all}", quotes);
         yarp.AddRoute("/api/v1/quotes/{**catch-all}", quotes);
         yarp.AddRoute("/api/v2/quotes/{**catch-all}", quotes);
+        yarp.AddRoute("/api/v3/quotes/{**catch-all}", quotes);
     })
     .WithExternalHttpEndpoints()
     .PublishWithStaticFiles(web);
