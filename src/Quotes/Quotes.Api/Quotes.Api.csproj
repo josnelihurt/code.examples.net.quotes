@@ -8,6 +8,23 @@
     <InternalsVisibleTo Include="Quotes.Api.Tests" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The v2 contract compiles with Grpc.Tools (protoc runs at build time) and generates
+         the messages plus the service skeleton the adapter layer will implement. The
+         google/api protos vendored under Contracts are import-only (they resolve
+         `import "google/api/annotations.proto"`); they are not compiled, so the runtime
+         HttpRule type comes solely from Google.Api.CommonProtos. -->
+    <PackageReference Include="Google.Api.CommonProtos" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Core.Api" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Distinct file names on purpose: Grpc.Tools derives the generated file name from the
+         proto's basename, so two contracts named quotes.proto would overwrite each other's
+         output in obj/. -->
+    <Protobuf Include="V2\Contracts\quotes_v2.proto" ProtoRoot="V2\Contracts" GrpcServices="Server" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- Design-time only: lets `dotnet ef migrations` author migrations with this project
          as the startup host. Never shipped. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
