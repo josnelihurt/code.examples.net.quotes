@@ -1,0 +1,84 @@
+// Single contract-first source of truth for the v2 quote transport. The HTTP extensions
+// (google.api.http) below describe the REST surface this version serves; Grpc.Tools generates
+// the C# messages and service skeleton from this file, and the v2 endpoints + service
+// implementation mirror it. A conformance test fails when the two drift apart.
+//
+// Field names use proto style (snake_case); their JSON-PB camelCase renderings are
+// byte-identical to the JSON v0/v1 already serve, so all versions share one wire shape.
+syntax = "proto3";
+
+package quotes.v2;
+
+option csharp_namespace = "Quotes.Api.V2.Contracts";
+
+import "google/api/annotations.proto";
+
+// A quote as served to an authenticated client.
+message Quote {
+  // Stable quote identifier.
+  string id = 1;
+  // Quote body text.
+  string text = 2;
+  // Attributed author of the quote.
+  string author = 3;
+}
+
+message GetRandomQuoteRequest {
+}
+
+message GetQuoteByIdRequest {
+  // Quote identifier as returned by create or list.
+  string id = 1;
+}
+
+message ListQuotesRequest {
+  // 1-based page number (minimum 1).
+  int32 page = 1;
+  // Items per page, between 1 and 100 (default 20).
+  int32 page_size = 2;
+}
+
+// Payload to add a quote to the catalog.
+message CreateQuoteRequest {
+  // Quote body text.
+  string text = 1;
+  // Attributed author of the quote.
+  string author = 2;
+}
+
+// One page of the quote catalog.
+message ListQuotesResponse {
+  // Quotes on this page, in stable catalog order.
+  repeated Quote items = 1;
+  // 1-based page number this response represents.
+  int32 page = 2;
+  // Number of items per page that was requested.
+  int32 page_size = 3;
+  // Total number of quotes in the catalog.
+  int32 total_items = 4;
+  // Total number of pages at the requested page size.
+  int32 total_pages = 5;
+}
+
+service QuoteService {
+  // Returns a random quote from the catalog.
+  rpc GetRandomQuote(GetRandomQuoteRequest) returns (Quote) {
+    option (google.api.http) = { get: "/api/v2/quotes/random" };
+  }
+
+  // Lists one page of the quote catalog in stable order. Fields not bound by the path
+  // (page, pageSize) travel as query parameters.
+  rpc ListQuotes(ListQuotesRequest) returns (ListQuotesResponse) {
+    option (google.api.http) = { get: "/api/v2/quotes" };
+  }
+
+  // Returns one quote by id.
+  rpc GetQuoteById(GetQuoteByIdRequest) returns (Quote) {
+    option (google.api.http) = { get: "/api/v2/quotes/{id}" };
+  }
+
+  // Adds a quote to the catalog; the request body maps onto the whole message.
+  rpc CreateQuote(CreateQuoteRequest) returns (Quote) {
+    option (google.api.http) = { post: "/api/v2/quotes" body: "*" };
+  }
+}
