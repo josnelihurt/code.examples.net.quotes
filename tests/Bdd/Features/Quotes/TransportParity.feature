@@ -1,7 +1,8 @@
 Feature: Multi transport parity
   The same use cases are served three times: v0 by MVC controllers, v1 by minimal APIs,
   and v2 by the proto contract through a generated-service adapter. A caller must not be
-  able to tell which one answered.
+  able to tell which one answered. (v3, the stock gRPC-JSON transcoding transport,
+  deliberately drifts and lives in TranscodedQuotes.feature instead.)
 
   Background:
     Given the distributed application is running

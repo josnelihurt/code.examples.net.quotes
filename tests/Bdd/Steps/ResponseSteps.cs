@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using AspireQuotesPoc.Specs.Support;
 using Reqnroll;
 
@@ -126,6 +127,46 @@ public sealed class ResponseSteps(ApiWorld world)
     {
         var body = world.LastBody.ShouldNotBeNull("a JSON response must be recorded first");
         body.GetProperty("valid").GetBoolean().ShouldBeFalse();
+    }
+
+    [Then("the response carries no Location header")]
+    public void ThenTheResponseCarriesNoLocationHeader()
+    {
+        var response = world.LastResponse.ShouldNotBeNull("a request step must run first");
+        response.Headers.Location.ShouldBeNull("transcoded create answers 200 without addressing the quote");
+    }
+
+    /// <summary>
+    /// The v3 drift vocabulary: stock gRPC-JSON transcoding answers failures with the gRPC
+    /// status envelope (<c>{"code","message","details"}</c>) instead of RFC 9457
+    /// problem+json. These steps exist so TranscodedQuotes.feature can pin that envelope
+    /// without weakening the problem-document assertions above.
+    /// </summary>
+    [Then("the response is a grpc status envelope")]
+    public void ThenTheResponseIsAGrpcStatusEnvelope()
+    {
+        var response = world.LastResponse.ShouldNotBeNull("a request step must run first");
+        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/json");
+
+        var body = world.LastBody.ShouldNotBeNull("gRPC status bodies are JSON");
+        body.GetProperty("code").ValueKind.ShouldBe(JsonValueKind.Number, $"body was {body}");
+        body.GetProperty("message").ValueKind.ShouldBe(JsonValueKind.String, $"body was {body}");
+        body.GetProperty("details").ValueKind.ShouldBe(JsonValueKind.Array, $"body was {body}");
+    }
+
+    [Then("the grpc status code is {int}")]
+    public void ThenTheGrpcStatusCodeIs(int expected)
+    {
+        var body = world.LastBody.ShouldNotBeNull("a gRPC status response must be recorded first");
+        body.GetProperty("code").GetInt32().ShouldBe(expected, $"body was {body}");
+    }
+
+    [Then("the grpc message mentions {string}")]
+    public void ThenTheGrpcMessageMentions(string fragment)
+    {
+        var body = world.LastBody.ShouldNotBeNull("a gRPC status response must be recorded first");
+        var message = body.GetProperty("message").GetString().ShouldNotBeNull($"body was {body}");
+        message.Contains(fragment, StringComparison.Ordinal).ShouldBeTrue($"message was {message}");
     }
 
     private void HasProperties(params string[] properties)

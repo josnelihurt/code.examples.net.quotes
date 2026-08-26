@@ -1,0 +1,87 @@
+// Contract for the v3 quote transport, served by ASP.NET Core's stock gRPC-JSON transcoding
+// (Microsoft.AspNetCore.Grpc.JsonTranscoding): the google.api.http rules below drive the
+// routing themselves — no adapter endpoints exist for this version.
+//
+// v3 demonstrates the platform runtime next to v2's parity-preserving adapter; the drift
+// between them (error envelope, 201/Location, absent OpenAPI document) is deliberate and
+// pinned by tests. Paging scalars are declared `optional` so transcoding's JSON writer emits
+// them even at proto defaults (page = 1); without explicit presence they would be omitted
+// from every first-page response.
+syntax = "proto3";
+
+package quotes.v3;
+
+option csharp_namespace = "Quotes.Api.V3.Contracts";
+
+import "google/api/annotations.proto";
+
+// A quote as served to an authenticated client.
+message Quote {
+  // Stable quote identifier.
+  string id = 1;
+  // Quote body text.
+  string text = 2;
+  // Attributed author of the quote.
+  string author = 3;
+}
+
+message GetRandomQuoteRequest {
+}
+
+message GetQuoteByIdRequest {
+  // Quote identifier as returned by create or list.
+  string id = 1;
+}
+
+message ListQuotesRequest {
+  // 1-based page number (minimum 1).
+  optional int32 page = 1;
+  // Items per page, between 1 and 100 (default 20).
+  optional int32 page_size = 2;
+}
+
+// Payload to add a quote to the catalog.
+message CreateQuoteRequest {
+  // Quote body text.
+  string text = 1;
+  // Attributed author of the quote.
+  string author = 2;
+}
+
+// One page of the quote catalog.
+message ListQuotesResponse {
+  // Quotes on this page, in stable catalog order.
+  repeated Quote items = 1;
+  // 1-based page number this response represents.
+  optional int32 page = 2;
+  // Number of items per page that was requested.
+  optional int32 page_size = 3;
+  // Total number of quotes in the catalog.
+  optional int32 total_items = 4;
+  // Total number of pages at the requested page size.
+  optional int32 total_pages = 5;
+}
+
+service QuoteService {
+  // Returns a random quote from the catalog.
+  rpc GetRandomQuote(GetRandomQuoteRequest) returns (Quote) {
+    option (google.api.http) = { get: "/api/v3/quotes/random" };
+  }
+
+  // Lists one page of the quote catalog in stable order. Fields not bound by the path
+  // (page, pageSize) travel as query parameters.
+  rpc ListQuotes(ListQuotesRequest) returns (ListQuotesResponse) {
+    option (google.api.http) = { get: "/api/v3/quotes" };
+  }
+
+  // Returns one quote by id.
+  rpc GetQuoteById(GetQuoteByIdRequest) returns (Quote) {
+    option (google.api.http) = { get: "/api/v3/quotes/{id}" };
+  }
+
+  // Adds a quote to the catalog; the request body maps onto the whole message. Answers
+  // 200 with the created quote — transcoding has no way to express 201 + Location.
+  rpc CreateQuote(CreateQuoteRequest) returns (Quote) {
+    option (google.api.http) = { post: "/api/v3/quotes" body: "*" };
+  }
+}

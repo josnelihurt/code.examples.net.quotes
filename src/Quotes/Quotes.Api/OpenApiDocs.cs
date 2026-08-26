@@ -9,9 +9,12 @@ internal static class OpenApiDocs
     internal const string Description = """
         Quote catalog for the Aspire Quotes platform.
 
-        **Three transports, one contract**: `v0` (MVC controllers), `v1` (minimal APIs)
-        and `v2` (a proto contract served through an adapter) publish the same operations,
-        payloads and error envelope; parity is enforced by tests. New integrations should
+        **Three JSON documents, four transports**: `v0` (MVC controllers), `v1` (minimal
+        APIs) and `v2` (a proto contract served through an adapter) publish the same
+        operations, payloads and error envelope; parity is enforced by tests. `v3` serves
+        the same shape through stock gRPC-JSON transcoding and deliberately drifts (gRPC
+        status error bodies, 200 on create, no OpenAPI document) — its contract of record is
+        the proto file under `src/Quotes/Quotes.Api/V3/Contracts`. New integrations should
         prefer `v1`.
 
         Typical use:
@@ -25,12 +28,14 @@ internal static class OpenApiDocs
         3. The catalog boots seeded (eight quotes), so reads serve data from the first
            call: browse with `GET /api/v1/quotes`, `GET /api/v1/quotes/{id}` or
            `GET /api/v1/quotes/random`, then add your own with `POST /api/v1/quotes`.
-           The same operations exist under `/api/v0/quotes` and `/api/v2/quotes`.
+           The same operations exist under `/api/v0/quotes`, `/api/v2/quotes` and
+           `/api/v3/quotes`.
 
         Cross-cutting behavior:
 
         - Every error response is RFC 9457 `application/problem+json` with `errorCode` and
-          `correlationId` extensions.
+          `correlationId` extensions (v3 excepted: transcoding answers with the gRPC status
+          envelope).
         - Pagination is 1-based (`page` from 1, `pageSize` between 1 and 100, default 20).
         - Send `X-Correlation-Id` to correlate calls; it is echoed on every response.
         """;
