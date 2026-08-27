@@ -75,10 +75,10 @@ A screenshot tour of every surface below — app screens, the Aspire dashboard a
 1. **Auth API** issues a JWT for hardcoded local users — the maintainer holds `quotes:read` + `quotes:write`, the reader holds `quotes:read` only (users and passwords live in [docs/dev-credentials.md](docs/dev-credentials.md)) — and can validate tokens via `/api/v1/auth/validate` (optional introspection). Login and validate are rate-limited (fixed window per client IP, 429 as ProblemDetails), and the scaffolding credential store refuses to register in Production.
 2. **Quotes API** serves the catalog from PostgreSQL (container in the AppHost; schema migrated + seeded at boot) after JwtBearer validates the bearer token: `GET /api/v1/quotes/random`, `GET /api/v1/quotes/{id}`, `GET /api/v1/quotes?page=&pageSize=` (the ratified offset-pagination pattern), and `POST /api/v1/quotes` (requires `quotes:write`; rejects invalid and near-duplicate quotes — the latter by a unique fingerprint index). The same four operations are also served at `/api/v0/quotes/...` (MVC), `/api/v2/quotes/...` (a proto contract through a generated-service adapter, wire-identical) and `/api/v3/quotes/...` (stock gRPC-JSON transcoding, deliberately drifted) — one core, four transports, with v0/v1/v2 held to byte-level response parity by tests. See [docs/architecture.md](docs/architecture.md#api-versions-and-transport-styles) and [docs/proto-transports.md](docs/proto-transports.md).
 3. **React SPA** logs in, stores token + `X-Correlation-Id`, then fetches quotes through the Vite proxy: a random quote, the paginated catalog (`/quotes`), and publishing a new quote (`/publish`, maintainer scope only). Its API types are generated from the frozen OpenAPI document, and its components have Storybook stories smoke-built in the frontend repository's CI.
-4. **Aspire AppHost** starts everything, wires service discovery, exports OpenTelemetry to the dashboard, and publishes a **YARP** gateway (no Traefik).
+4. **Aspire AppHost** starts everything, wires service discovery, exports OpenTelemetry to the dashboard, and fronts the stack with a **YARP** gateway — the single entry point in run and publish mode alike (the role Traefik plays in the Go sibling; no Traefik here).
 
 ```text
-UI (Vite) -> Auth / Quotes
+UI (Vite) -> YARP gateway -> Auth / Quotes
 Quotes validates JWT locally (JwtBearer); Auth /validate remains for introspection
 OTEL metrics/logs/traces -> Aspire dashboard
 ```

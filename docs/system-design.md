@@ -56,7 +56,7 @@ dashboard.
 | — `Quotes.Infrastructure` | EF Core + PostgreSQL catalog adapter | [`src/Quotes/Quotes.Infrastructure/`](../src/Quotes/Quotes.Infrastructure/) | [README](../src/Quotes/Quotes.Infrastructure/README.md) |
 | — `Quotes.Api` (`quotes-api`) | Host, MVC `v0` + minimal `v1` + proto `v2`/`v3` | [`src/Quotes/Quotes.Api/`](../src/Quotes/Quotes.Api/) | [README](../src/Quotes/Quotes.Api/README.md) |
 | `web` | React + TypeScript SPA | [`frontend/`](../frontend/) | [README](../frontend/README.md) |
-| `gateway` | YARP reverse proxy (publish) | declared in [`src/AppHost/AppHost.cs`](../src/AppHost/AppHost.cs) | [README](../src/AppHost/README.md) |
+| `gateway` | YARP reverse proxy (single entry point) | declared in [`src/AppHost/AppHost.cs`](../src/AppHost/AppHost.cs) | [README](../src/AppHost/README.md) |
 | `docs` | Docsify site + combined Scalar | [`docs/`](.) | this site |
 
 ## Runtime topology — run mode
@@ -80,8 +80,9 @@ flowchart LR
   key -->|"Jwt__SigningKey"| quotes
   pgweb --- pg
   quotes -->|"WithReference + WaitFor: ConnectionStrings__quotesdb"| pg
-  web -->|"WithReference + WaitFor"| auth
-  web -->|"WithReference + WaitFor"| quotes
+  web -->|"proxy env: AUTH/QUOTES_API_HTTP"| gw
+  web -.->|"WaitFor"| auth
+  web -.->|"WaitFor"| quotes
   gw --> auth
   gw --> quotes
   auth -->|OTLP| dash
@@ -100,15 +101,16 @@ Three things carry the wiring:
   database is deliberately ephemeral — every run starts from the same eight shipped quotes.
   [Data storage](data-storage.md) unpacks the whole flow, including what a non-.NET service would
   consume to reach the same database.
-- **`WithReference` is what makes the SPA work.** It injects `AUTH_API_HTTP` / `AUTH_API_HTTPS` and
-  `QUOTES_API_HTTP` / `QUOTES_API_HTTPS` into the `web` resource, and
+- **`WithEnvironment` is what makes the SPA work.** It injects `AUTH_API_HTTP` and
+  `QUOTES_API_HTTP` with the **gateway's** endpoint into the `web` resource, and
   [`frontend/vite.config.ts`](../frontend/vite.config.ts) reads exactly those variables to build its
-  dev proxy. Running `pnpm run dev` outside Aspire leaves the proxy targets undefined.
+  dev proxy — so dev traffic crosses the same route table as published traffic. Running
+  `pnpm run dev` outside Aspire leaves the proxy targets undefined.
 - **`WaitFor`** holds the SPA back until both APIs report healthy on `/health` — and holds quotes-api
   back until the database resource is healthy.
 
-In run mode the browser talks to the Vite dev server, which proxies to the APIs. The gateway also
-runs, but it is the publish-mode entry point rather than the development path.
+In run mode the browser talks to the Vite dev server for the SPA itself (HMR included), and every
+API call is proxied to the gateway — the same single entry point publish mode exposes.
 
 ## Runtime topology — publish mode
 
@@ -142,8 +144,9 @@ The shape changes in two ways that matter:
   the gateway image — the generated `gateway.Dockerfile` copies the SPA's `dist` into the YARP
   image's `wwwroot` — so the published topology has no `web` container, and no `docs` container
   either.
-- **The gateway becomes the only front door.** It serves the SPA and routes the three API prefixes
-  declared in `AppHost.cs`. There is no Traefik.
+- **The gateway becomes the only front door.** It serves the SPA and routes the five API prefixes
+  declared in `AppHost.cs`; the APIs are `expose`-only, so no other stack port is published. This is
+  the role Traefik's `edge` plays in the Go sibling — there is no Traefik here.
 
 The signing key surfaces as a `JWT_SIGNING_KEY` variable in the generated `.env`, blank by default;
 an operator must supply a real secret. `AddStandardJwtAuthentication` refuses to start in Production
@@ -255,7 +258,7 @@ flowchart TD
   quote["QuotePage at /quote"]
   client["api/client.ts"]
   store["sessionStorage"]
-  proxy["Vite proxy or YARP gateway"]
+  proxy["Vite proxy (run) / gateway port (publish)"]
 
   main --> router
   router --> app
@@ -271,8 +274,9 @@ flowchart TD
 The SPA holds no state library. `api/client.ts` is the only module that knows about the network and
 the only module that touches `sessionStorage`; pages call it and keep the answer in `useState`.
 Every request path is **relative** — there is no base-URL configuration and no `import.meta.env`
-usage — so routing is entirely the dev proxy's job in run mode and the gateway's job in publish
-mode. `RequireAuth` reads the session on render and redirects to `/` when no token is present.
+usage — so the SPA always lives on one origin: the Vite dev server's in run mode (which forwards
+the `/api` prefixes to the gateway) and the gateway's own port in publish mode. `RequireAuth`
+reads the session on render and redirects to `/` when no token is present.
 
 ## Build, test and delivery
 
