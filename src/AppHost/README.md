@@ -40,21 +40,23 @@ flowchart LR
   key -->|"Jwt__SigningKey"| quotes
   pgweb --- pg
   quotes -->|"WithReference + WaitFor: ConnectionStrings__quotesdb"| pg
-  web -->|"WithReference + WaitFor"| auth
-  web -->|"WithReference + WaitFor"| quotes
+  web -->|"proxy env: AUTH/QUOTES_API_HTTP"| gw
+  web -.->|"WaitFor"| auth
+  web -.->|"WaitFor"| quotes
   gw -->|"/api/v1/auth"| auth
-  gw -->|"/api/v0/quotes"| quotes
-  gw -->|"/api/v1/quotes"| quotes
+  gw -->|"/api/v0..v3/quotes"| quotes
   gw -->|"PublishWithStaticFiles"| web
 ```
 
 `docs` has no edges: it serves the `docs/` folder with `docsify-cli` and depends on nothing.
 
-`WithReference(auth)` and `WithReference(quotes)` on `web` are load-bearing rather than decorative —
-they inject `AUTH_API_HTTP` / `AUTH_API_HTTPS` and `QUOTES_API_HTTP` / `QUOTES_API_HTTPS` into the
-Vite process, which is exactly what [`../../frontend/vite.config.ts`](../../frontend/vite.config.ts)
-reads to build its dev proxy. `WaitFor` holds the SPA back until both APIs pass their health check.
-The same mechanics wire the catalog: `WithReference(quotesDb)` injects
+The two `WithEnvironment` calls on `web` are load-bearing rather than decorative — they inject
+`AUTH_API_HTTP` and `QUOTES_API_HTTP` with the **gateway's** endpoint, the exact variable names
+[`../../frontend/vite.config.ts`](../../frontend/vite.config.ts) reads to build its dev proxy.
+Dev traffic therefore crosses the same YARP route table as published traffic — the same trick
+the Go sibling uses when it points these names at its Traefik edge. `WaitFor` holds the SPA back
+until both APIs pass their health check. The same mechanics wire the catalog:
+`WithReference(quotesDb)` injects
 `ConnectionStrings__quotesdb` into quotes-api (see
 [docs/data-storage.md](../../docs/data-storage.md) for the full connection flow), and `WaitFor`
 starts the API only after the database is healthy.
@@ -67,11 +69,11 @@ All seven are declared in [`AppHost.cs`](AppHost.cs).
 |---|---|---|---|---|
 | `postgres` | PostgreSQL container (`AddPostgres`) | before both APIs | internal to the deployment network | the catalog engine; image and generated credentials managed by Aspire; deliberately **no data volume** — every run migrates + seeds from scratch, which is what the BDD/e2e suites assert on |
 | `pgweb` | pgweb container (`WithPgWeb`) | with `postgres` | external HTTP | lightweight catalog browser, preconfigured with the server's connection |
-| `auth-api` | .NET project (`Projects.Auth_Api`) | `builder.AddProject<...>("auth-api")` | `http`, `https`, both external | `Jwt__SigningKey` from the parameter; HTTP health check on `/health`; a **Scalar** dashboard link pointing at `/scalar` on each endpoint |
-| `quotes-api` | .NET project (`Projects.Quotes_Api`) | `builder.AddProject<...>("quotes-api")` | `http`, `https`, both external | like `auth-api`, plus `WithReference(quotesDb)` + `WaitFor(quotesDb)`; migrates and seeds the database at boot |
-| `web` | Vite app (`AddViteApp("web", "../../frontend")`) | after both APIs | external HTTP | `WithReference` + `WaitFor` on both APIs |
+| `auth-api` | .NET project (`Projects.Auth_Api`) | `builder.AddProject<...>("auth-api")` | `http`, `https`, not externally published | `Jwt__SigningKey` from the parameter; HTTP health check on `/health`; a **Scalar** dashboard link pointing at `/scalar` on each endpoint |
+| `quotes-api` | .NET project (`Projects.Quotes_Api`) | `builder.AddProject<...>("quotes-api")` | `http`, `https`, not externally published | like `auth-api`, plus `WithReference(quotesDb)` + `WaitFor(quotesDb)`; migrates and seeds the database at boot |
+| `gateway` | YARP (`AddYarp("gateway")`) | after the APIs | external HTTP | five routes; `PublishWithStaticFiles(web)` |
+| `web` | Vite app (`AddViteApp("web", "../../frontend")`) | after the gateway | external HTTP | proxy env pointed at the gateway; `WaitFor` on both APIs |
 | `docs` | Executable (`AddExecutable`) | `pnpm dlx docsify-cli serve docs -p 3001 -H 0.0.0.0`, working directory `../..` | `http` on target port 3001, external | adds a **Scalar** link to `/scalar/` (the combined Auth + Quotes reference); logs a warning and skips that link if the `http` endpoint is missing |
-| `gateway` | YARP (`AddYarp("gateway")`) | last | external HTTP | three routes; `PublishWithStaticFiles(web)` |
 
 One environment is declared alongside them: `builder.AddDockerComposeEnvironment("compose")`, which
 is what makes `aspire publish` emit Docker Compose artifacts (Podman-compatible) rather than another
@@ -114,9 +116,9 @@ The same model produces two different shapes.
 |---|---|---|
 | `auth-api`, `quotes-api` | local processes | containers |
 | `postgres`, `pgweb` | containers (ephemeral catalog) | containers (ephemeral catalog) |
-| `web` | Vite dev server, proxying to both APIs | **no service** — built and baked into the gateway image |
+| `web` | Vite dev server, proxying `/api/*` to the gateway | **no service** — built and baked into the gateway image |
 | `docs` | `docsify-cli` on port 3001 | **no service** |
-| `gateway` | runs, but is not the development path | the only front door |
+| `gateway` | the single entry point — every API call rides it | the only front door |
 | Telemetry sink | the Aspire dashboard the CLI starts | a dashboard container in the generated compose file |
 | Signing key | generated locally | a blank variable for the operator |
 
@@ -129,7 +131,7 @@ so there is no proxy and no CORS.
 
 ## The gateway
 
-`builder.AddYarp("gateway")` declares a reverse proxy with three routes, exactly as written in
+`builder.AddYarp("gateway")` declares a reverse proxy with five routes, exactly as written in
 [`AppHost.cs`](AppHost.cs):
 
 | Route pattern | Destination |
@@ -137,15 +139,19 @@ so there is no proxy and no CORS.
 | `/api/v1/auth/{**catch-all}` | `auth-api` |
 | `/api/v0/quotes/{**catch-all}` | `quotes-api` |
 | `/api/v1/quotes/{**catch-all}` | `quotes-api` |
+| `/api/v2/quotes/{**catch-all}` | `quotes-api` |
+| `/api/v3/quotes/{**catch-all}` | `quotes-api` |
 
-Both quote routes point at the same service: `v0` (MVC controllers) and `v1` (minimal APIs) are two
-transports inside one host, and the SPA picks one per request. Adding an API version therefore adds
-a route here — see
+All quote routes point at the same service: `v0`–`v3` are four transports inside one host, and the
+SPA picks one per request. Adding an API version therefore adds a route here — see
 [docs/architecture.md#api-versions-and-transport-styles](../../docs/architecture.md#api-versions-and-transport-styles).
 
 `PublishWithStaticFiles(web)` makes the same process serve the SPA, so one container answers both
-the static assets and the API prefixes. **There is no Traefik**, and no separate ingress: YARP is the
-deploy entry point.
+the static assets and the API prefixes. The gateway is the single entry point in both modes: the
+Vite dev proxy targets it in run mode, and the published compose output opens no other stack port.
+It plays the role Traefik's `edge` plays in
+[code.examples.go.quotes](https://github.com/josnelihurt/code.examples.go.quotes) — there is no
+Traefik here, and no separate ingress: YARP *is* the deploy entry point.
 
 ## Generated output
 
@@ -156,9 +162,10 @@ never reviewed. Nothing in the repository reads it.
 
 What a publish emits today:
 
-- a compose file with six services — a dashboard container that receives OTLP, `auth-api`,
-  `quotes-api`, `gateway`, and the catalog's `postgres` + `pgweb` — on a single `aspire` bridge
-  network
+- a compose file with five services — a dashboard container that receives OTLP, `auth-api`,
+  `quotes-api`, `gateway`, and the catalog's `postgres` — on a single `aspire` bridge network.
+  Only the `gateway` publishes a host port (5000); `auth-api` and `quotes-api` are `expose`-only,
+  reachable through the gateway and from nowhere else
 - a Dockerfile for the gateway that starts from the YARP base image and copies the SPA build's
   `dist` directory into `wwwroot`, which is how `PublishWithStaticFiles` is realised
 - an environment file listing the values an operator must supply: the container image name and port

@@ -1,11 +1,12 @@
 # Architecture
 
 ```text
-Browser -> Vite (web) --proxy--> Auth.Api (/api/v1/auth/*)
-                              -> Quotes.Api (/api/v1/quotes/*)
+Browser -> Vite (web) --proxy--> YARP gateway (/api/*)
+                                   -> Auth.Api (/api/v1/auth/*)
+                                   -> Quotes.Api (/api/v0..v3/quotes/*)
 Quotes.Api validates JWT locally (JwtBearer middleware)
 Auth.Api POST /api/v1/auth/validate remains for optional introspection
-Aspire AppHost orchestrates processes + YARP gateway (publish) + Docsify
+Aspire AppHost orchestrates processes + YARP gateway (single entry point) + Docsify
 ```
 
 ## Detailed component docs
@@ -24,7 +25,7 @@ This page states the **rules**. The diagrams and the per-project detail live els
 | `src/Auth` → `auth-api` | Login + JWT issue/validate (DDD layers) |
 | `src/Quotes` → `quotes-api` | Random quote; JwtBearer protects `/api/v1/quotes` |
 | `web` | React + TypeScript Vite SPA |
-| `gateway` | YARP routes `/api/v1/auth` and both quote API versions (`/api/v0/quotes`, `/api/v1/quotes`); serves static SPA on publish |
+| `gateway` | YARP routes `/api/v1/auth` and all quote API versions (`/api/v0..v3/quotes`); single entry point in run and publish, serving the static SPA on publish |
 | `docs` | Docsify + combined Scalar reference |
 
 ## Correlation
