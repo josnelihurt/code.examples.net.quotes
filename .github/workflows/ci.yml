@@ -241,7 +241,7 @@ jobs:
       # (the implementing class, refused in Production), and the tests that
       # authenticate against them. Everything else fails: a literal that exists
       # only to be copy-pasted is how forks leak.
-      - uses: josnelihurt/code.examples.ci/secrets-hygiene@914ce2f68120ace140da1a445d44e854c97fb168 # v1
+      - uses: josnelihurt/code.examples.ci/secrets-hygiene@5159e4edf67e480c067345edc3e7748adbdc109f # v1
         with:
           pattern: 'supersecret|readsecret|Dev-Signing-Key|AspireQuotes-Local2!'
           exclude: |
@@ -260,7 +260,7 @@ jobs:
       # scripts/e2e.env — so changing them can never mean editing three files
       # in sync. The sealed world inside Dockerfile.build's export stage and
       # the tests are the only other allowed homes.
-      - uses: josnelihurt/code.examples.ci/secrets-hygiene@914ce2f68120ace140da1a445d44e854c97fb168 # v1
+      - uses: josnelihurt/code.examples.ci/secrets-hygiene@5159e4edf67e480c067345edc3e7748adbdc109f # v1
         with:
           pattern: 'POSTGRES_PASSWORD=postgres|Password=postgres|PASSWORD .postgres.'
           exclude: |
