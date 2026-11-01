@@ -21,4 +21,12 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <!-- MessagePack 2.5.302 (transitive via Aspire.Hosting.*) has a known medium-severity
+       advisory with no patched release yet: GHSA-qhrr-8q5h-9q3h (nested arrays can blow
+       past buffer length limits). NU1902-as-error fails the Release restore; suppress the
+       advisory explicitly here and remove this once MessagePack ships the fix. -->
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-qhrr-8q5h-9q3h" />
+  </ItemGroup>
+
 </Project>
